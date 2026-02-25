@@ -30,6 +30,24 @@ type HintType = 'gap' | 'tip' | 'good';
 interface Hint {
   type: HintType;
   text: string;
+  /** If set, the palette item for this component will be highlighted */
+  componentType?: ComponentType;
+}
+
+/** Extract a ComponentType from free-form hint text via keyword matching */
+function extractComponentType(text: string): ComponentType | undefined {
+  const t = text.toLowerCase();
+  if (t.includes('load balanc')) return 'loadbalancer';
+  if (t.includes('api gateway')) return 'apigateway';
+  if (t.includes('monitoring') || t.includes('monitor'))  return 'monitoring';
+  if (t.includes('database') || t.includes(' db '))       return 'database';
+  if (t.includes('cache') || t.includes('cach'))          return 'cache';
+  if (t.includes('cdn') || t.includes('content delivery')) return 'cdn';
+  if (t.includes('queue'))   return 'queue';
+  if (t.includes('storage')) return 'storage';
+  if (t.includes('server'))  return 'server';
+  if (t.includes('client'))  return 'client';
+  return undefined;
 }
 
 const HINT_META: Record<HintType, { icon: string; label: string; classes: string }> = {
@@ -38,25 +56,37 @@ const HINT_META: Record<HintType, { icon: string; label: string; classes: string
   good: { icon: '✅', label: 'Looking good', classes: 'text-emerald-300 bg-emerald-500/10 border-emerald-500/20' },
 };
 
+/** Generates context-aware hints based on current canvas state */
 function getContextHints(architecture: Architecture, mission: Mission): Hint[] {
   const placedTypes = new Set(architecture.components.map((c) => c.type));
   const hints: Hint[] = [];
 
+  // 1. Gaps — missing required components (with componentType for palette highlight)
   for (const req of mission.requirements.required) {
     if (!placedTypes.has(req)) {
       const meta = COMPONENT_META[req];
-      hints.push({ type: 'gap', text: `Missing ${meta.label} ${meta.icon} — ${meta.description}` });
+      hints.push({
+        type: 'gap',
+        text: `Add ${meta.label} ${meta.icon} — ${meta.description}`,
+        componentType: req as ComponentType,
+      });
     }
   }
 
+  // 2. No connections yet (but ≥2 components placed)
   if (architecture.components.length >= 2 && architecture.connections.length === 0) {
-    hints.push({ type: 'tip', text: 'Connect your components — hover a card and drag from the edge handles to show how data flows between them.' });
+    hints.push({
+      type: 'tip',
+      text: 'Connect your components — hover a card and drag from the edge handles to show how data flows between them.',
+    });
   }
 
+  // 3. Mission-specific hints with auto-extracted component type for palette highlight
   for (const h of mission.components.hints) {
-    hints.push({ type: 'tip', text: h });
+    hints.push({ type: 'tip', text: h, componentType: extractComponentType(h) });
   }
 
+  // 4. All-clear message
   if (hints.length === 0) {
     hints.push({ type: 'good', text: 'Architecture looks solid! Hit ▶ Run Simulation to test it.' });
   }
@@ -78,12 +108,13 @@ const UndoToast: React.FC<{ message: string; visible: boolean }> = ({ message, v
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSimulate, isSimulating }) => {
-  const { addComponent, architecture, isDirty, markClean, past, future, lastActionLabel } = useBuilderStore();
+  const { addComponent, architecture, isDirty, markClean, past, future, undo, redo, lastActionLabel } = useBuilderStore();
   const autoSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [activeType, setActiveType] = useState<ComponentType | null>(null);
   const [showHint, setShowHint] = useState(false);
   const [hintIdx, setHintIdx] = useState(0);
 
+  // Toast state
   const [toast, setToast] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -96,6 +127,7 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
     toastTimerRef.current = setTimeout(() => setToastVisible(false), 2000);
   }, []);
 
+  // Show toast whenever lastActionLabel changes (undo/redo)
   const prevLabelRef = useRef('');
   useEffect(() => {
     if (lastActionLabel && lastActionLabel !== prevLabelRef.current) {
@@ -104,6 +136,7 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
     }
   }, [lastActionLabel, showToast]);
 
+  // Keyboard shortcuts: Ctrl+Z = undo, Ctrl+Y / Ctrl+Shift+Z = redo
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const ctrl = e.ctrlKey || e.metaKey;
@@ -125,6 +158,7 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
     useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 8 } })
   );
 
+  // Recompute hints whenever architecture changes; reset index to 0 on change
   const hints = useMemo(() => getContextHints(architecture, mission), [architecture, mission]);
   const prevHintsRef = useRef(hints);
   useEffect(() => {
@@ -134,6 +168,7 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
     }
   }, [hints]);
 
+  // Auto-save every 30 seconds when dirty
   useEffect(() => {
     if (!isDirty) return;
     if (autoSaveRef.current) clearTimeout(autoSaveRef.current);
@@ -188,6 +223,7 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
             {isDirty && <span className="text-xs text-amber-400">● Unsaved</span>}
           </div>
           <div className="flex items-center gap-2">
+            {/* Undo / Redo */}
             <button
               className="btn-ghost text-sm px-2 disabled:opacity-30"
               onClick={() => useBuilderStore.getState().undo()}
@@ -226,7 +262,11 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
         {/* ── Main layout ── */}
         <div className="flex-1 flex overflow-hidden">
           <div className="w-52 flex-shrink-0 border-r border-gray-800 overflow-y-auto">
-            <ComponentPalette availableTypes={mission.components.available} />
+            {/* Pass highlighted type from current hint — auto-scrolls and glows matching palette item */}
+            <ComponentPalette
+              availableTypes={mission.components.available}
+              highlightedType={showHint ? (currentHint.componentType ?? null) : null}
+            />
           </div>
           <div className="flex-1 overflow-hidden">
             <ArchitectureCanvas requiredComponents={mission.requirements.required} />
@@ -235,12 +275,16 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
 
         {/* ── Smart hint footer ── */}
         <div className="border-t border-gray-800 bg-gray-900/60">
+          {/* Toggle bar */}
           <button
             onClick={() => setShowHint((s) => !s)}
             className="w-full flex items-center gap-2 px-4 py-2 text-xs text-gray-400 hover:text-gray-200 transition-colors"
           >
             <span>{hintMeta.icon}</span>
-            <span className="font-medium">{showHint ? 'Hide hints' : 'Need a hint?'}</span>
+            <span className="font-medium">
+              {showHint ? 'Hide hints' : 'Need a hint?'}
+            </span>
+            {/* Live gap badge when collapsed */}
             {!showHint && currentHint.type === 'gap' && (
               <span className="ml-1 px-1.5 py-0.5 rounded-full bg-orange-500/20 text-orange-300 text-[10px] font-semibold">
                 {hints.filter(h => h.type === 'gap').length} gap{hints.filter(h => h.type === 'gap').length !== 1 ? 's' : ''}
@@ -249,27 +293,53 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
             <span className={`ml-auto transition-transform duration-200 ${showHint ? 'rotate-180' : ''}`}>▾</span>
           </button>
 
+          {/* Expanded panel */}
           {showHint && (
             <div className={`mx-3 mb-3 rounded-xl border px-4 py-3 ${hintMeta.classes}`}>
+              {/* Header row */}
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider opacity-70">{hintMeta.label}</span>
-                {totalHints > 1 && <span className="text-[10px] opacity-60 font-mono">{hintIdx + 1} / {totalHints}</span>}
+                <span className="text-[10px] font-bold uppercase tracking-wider opacity-70">
+                  {hintMeta.label}
+                </span>
+                {totalHints > 1 && (
+                  <span className="text-[10px] opacity-60 font-mono">
+                    {hintIdx + 1} / {totalHints}
+                  </span>
+                )}
               </div>
-              <p className="text-xs leading-relaxed">{currentHint.text}</p>
+
+              {/* Hint text */}
+              <p className="text-xs leading-relaxed">
+                {currentHint.text}
+              </p>
+
+              {/* Navigation */}
               {totalHints > 1 && (
                 <div className="flex items-center gap-2 mt-2.5">
-                  <button onClick={() => setHintIdx((i) => (i - 1 + totalHints) % totalHints)}
+                  <button
+                    onClick={() => setHintIdx((i) => (i - 1 + totalHints) % totalHints)}
                     className="text-[11px] px-2 py-0.5 rounded-md bg-black/20 hover:bg-black/40 transition-colors disabled:opacity-30"
-                    disabled={hintIdx === 0}>← Prev</button>
-                  <button onClick={() => setHintIdx((i) => (i + 1) % totalHints)}
+                    disabled={hintIdx === 0}
+                  >
+                    ← Prev
+                  </button>
+                  <button
+                    onClick={() => setHintIdx((i) => (i + 1) % totalHints)}
                     className="text-[11px] px-2 py-0.5 rounded-md bg-black/20 hover:bg-black/40 transition-colors disabled:opacity-30"
-                    disabled={hintIdx === totalHints - 1}>Next →</button>
+                    disabled={hintIdx === totalHints - 1}
+                  >
+                    Next →
+                  </button>
+                  {/* Dot indicators */}
                   <div className="flex items-center gap-1 ml-auto">
                     {hints.map((_, i) => (
-                      <button key={i} onClick={() => setHintIdx(i)}
+                      <button
+                        key={i}
+                        onClick={() => setHintIdx(i)}
                         className={`w-1.5 h-1.5 rounded-full transition-all ${
                           i === hintIdx ? 'bg-current opacity-100 scale-125' : 'bg-current opacity-30'
-                        }`} />
+                        }`}
+                      />
                     ))}
                   </div>
                 </div>
@@ -279,8 +349,10 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
         </div>
       </div>
 
+      {/* ── Undo/redo toast ── */}
       <UndoToast message={toast} visible={toastVisible} />
 
+      {/* ── Drag overlay ── */}
       <DragOverlay dropAnimation={null}>
         {activeType ? (
           <div className="flex flex-col items-center justify-center w-24 h-20 rounded-xl border-2 border-brand-500 bg-brand-900/80 shadow-2xl shadow-brand-500/30 opacity-90 pointer-events-none">

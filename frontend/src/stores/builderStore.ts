@@ -8,7 +8,8 @@ interface BuilderState {
   addComponent: (type: ComponentType, x: number, y: number) => void;
   moveComponent: (id: string, x: number, y: number) => void;
   removeComponent: (id: string) => void;
-  addConnection: (from: string, to: string) => void;
+  addConnection: (from: string, to: string, label?: string) => void;
+  updateConnectionLabel: (id: string, label: string) => void;
   removeConnection: (id: string) => void;
   setSelectedComponent: (id: string | null) => void;
   loadArchitecture: (arch: Architecture) => void;
@@ -52,17 +53,27 @@ export const useBuilderStore = create<BuilderState>()((set) => ({
       isDirty: true,
     })),
 
-  addConnection: (from, to) =>
+  addConnection: (from, to, label) =>
     set((s) => {
-      // Prevent duplicate connections
       const exists = s.architecture.connections.some((c) => c.from === from && c.to === to);
       if (exists) return s;
-      const conn: Connection = { id: `conn-${Date.now()}`, from, to };
+      const conn: Connection = { id: `conn-${Date.now()}`, from, to, label };
       return {
         architecture: { ...s.architecture, connections: [...s.architecture.connections, conn] },
         isDirty: true,
       };
     }),
+
+  updateConnectionLabel: (id, label) =>
+    set((s) => ({
+      architecture: {
+        ...s.architecture,
+        connections: s.architecture.connections.map((c) =>
+          c.id === id ? { ...c, label } : c
+        ),
+      },
+      isDirty: true,
+    })),
 
   removeConnection: (id) =>
     set((s) => ({

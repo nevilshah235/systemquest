@@ -84,6 +84,7 @@ export interface Connection {
   id: string;
   from: string;
   to: string;
+  label?: string;  // optional relationship label e.g. "queries", "HTTP", "data flow"
 }
 
 export interface Architecture {

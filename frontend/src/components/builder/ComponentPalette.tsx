@@ -24,7 +24,6 @@ const PaletteItem: React.FC<PaletteItemProps> = ({ type }) => {
           ? 'opacity-40 border-brand-500 bg-brand-900/20'
           : 'border-gray-700 bg-gray-800/40 hover:border-brand-500/50 hover:bg-gray-800'
         }`}
-      title={meta.description}
     >
       <span className="text-2xl flex-shrink-0 mt-0.5">{meta.icon}</span>
       <div className="min-w-0">

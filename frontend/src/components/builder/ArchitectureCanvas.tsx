@@ -45,7 +45,6 @@ function edgeHandles(c: ArchitectureComponent): EdgeHandle[] {
   ];
 }
 
-// Closest edge point from comp toward a target point
 function closestEdge(comp: ArchitectureComponent, target: Pt): Pt {
   const cx = comp.x + COMP_W / 2;
   const cy = comp.y + COMP_H / 2;
@@ -61,7 +60,6 @@ function closestEdge(comp: ArchitectureComponent, target: Pt): Pt {
     : { x: cx, y: comp.y          };
 }
 
-// Bezier path from p1 to p2
 function bezierPath(p1: Pt, p2: Pt): string {
   const dx = p2.x - p1.x;
   const dy = p2.y - p1.y;
@@ -79,8 +77,8 @@ interface CanvasComponentProps {
   component: ArchitectureComponent;
   isSelected: boolean;
   isHovered: boolean;
-  isConnTarget: boolean;  // valid connection target while drawing
-  isConnSource: boolean;  // currently drawing from this component
+  isConnTarget: boolean;
+  isConnSource: boolean;
   onMouseEnter: (id: string) => void;
   onMouseLeave: () => void;
   onSelect: (id: string) => void;
@@ -108,8 +106,7 @@ const CanvasComponent: React.FC<CanvasComponentProps> = ({
       initial={{ scale: 0.8, opacity: 0 }}
       animate={{ scale: 1,   opacity: 1  }}
       transition={{ duration: 0.15 }}
-      style={{ position: 'absolute', left: component.x, top: component.y,
-               width: COMP_W, height: COMP_H, touchAction: 'none' }}
+      style={{ position: 'relative', width: COMP_W, height: COMP_H, touchAction: 'none' }}
       className={`flex flex-col items-center justify-center rounded-xl border-2 select-none
         transition-colors duration-100 group ${borderClass}
         ${isConnTarget ? 'cursor-crosshair' : 'cursor-grab active:cursor-grabbing'}`}
@@ -122,7 +119,6 @@ const CanvasComponent: React.FC<CanvasComponentProps> = ({
         {meta.label}
       </span>
 
-      {/* Delete button — top-right corner, only when selected */}
       <AnimatePresence>
         {isSelected && (
           <motion.button
@@ -137,14 +133,11 @@ const CanvasComponent: React.FC<CanvasComponentProps> = ({
         )}
       </AnimatePresence>
 
-      {/* Ping animation when source */}
       {isConnSource && (
         <span className="absolute inset-0 rounded-xl border-2 border-brand-400 animate-ping opacity-30 pointer-events-none" />
       )}
 
-      {/* ── Edge handles — 4 dots on borders, visible on hover/select ────── */}
       {showHandles && edgeHandles(component).map(({ pt, side }) => {
-        // Position relative to component (pt is in canvas coords)
         const relX = pt.x - component.x;
         const relY = pt.y - component.y;
         return (
@@ -218,16 +211,13 @@ const ConnectionLine: React.FC<ConnectionLineProps> = ({ conn, components, onRem
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => { setHovered(false); }}
     >
-      {/* Wide invisible hit-area */}
       <path d={path} fill="none" stroke="transparent" strokeWidth={18} style={{ cursor: 'pointer' }} />
 
-      {/* Glow on hover */}
       {hovered && (
         <path d={path} fill="none" stroke="#3b82f6" strokeWidth={8}
           opacity={0.2} style={{ filter: 'blur(5px)', pointerEvents: 'none' }} />
       )}
 
-      {/* Main line */}
       <path
         id={pathId} d={path} fill="none"
         stroke={hovered ? '#60a5fa' : '#3b82f6'}
@@ -237,7 +227,6 @@ const ConnectionLine: React.FC<ConnectionLineProps> = ({ conn, components, onRem
         style={{ transition: 'stroke 0.15s, stroke-width 0.15s', pointerEvents: 'none' }}
       />
 
-      {/* Animated flow dots — direction indicator */}
       <circle r={3.5} fill={hovered ? '#93c5fd' : '#60a5fa'} opacity={hovered ? 1 : 0.8}>
         <animateMotion dur="1.6s" repeatCount="indefinite">
           <mpath href={`#${pathId}`} />
@@ -249,7 +238,6 @@ const ConnectionLine: React.FC<ConnectionLineProps> = ({ conn, components, onRem
         </animateMotion>
       </circle>
 
-      {/* Connection label — click to edit */}
       {!editingLabel ? (
         <g
           transform={`translate(${mx}, ${my})`}
@@ -271,7 +259,6 @@ const ConnectionLine: React.FC<ConnectionLineProps> = ({ conn, components, onRem
           </text>
         </g>
       ) : (
-        // Inline label editor (rendered via foreignObject)
         <foreignObject x={mx - 36} y={my - 12} width={72} height={24}>
           <input
             ref={inputRef}
@@ -288,7 +275,6 @@ const ConnectionLine: React.FC<ConnectionLineProps> = ({ conn, components, onRem
         </foreignObject>
       )}
 
-      {/* Delete × at midpoint — hover only */}
       {hovered && (
         <g
           transform={`translate(${mx + 32}, ${my - 10})`}
@@ -314,11 +300,10 @@ export const ArchitectureCanvas: React.FC<ArchitectureCanvasProps> = ({ required
   const {
     architecture, setSelectedComponent, selectedComponentId,
     moveComponent, addConnection, updateConnectionLabel, removeConnection, removeComponent,
+    startDrag, commitMove,
   } = useBuilderStore();
 
   const canvasRef = useRef<HTMLDivElement>(null);
-
-  // Connection draw state
   const [pendingConn, setPendingConn] = useState<{ fromId: string; fromPt: Pt } | null>(null);
   const [mousePos,    setMousePos]    = useState<Pt | null>(null);
   const [hoveredId,   setHoveredId]   = useState<string | null>(null);
@@ -329,17 +314,14 @@ export const ArchitectureCanvas: React.FC<ArchitectureCanvasProps> = ({ required
     (canvasRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
   }, [setNodeRef]);
 
-  // Mouse move — rubber band preview while drawing connection
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!pendingConn || !canvasRef.current) return;
     const r = canvasRef.current.getBoundingClientRect();
     setMousePos({ x: e.clientX - r.left, y: e.clientY - r.top });
   }, [pendingConn]);
 
-  // Release anywhere on canvas → cancel pending connection
   const handleMouseUp = useCallback((e: React.MouseEvent) => {
     if (!pendingConn) return;
-    // Check if released over a component
     const target = (e.target as HTMLElement).closest('[data-comp-id]');
     const toId   = target?.getAttribute('data-comp-id');
     if (toId && toId !== pendingConn.fromId) {
@@ -354,14 +336,13 @@ export const ArchitectureCanvas: React.FC<ArchitectureCanvasProps> = ({ required
     setMousePos(null);
   }, [pendingConn, architecture.components, addConnection]);
 
-  // Keyboard: Escape cancels; 'C' starts connection from selected
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') { setPendingConn(null); setMousePos(null); return; }
       if ((e.key === 'c' || e.key === 'C') && selectedComponentId && !pendingConn) {
         const comp = architecture.components.find((c) => c.id === selectedComponentId);
         if (comp) {
-          const fromPt = { x: comp.x + COMP_W, y: comp.y + COMP_H / 2 }; // right edge
+          const fromPt = { x: comp.x + COMP_W, y: comp.y + COMP_H / 2 };
           setPendingConn({ fromId: selectedComponentId, fromPt });
         }
       }
@@ -370,7 +351,6 @@ export const ArchitectureCanvas: React.FC<ArchitectureCanvasProps> = ({ required
     return () => window.removeEventListener('keydown', onKey);
   }, [selectedComponentId, pendingConn, architecture.components]);
 
-  // Start a connection drag from a specific edge handle
   const handleEdgeDragStart = useCallback((compId: string, fromPt: Pt, e: React.MouseEvent) => {
     e.stopPropagation();
     setPendingConn({ fromId: compId, fromPt });
@@ -381,7 +361,6 @@ export const ArchitectureCanvas: React.FC<ArchitectureCanvasProps> = ({ required
     }
   }, [setSelectedComponent]);
 
-  // Component click during connection mode → finish connection
   const handleCompSelect = useCallback((id: string) => {
     if (pendingConn && pendingConn.fromId !== id) {
       const fromComp = architecture.components.find((c) => c.id === pendingConn.fromId);
@@ -396,7 +375,6 @@ export const ArchitectureCanvas: React.FC<ArchitectureCanvasProps> = ({ required
     }
   }, [pendingConn, architecture.components, addConnection, setSelectedComponent]);
 
-  // Drag placed component with mouse
   const handleCompDrag = useCallback((id: string, e: React.MouseEvent) => {
     if (pendingConn) return;
     e.stopPropagation();
@@ -407,19 +385,25 @@ export const ArchitectureCanvas: React.FC<ArchitectureCanvasProps> = ({ required
     const startY = e.clientY - r.top  - comp.y;
     let moved = false;
 
+    startDrag();
+
     const onMove = (me: MouseEvent) => {
       moved = true;
       moveComponent(id, snap(Math.max(0, me.clientX - r.left - startX)),
                         snap(Math.max(0, me.clientY - r.top  - startY)));
     };
     const onUp = () => {
-      if (!moved) setSelectedComponent(id);
+      if (!moved) {
+        setSelectedComponent(id);
+      } else {
+        commitMove(id);
+      }
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup',   onUp);
     };
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup',   onUp);
-  }, [architecture.components, pendingConn, moveComponent, setSelectedComponent]);
+  }, [architecture.components, pendingConn, moveComponent, startDrag, commitMove, setSelectedComponent]);
 
   const handleCanvasClick = (e: React.MouseEvent) => {
     if (e.target !== e.currentTarget) return;
@@ -434,7 +418,6 @@ export const ArchitectureCanvas: React.FC<ArchitectureCanvasProps> = ({ required
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
-      {/* Requirements status bar */}
       <div className="px-4 py-2 border-b border-gray-800 flex items-center gap-2 flex-wrap min-h-[42px]">
         {requiredComponents.map((type) => {
           const placed = placedTypes.includes(type as ComponentType);
@@ -462,7 +445,6 @@ export const ArchitectureCanvas: React.FC<ArchitectureCanvasProps> = ({ required
         }
       </div>
 
-      {/* Canvas */}
       <div
         ref={setRefs}
         className={`flex-1 relative overflow-auto canvas-grid
@@ -473,7 +455,6 @@ export const ArchitectureCanvas: React.FC<ArchitectureCanvasProps> = ({ required
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
       >
-        {/* SVG layer — connections + rubber-band */}
         <svg
           className="absolute inset-0 overflow-visible"
           style={{ width: canvasW, height: canvasH, pointerEvents: 'none' }}
@@ -490,7 +471,6 @@ export const ArchitectureCanvas: React.FC<ArchitectureCanvasProps> = ({ required
             ))}
           </g>
 
-          {/* Rubber-band preview */}
           {pendingConn && mousePos && (() => {
             const src = pendingConn.fromPt;
             return (
@@ -513,7 +493,6 @@ export const ArchitectureCanvas: React.FC<ArchitectureCanvasProps> = ({ required
           })()}
         </svg>
 
-        {/* Component nodes — data-comp-id used to detect drop target on mouseUp */}
         {architecture.components.map((comp) => (
           <div
             key={comp.id}

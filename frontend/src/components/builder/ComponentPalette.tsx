@@ -19,17 +19,17 @@ const PaletteItem: React.FC<PaletteItemProps> = ({ type }) => {
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      className={`flex items-center gap-3 p-3 rounded-xl border cursor-grab active:cursor-grabbing transition-all duration-150
+      className={`flex items-start gap-3 p-3 rounded-xl border cursor-grab active:cursor-grabbing transition-all duration-150
         ${isDragging
           ? 'opacity-40 border-brand-500 bg-brand-900/20'
-          : 'border-gray-700 bg-gray-800/50 hover:border-brand-500/50 hover:bg-gray-800'
+          : 'border-gray-700 bg-gray-800/40 hover:border-brand-500/50 hover:bg-gray-800'
         }`}
       title={meta.description}
     >
-      <span className="text-2xl flex-shrink-0">{meta.icon}</span>
+      <span className="text-2xl flex-shrink-0 mt-0.5">{meta.icon}</span>
       <div className="min-w-0">
-        <div className="text-sm font-semibold text-white truncate">{meta.label}</div>
-        <div className="text-xs text-gray-400 truncate">{meta.description}</div>
+        <div className="text-sm font-semibold text-white">{meta.label}</div>
+        <div className="text-xs text-gray-300 leading-relaxed mt-0.5">{meta.description}</div>
       </div>
     </div>
   );

@@ -67,9 +67,19 @@ async function main() {
   });
 
   // Seed Missions
+  const mvpComponents = JSON.stringify({
+    available: ['client', 'loadbalancer', 'server', 'database', 'cache', 'cdn', 'queue', 'storage'],
+    required: ['client', 'server', 'database'],
+    hints: [
+      'Start with Client → Server → Database — these three are required for your MVP',
+      'Add a Load Balancer to distribute traffic and prevent a single point of failure',
+      'Add a Cache to reduce database queries and keep costs under $500/month',
+      'Add a CDN to serve static assets faster and reduce load on your server',
+    ],
+  });
   await prisma.mission.upsert({
     where: { slug: 'mvp-launch' },
-    update: {},
+    update: { components: mvpComponents },
     create: {
       slug: 'mvp-launch',
       title: 'Mission 1: MVP Launch',
@@ -97,16 +107,7 @@ async function main() {
           { component: 'loadbalancer', xp: 35, label: 'Implement auto-scaling (+35 XP)' },
         ],
       }),
-      components: JSON.stringify({
-        available: ['client', 'loadbalancer', 'server', 'database', 'cache', 'cdn', 'queue', 'storage'],
-        required: ['client', 'server', 'database'],
-        hints: [
-          'Start with the basics: Client → Server → Database',
-          'Load balancers prevent single points of failure',
-          'Caching reduces database load significantly',
-          'Monitor your budget in real-time',
-        ],
-      }),
+      components: mvpComponents,
       feedbackData: JSON.stringify({
         learned: [
           'Load balancers improve availability and distribute traffic',
@@ -119,9 +120,19 @@ async function main() {
     },
   });
 
+  const scalingComponents = JSON.stringify({
+    available: ['client', 'loadbalancer', 'server', 'database', 'cache', 'cdn', 'queue', 'storage', 'monitoring', 'apigateway'],
+    required: ['client', 'loadbalancer', 'server', 'database', 'cache'],
+    hints: [
+      'Place a Load Balancer in front of multiple servers to spread the 10k concurrent users',
+      'Add a Cache to store frequent database queries in memory — cuts DB load by 80%',
+      'Add a Queue to offload background tasks so the server stays responsive',
+      'Add the Monitoring component to track response times and catch performance regressions',
+    ],
+  });
   await prisma.mission.upsert({
     where: { slug: 'scaling-up' },
-    update: {},
+    update: { components: scalingComponents },
     create: {
       slug: 'scaling-up',
       title: 'Mission 2: Scaling Up',
@@ -150,16 +161,7 @@ async function main() {
           { component: 'cdn', xp: 25, label: 'Add CDN (+25 XP)' },
         ],
       }),
-      components: JSON.stringify({
-        available: ['client', 'loadbalancer', 'server', 'database', 'cache', 'cdn', 'queue', 'storage', 'monitoring', 'apigateway'],
-        required: ['client', 'loadbalancer', 'server', 'database', 'cache'],
-        hints: [
-          'Multiple servers behind a load balancer handle more traffic',
-          'A read replica reduces database load',
-          'Message queues decouple heavy processing',
-          'Monitor performance proactively',
-        ],
-      }),
+      components: scalingComponents,
       feedbackData: JSON.stringify({
         learned: [
           'Horizontal scaling handles traffic spikes effectively',
@@ -172,9 +174,19 @@ async function main() {
     },
   });
 
+  const globalComponents = JSON.stringify({
+    available: ['client', 'loadbalancer', 'server', 'database', 'cache', 'cdn', 'queue', 'storage', 'monitoring', 'apigateway'],
+    required: ['client', 'loadbalancer', 'server', 'database', 'cache', 'cdn'],
+    hints: [
+      'Add a CDN so edge nodes serve static content near your users across all 3 continents',
+      'Add a Cache in each region to avoid cross-continent database round-trips',
+      'Add an API Gateway to intelligently route requests to the nearest healthy server',
+      'Add Monitoring to detect regional failures and trigger automated recovery',
+    ],
+  });
   await prisma.mission.upsert({
     where: { slug: 'global-expansion' },
-    update: {},
+    update: { components: globalComponents },
     create: {
       slug: 'global-expansion',
       title: 'Mission 3: Global Expansion',
@@ -203,16 +215,7 @@ async function main() {
           { component: 'monitoring', xp: 35, label: 'Add global monitoring (+35 XP)' },
         ],
       }),
-      components: JSON.stringify({
-        available: ['client', 'loadbalancer', 'server', 'database', 'cache', 'cdn', 'queue', 'storage', 'monitoring', 'apigateway'],
-        required: ['client', 'loadbalancer', 'server', 'database', 'cache', 'cdn'],
-        hints: [
-          'CDN edge nodes serve static content near users globally',
-          'Database replication across regions reduces latency',
-          'Global load balancers route to nearest data center',
-          'Disaster recovery ensures business continuity',
-        ],
-      }),
+      components: globalComponents,
       feedbackData: JSON.stringify({
         learned: [
           'CDN reduces latency for global users dramatically',

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   DndContext,
   DragEndEvent,
@@ -27,7 +27,9 @@ const snap = (v: number) => Math.round(v / GRID_SIZE) * GRID_SIZE;
 export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSimulate, isSimulating }) => {
   const { addComponent, architecture, isDirty, markClean } = useBuilderStore();
   const autoSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [activeType, setActiveType] = React.useState<ComponentType | null>(null);
+  const [activeType, setActiveType] = useState<ComponentType | null>(null);
+  const [showHint, setShowHint]     = useState(false);
+  const hintIndex = useRef(Math.floor(Math.random() * mission.components.hints.length));
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
@@ -80,7 +82,6 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
 
   const placedTypes = architecture.components.map((c) => c.type);
   const requiredMet = mission.requirements.required.every((r) => placedTypes.includes(r));
-  const hintIndex = useRef(Math.floor(Math.random() * mission.components.hints.length));
 
   return (
     // Single DndContext wrapping BOTH palette and canvas so they share the same drag context
@@ -129,14 +130,21 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
           </div>
         </div>
 
-        {/* Hints footer */}
-        <div className="px-4 py-2 border-t border-gray-800 bg-gray-900/50">
-          <div className="flex items-start gap-2">
-            <span className="text-amber-400 text-sm flex-shrink-0">💡</span>
-            <p className="text-xs text-gray-400">
+        {/* Hints footer — hidden by default */}
+        <div className="border-t border-gray-800 bg-gray-900/50">
+          <button
+            onClick={() => setShowHint((s) => !s)}
+            className="w-full flex items-center gap-2 px-4 py-2 text-xs text-gray-500 hover:text-gray-300 transition-colors"
+          >
+            <span className="text-amber-400">💡</span>
+            <span>{showHint ? 'Hide hint' : 'Need a hint?'}</span>
+            <span className={`ml-auto transition-transform duration-200 ${showHint ? 'rotate-180' : ''}`}>▾</span>
+          </button>
+          {showHint && (
+            <div className="px-4 pb-3 text-xs text-amber-200/80 bg-amber-500/5 border-t border-amber-500/10">
               {mission.components.hints[hintIndex.current]}
-            </p>
-          </div>
+            </div>
+          )}
         </div>
       </div>
 

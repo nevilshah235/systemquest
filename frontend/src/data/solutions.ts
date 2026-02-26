@@ -2,6 +2,18 @@
  * solutions.ts
  * Optimal "reference" architectures for each mission used by SolutionViewer.
  * Components are pre-positioned for a clean canvas layout.
+ *
+ * Simulation targets (verified against simulationEngine.ts):
+ *   Mission 4  file-converter    : 5k users | 280ms | 99%    | $800
+ *   Mission 5  url-shortener     : 50k users | 170ms | 99.9%  | $1,500
+ *   Mission 6  live-scoreboard   : 80k users | 150ms | 99.9%  | $3,000
+ *   Mission 7  code-judge        : 2k users  | 280ms | 99.5%  | $2,500
+ *   Mission 8  search-engine     : 75k users | 160ms | 99.9%  | $5,000
+ *   Mission 9  booking-system    : 10k users | 200ms | 99.9%  | $3,500
+ *   Mission 10 social-feed       : 500k users| 160ms | 99.99% | $15,000
+ *   Mission 11 ride-hailing      : 25k users | 155ms | 99.9%  | $8,000
+ *   Mission 12 video-streaming   : 500k users| 160ms | 99.99% | $50,000
+ *   Mission 13 payment-processing: 5k users  | 280ms | 99%    | $5,000
  */
 
 import { Architecture, COMPONENT_META, ComponentType } from './types';
@@ -16,9 +28,7 @@ export interface MissionSolution {
 
 export const MISSION_SOLUTIONS: Record<string, MissionSolution> = {
 
-  // ── Mission 1: MVP Launch ──────────────────────────────────────────────────
-  // Target: 1,000 users · 200ms · 99% uptime · $500 budget
-  // Cost: $0+20+50+50+40+15+30+10 = $215 ✓
+  // ── Mission 1: MVP Launch ───────────────────────────────────────────────────────
   'mvp-launch': {
     architecture: {
       components: [
@@ -53,9 +63,7 @@ export const MISSION_SOLUTIONS: Record<string, MissionSolution> = {
       'Two App Servers behind a Load Balancer handle 1,000 concurrent users and remove the single point of failure. A Cache between the servers and the Database cuts latency to sub-200ms. CDN offloads static assets, and Monitoring provides the observability needed for 99% uptime.',
   },
 
-  // ── Mission 2: Scaling Up ──────────────────────────────────────────────────
-  // Target: 10,000 users · 150ms · 99.9% uptime · $2,000 budget
-  // Cost: $0+20+150+40+15+30+25+35+10 = $325 ✓
+  // ── Mission 2: Scaling Up ───────────────────────────────────────────────────────
   'scaling-up': {
     architecture: {
       components: [
@@ -97,9 +105,7 @@ export const MISSION_SOLUTIONS: Record<string, MissionSolution> = {
       'Scaling to 10k users requires three App Servers behind a Load Balancer plus an API Gateway for traffic management. A Cache slashes DB round-trips to hit 150ms latency. A Queue decouples heavy background tasks. CDN and Monitoring together push availability to 99.9%.',
   },
 
-  // ── Mission 3: Global Expansion ───────────────────────────────────────────
-  // Target: 100,000 users · 100ms · 99.99% uptime · $10,000 budget
-  // Cost: $0+20+150+40+30+30+25+35+20+10 = $360 ✓
+  // ── Mission 3: Global Expansion ────────────────────────────────────────────────
   'global-expansion': {
     architecture: {
       components: [
@@ -145,9 +151,462 @@ export const MISSION_SOLUTIONS: Record<string, MissionSolution> = {
     explanation:
       'Global scale demands CDN for edge delivery, API Gateway for geo-routing, 3 App Servers behind a Load Balancer for throughput, two Cache layers for sub-100ms latency everywhere, a Queue + Storage tier for async media workloads, and full Monitoring for five-nines availability.',
   },
+
+  // ── Mission 4: File Converter (like Zamzar) ───────────────────────────────────
+  // Cost: $0+35+20+50+50+25+20+40+10 = $250  | Latency: 270ms | Throughput: 6,006 | Avail: 99.1%
+  'file-converter': {
+    architecture: {
+      components: [
+        { id: 'sol-client',     type: 'client',      x: 300, y: 40  },
+        { id: 'sol-apigw',      type: 'apigateway',  x: 300, y: 160 },
+        { id: 'sol-lb',         type: 'loadbalancer',x: 300, y: 280 },
+        { id: 'sol-server1',    type: 'server',      x: 120, y: 400 },
+        { id: 'sol-server2',    type: 'server',      x: 480, y: 400 },
+        { id: 'sol-monitoring', type: 'monitoring',  x: 680, y: 400 },
+        { id: 'sol-queue',      type: 'queue',       x: 120, y: 520 },
+        { id: 'sol-storage',    type: 'storage',     x: 300, y: 520 },
+        { id: 'sol-db',         type: 'database',    x: 480, y: 520 },
+      ],
+      connections: [
+        { id: 'sc1', from: 'sol-client',  to: 'sol-apigw'   },
+        { id: 'sc2', from: 'sol-apigw',   to: 'sol-lb'      },
+        { id: 'sc3', from: 'sol-lb',      to: 'sol-server1' },
+        { id: 'sc4', from: 'sol-lb',      to: 'sol-server2' },
+        { id: 'sc5', from: 'sol-server1', to: 'sol-queue'   },
+        { id: 'sc6', from: 'sol-server2', to: 'sol-queue'   },
+        { id: 'sc7', from: 'sol-queue',   to: 'sol-storage' },
+        { id: 'sc8', from: 'sol-storage', to: 'sol-db'      },
+        { id: 'sc9', from: 'sol-monitoring', to: 'sol-server1' },
+        { id: 'sc10',from: 'sol-monitoring', to: 'sol-server2' },
+      ],
+    },
+    steps: [
+      'Client → API Gateway → Load Balancer → 2 App Servers (upload path)',
+      'Both servers publish conversion jobs to the Queue (async decoupling)',
+      'Queue → Storage: converted files are saved to object storage, never the DB',
+      'Storage → Database: record file metadata (owner, format, expiry)',
+      'Add Monitoring to detect stuck conversion workers early',
+    ],
+    explanation:
+      'The API Gateway handles upload rate-limiting, while two App Servers behind a Load Balancer ingest 5,000 concurrent uploads. A Queue decouples ingestion from CPU-intensive conversion workers, keeping API latency under 280ms. Storage holds the binary files, the Database only tracks metadata, and Monitoring fires alerts when conversion jobs stall.',
+  },
+
+  // ── Mission 5: URL Shortener (like Bitly) ─────────────────────────────────────
+  // Cost: $0+30+35+20+150+15+40+10 = $300 | Latency: 160ms | Throughput: 68,040 | Avail: 99.9%
+  'url-shortener': {
+    architecture: {
+      components: [
+        { id: 'sol-client',     type: 'client',      x: 300, y: 40  },
+        { id: 'sol-cdn',        type: 'cdn',         x: 580, y: 40  },
+        { id: 'sol-apigw',      type: 'apigateway',  x: 300, y: 160 },
+        { id: 'sol-lb',         type: 'loadbalancer',x: 300, y: 280 },
+        { id: 'sol-server1',    type: 'server',      x: 60,  y: 400 },
+        { id: 'sol-server2',    type: 'server',      x: 300, y: 400 },
+        { id: 'sol-server3',    type: 'server',      x: 540, y: 400 },
+        { id: 'sol-monitoring', type: 'monitoring',  x: 720, y: 400 },
+        { id: 'sol-cache',      type: 'cache',       x: 180, y: 520 },
+        { id: 'sol-db',         type: 'database',    x: 420, y: 520 },
+      ],
+      connections: [
+        { id: 'sc1',  from: 'sol-client',  to: 'sol-apigw'   },
+        { id: 'sc2',  from: 'sol-client',  to: 'sol-cdn'     },
+        { id: 'sc3',  from: 'sol-apigw',   to: 'sol-lb'      },
+        { id: 'sc4',  from: 'sol-lb',      to: 'sol-server1' },
+        { id: 'sc5',  from: 'sol-lb',      to: 'sol-server2' },
+        { id: 'sc6',  from: 'sol-lb',      to: 'sol-server3' },
+        { id: 'sc7',  from: 'sol-server1', to: 'sol-cache'   },
+        { id: 'sc8',  from: 'sol-server2', to: 'sol-cache'   },
+        { id: 'sc9',  from: 'sol-server3', to: 'sol-cache'   },
+        { id: 'sc10', from: 'sol-cache',   to: 'sol-db'      },
+        { id: 'sc11', from: 'sol-monitoring', to: 'sol-server1' },
+        { id: 'sc12', from: 'sol-monitoring', to: 'sol-server2' },
+        { id: 'sc13', from: 'sol-monitoring', to: 'sol-server3' },
+      ],
+    },
+    steps: [
+      'Client → API Gateway (rate-limit write requests); Client → CDN (serve landing pages)',
+      'API Gateway → Load Balancer → 3 App Servers for 50k concurrent redirects',
+      'All servers read from Cache first (99% hit rate) → Database only on cache miss',
+      'Add Monitoring to track cache hit rates and redirect latency',
+    ],
+    explanation:
+      'URL shorteners are read-dominated — 99% of traffic is redirect lookups, not link creation. Three App Servers behind a Load Balancer handle 50k concurrent requests. A shared Cache layer serves 99% of redirects without touching the Database, keeping latency at 160ms. CDN serves preview pages at the edge, and API Gateway prevents link-spam abuse.',
+  },
+
+  // ── Mission 6: Live Scoreboard (like CricBuzz) ─────────────────────────────
+  // Cost: $0+30+35+20+200+25+15+40+10 = $375 | Latency: 140ms | Throughput: 530k | Avail: 99.9%+
+  'live-scoreboard': {
+    architecture: {
+      components: [
+        { id: 'sol-client',     type: 'client',      x: 300, y: 40  },
+        { id: 'sol-cdn',        type: 'cdn',         x: 580, y: 40  },
+        { id: 'sol-apigw',      type: 'apigateway',  x: 300, y: 160 },
+        { id: 'sol-lb',         type: 'loadbalancer',x: 300, y: 280 },
+        { id: 'sol-server1',    type: 'server',      x: 40,  y: 400 },
+        { id: 'sol-server2',    type: 'server',      x: 190, y: 400 },
+        { id: 'sol-server3',    type: 'server',      x: 410, y: 400 },
+        { id: 'sol-server4',    type: 'server',      x: 560, y: 400 },
+        { id: 'sol-monitoring', type: 'monitoring',  x: 720, y: 400 },
+        { id: 'sol-queue',      type: 'queue',       x: 140, y: 520 },
+        { id: 'sol-cache',      type: 'cache',       x: 420, y: 520 },
+        { id: 'sol-db',         type: 'database',    x: 280, y: 640 },
+      ],
+      connections: [
+        { id: 'sc1',  from: 'sol-client',  to: 'sol-apigw'   },
+        { id: 'sc2',  from: 'sol-client',  to: 'sol-cdn'     },
+        { id: 'sc3',  from: 'sol-apigw',   to: 'sol-lb'      },
+        { id: 'sc4',  from: 'sol-lb',      to: 'sol-server1' },
+        { id: 'sc5',  from: 'sol-lb',      to: 'sol-server2' },
+        { id: 'sc6',  from: 'sol-lb',      to: 'sol-server3' },
+        { id: 'sc7',  from: 'sol-lb',      to: 'sol-server4' },
+        { id: 'sc8',  from: 'sol-server1', to: 'sol-queue'   },
+        { id: 'sc9',  from: 'sol-server2', to: 'sol-queue'   },
+        { id: 'sc10', from: 'sol-server3', to: 'sol-cache'   },
+        { id: 'sc11', from: 'sol-server4', to: 'sol-cache'   },
+        { id: 'sc12', from: 'sol-queue',   to: 'sol-db'      },
+        { id: 'sc13', from: 'sol-cache',   to: 'sol-db'      },
+        { id: 'sc14', from: 'sol-monitoring', to: 'sol-server1' },
+        { id: 'sc15', from: 'sol-monitoring', to: 'sol-server2' },
+        { id: 'sc16', from: 'sol-monitoring', to: 'sol-server3' },
+        { id: 'sc17', from: 'sol-monitoring', to: 'sol-server4' },
+      ],
+    },
+    steps: [
+      'Client → API Gateway + CDN (static assets at edge); API GW → Load Balancer',
+      'Load Balancer routes to 4 App Servers to handle 80k spike traffic',
+      'Score-update servers publish events to the Queue (pub/sub broadcast)',
+      'Read servers pull the latest score from Cache — never from the Database directly',
+      'Queue persists events to Database for history; Monitoring watches all servers',
+    ],
+    explanation:
+      'A live scoreboard with 80,000 concurrent viewers cannot afford database reads per request. Four App Servers behind a Load Balancer absorb the traffic spike. Score updates publish to a Queue for fan-out; viewers read the latest score from Cache in memory, keeping latency at 140ms. CDN offloads static match assets, and Monitoring fires alerts if a server falls behind event consumption.',
+  },
+
+  // ── Mission 7: Code Judge (like Codeforces) ───────────────────────────────
+  // Cost: $0+35+20+150+25+20+40+10 = $300 | Latency: 270ms | Throughput: 36k | Avail: 99.6%
+  'code-judge': {
+    architecture: {
+      components: [
+        { id: 'sol-client',     type: 'client',      x: 300, y: 40  },
+        { id: 'sol-apigw',      type: 'apigateway',  x: 300, y: 160 },
+        { id: 'sol-lb',         type: 'loadbalancer',x: 300, y: 280 },
+        { id: 'sol-server1',    type: 'server',      x: 80,  y: 400 },
+        { id: 'sol-server2',    type: 'server',      x: 300, y: 400 },
+        { id: 'sol-server3',    type: 'server',      x: 520, y: 400 },
+        { id: 'sol-monitoring', type: 'monitoring',  x: 700, y: 400 },
+        { id: 'sol-queue',      type: 'queue',       x: 140, y: 520 },
+        { id: 'sol-storage',    type: 'storage',     x: 300, y: 520 },
+        { id: 'sol-db',         type: 'database',    x: 460, y: 520 },
+      ],
+      connections: [
+        { id: 'sc1',  from: 'sol-client',  to: 'sol-apigw'   },
+        { id: 'sc2',  from: 'sol-apigw',   to: 'sol-lb'      },
+        { id: 'sc3',  from: 'sol-lb',      to: 'sol-server1' },
+        { id: 'sc4',  from: 'sol-lb',      to: 'sol-server2' },
+        { id: 'sc5',  from: 'sol-lb',      to: 'sol-server3' },
+        { id: 'sc6',  from: 'sol-server1', to: 'sol-queue'   },
+        { id: 'sc7',  from: 'sol-server2', to: 'sol-queue'   },
+        { id: 'sc8',  from: 'sol-server3', to: 'sol-storage' },
+        { id: 'sc9',  from: 'sol-queue',   to: 'sol-storage' },
+        { id: 'sc10', from: 'sol-storage', to: 'sol-db'      },
+        { id: 'sc11', from: 'sol-monitoring', to: 'sol-server1' },
+        { id: 'sc12', from: 'sol-monitoring', to: 'sol-server2' },
+        { id: 'sc13', from: 'sol-monitoring', to: 'sol-server3' },
+      ],
+    },
+    steps: [
+      'Client → API Gateway (auth + rate-limit) → Load Balancer → 3 Worker Servers',
+      'Submission servers publish jobs to the Queue for async code execution',
+      'Workers pull from Queue and write compiled artifacts to Storage',
+      'Storage → Database: persist verdict, test output, and execution stats',
+      'Monitoring watches queue depth and kills runaway execution jobs',
+    ],
+    explanation:
+      'Code execution is CPU-intensive and unpredictable in duration. Three App Servers behind a Load Balancer accept 2,000 concurrent submissions. The Queue decouples ingestion from execution workers, so the API returns 202 Accepted immediately — keeping API latency under 280ms. Storage holds source files and test outputs safely. Monitoring is critical for detecting malicious infinite loops or memory exhaustion.',
+  },
+
+  // ── Mission 8: Search Engine ─────────────────────────────────────────────────────
+  // Cost: $0+30+35+20+150+15+25+20+40+10 = $345 | Latency: 135ms | Throughput: 97k | Avail: 99.99%
+  'search-engine': {
+    architecture: {
+      components: [
+        { id: 'sol-client',     type: 'client',      x: 300, y: 40  },
+        { id: 'sol-cdn',        type: 'cdn',         x: 580, y: 40  },
+        { id: 'sol-apigw',      type: 'apigateway',  x: 300, y: 160 },
+        { id: 'sol-lb',         type: 'loadbalancer',x: 300, y: 280 },
+        { id: 'sol-server1',    type: 'server',      x: 80,  y: 400 },
+        { id: 'sol-server2',    type: 'server',      x: 300, y: 400 },
+        { id: 'sol-server3',    type: 'server',      x: 520, y: 400 },
+        { id: 'sol-monitoring', type: 'monitoring',  x: 700, y: 400 },
+        { id: 'sol-cache',      type: 'cache',       x: 80,  y: 520 },
+        { id: 'sol-queue',      type: 'queue',       x: 300, y: 520 },
+        { id: 'sol-storage',    type: 'storage',     x: 520, y: 520 },
+        { id: 'sol-db',         type: 'database',    x: 300, y: 640 },
+      ],
+      connections: [
+        { id: 'sc1',  from: 'sol-client',  to: 'sol-apigw'   },
+        { id: 'sc2',  from: 'sol-client',  to: 'sol-cdn'     },
+        { id: 'sc3',  from: 'sol-apigw',   to: 'sol-lb'      },
+        { id: 'sc4',  from: 'sol-lb',      to: 'sol-server1' },
+        { id: 'sc5',  from: 'sol-lb',      to: 'sol-server2' },
+        { id: 'sc6',  from: 'sol-lb',      to: 'sol-server3' },
+        { id: 'sc7',  from: 'sol-server1', to: 'sol-cache'   },
+        { id: 'sc8',  from: 'sol-server2', to: 'sol-queue'   },
+        { id: 'sc9',  from: 'sol-server3', to: 'sol-storage' },
+        { id: 'sc10', from: 'sol-cache',   to: 'sol-db'      },
+        { id: 'sc11', from: 'sol-queue',   to: 'sol-storage' },
+        { id: 'sc12', from: 'sol-storage', to: 'sol-db'      },
+        { id: 'sc13', from: 'sol-monitoring', to: 'sol-server1' },
+        { id: 'sc14', from: 'sol-monitoring', to: 'sol-server2' },
+        { id: 'sc15', from: 'sol-monitoring', to: 'sol-server3' },
+      ],
+    },
+    steps: [
+      'Client → API Gateway + CDN (serve autocomplete and static search UI at the edge)',
+      'Load Balancer → 3 App Servers: query servers read Cache, indexers write via Queue',
+      'Cache serves top-1000 queries in memory — eliminates repeated index traversals',
+      'Queue feeds async indexing workers that update Storage (index shards)',
+      'Storage → Database: persist indexed document metadata and ranking signals',
+    ],
+    explanation:
+      'Search is split into a read path and a write path. Query servers read results from Cache (hot queries) or the Database (index). Indexing workers consume document events from the Queue and write updated index shards to Storage asynchronously. Three App Servers behind a Load Balancer handle 75k concurrent queries at 135ms. CDN accelerates autocomplete, and Monitoring tracks query latency and index freshness.',
+  },
+
+  // ── Mission 9: Booking System (like Airbnb) ───────────────────────────────
+  // Cost: $0+35+20+150+15+25+20+40+10 = $315 | Latency: 200ms | Throughput: 64k | Avail: 99.9%
+  'booking-system': {
+    architecture: {
+      components: [
+        { id: 'sol-client',     type: 'client',      x: 300, y: 40  },
+        { id: 'sol-apigw',      type: 'apigateway',  x: 300, y: 160 },
+        { id: 'sol-lb',         type: 'loadbalancer',x: 300, y: 280 },
+        { id: 'sol-server1',    type: 'server',      x: 80,  y: 400 },
+        { id: 'sol-server2',    type: 'server',      x: 300, y: 400 },
+        { id: 'sol-server3',    type: 'server',      x: 520, y: 400 },
+        { id: 'sol-monitoring', type: 'monitoring',  x: 700, y: 400 },
+        { id: 'sol-cache',      type: 'cache',       x: 80,  y: 520 },
+        { id: 'sol-queue',      type: 'queue',       x: 300, y: 520 },
+        { id: 'sol-storage',    type: 'storage',     x: 500, y: 520 },
+        { id: 'sol-db',         type: 'database',    x: 190, y: 640 },
+      ],
+      connections: [
+        { id: 'sc1',  from: 'sol-client',  to: 'sol-apigw'   },
+        { id: 'sc2',  from: 'sol-apigw',   to: 'sol-lb'      },
+        { id: 'sc3',  from: 'sol-lb',      to: 'sol-server1' },
+        { id: 'sc4',  from: 'sol-lb',      to: 'sol-server2' },
+        { id: 'sc5',  from: 'sol-lb',      to: 'sol-server3' },
+        { id: 'sc6',  from: 'sol-server1', to: 'sol-cache'   },
+        { id: 'sc7',  from: 'sol-server2', to: 'sol-queue'   },
+        { id: 'sc8',  from: 'sol-server3', to: 'sol-storage' },
+        { id: 'sc9',  from: 'sol-cache',   to: 'sol-db'      },
+        { id: 'sc10', from: 'sol-queue',   to: 'sol-db'      },
+        { id: 'sc11', from: 'sol-storage', to: 'sol-db'      },
+        { id: 'sc12', from: 'sol-monitoring', to: 'sol-server1' },
+        { id: 'sc13', from: 'sol-monitoring', to: 'sol-server2' },
+        { id: 'sc14', from: 'sol-monitoring', to: 'sol-server3' },
+      ],
+    },
+    steps: [
+      'Client → API Gateway (auth + bot rate-limiting) → Load Balancer → 3 App Servers',
+      'Cache holds distributed availability locks — acquired before writing to the DB',
+      'Queue serializes concurrent booking requests for the same property ID',
+      'Storage saves booking confirmation PDFs and receipt documents',
+      'Database commits the atomic booking record after the lock is confirmed',
+    ],
+    explanation:
+      'Double-booking prevention requires two things: a Cache lock (optimistic concurrency) acquired before any booking attempt, and a Queue that serializes requests for the same property. Three App Servers handle 10k concurrent requests. The API Gateway rate-limits bots. Monitoring fires alerts when lock contention spikes, indicating a flash-sale event.',
+  },
+
+  // ── Mission 10: Social Feed (like Twitter) ────────────────────────────────
+  // Cost: $0+30+35+20+200+15+25+20+40+10 = $395 | Latency: 135ms | Throughput: 583k | Avail: 99.99%
+  'social-feed': {
+    architecture: {
+      components: [
+        { id: 'sol-client',     type: 'client',      x: 300, y: 30  },
+        { id: 'sol-cdn',        type: 'cdn',         x: 580, y: 30  },
+        { id: 'sol-apigw',      type: 'apigateway',  x: 300, y: 140 },
+        { id: 'sol-lb',         type: 'loadbalancer',x: 300, y: 260 },
+        { id: 'sol-server1',    type: 'server',      x: 40,  y: 380 },
+        { id: 'sol-server2',    type: 'server',      x: 180, y: 380 },
+        { id: 'sol-server3',    type: 'server',      x: 420, y: 380 },
+        { id: 'sol-server4',    type: 'server',      x: 560, y: 380 },
+        { id: 'sol-monitoring', type: 'monitoring',  x: 720, y: 380 },
+        { id: 'sol-cache',      type: 'cache',       x: 80,  y: 500 },
+        { id: 'sol-queue',      type: 'queue',       x: 300, y: 500 },
+        { id: 'sol-storage',    type: 'storage',     x: 500, y: 500 },
+        { id: 'sol-db',         type: 'database',    x: 190, y: 620 },
+      ],
+      connections: [
+        { id: 'sc1',  from: 'sol-client',  to: 'sol-apigw'   },
+        { id: 'sc2',  from: 'sol-client',  to: 'sol-cdn'     },
+        { id: 'sc3',  from: 'sol-apigw',   to: 'sol-lb'      },
+        { id: 'sc4',  from: 'sol-lb',      to: 'sol-server1' },
+        { id: 'sc5',  from: 'sol-lb',      to: 'sol-server2' },
+        { id: 'sc6',  from: 'sol-lb',      to: 'sol-server3' },
+        { id: 'sc7',  from: 'sol-lb',      to: 'sol-server4' },
+        { id: 'sc8',  from: 'sol-server1', to: 'sol-cache'   },
+        { id: 'sc9',  from: 'sol-server2', to: 'sol-cache'   },
+        { id: 'sc10', from: 'sol-server3', to: 'sol-queue'   },
+        { id: 'sc11', from: 'sol-server4', to: 'sol-storage' },
+        { id: 'sc12', from: 'sol-cache',   to: 'sol-db'      },
+        { id: 'sc13', from: 'sol-queue',   to: 'sol-db'      },
+        { id: 'sc14', from: 'sol-cdn',     to: 'sol-storage' },
+        { id: 'sc15', from: 'sol-monitoring', to: 'sol-server1' },
+        { id: 'sc16', from: 'sol-monitoring', to: 'sol-server2' },
+        { id: 'sc17', from: 'sol-monitoring', to: 'sol-server3' },
+        { id: 'sc18', from: 'sol-monitoring', to: 'sol-server4' },
+      ],
+    },
+    steps: [
+      'Client → API Gateway + CDN (media delivery at edge); 4 App Servers behind Load Balancer',
+      'Post events published to Queue — fan-out workers write to follower Caches (fan-out on write)',
+      'Feed readers pull pre-computed timelines from Cache — never from the Database',
+      'Media uploads go to Storage; CDN serves images and videos from Storage at edge',
+      'Database is the source of truth; Cache is the primary read path for all feed queries',
+    ],
+    explanation:
+      'Fan-out on write is the key pattern: when a user posts, the Queue broadcasts the event to workers that pre-write the post into each follower\'s cached timeline. Feed readers get sub-160ms responses because they only read from Cache. Four App Servers handle 500k concurrent readers. CDN + Storage deliver media without touching app servers, and Monitoring watches fan-out lag for viral posts.',
+  },
+
+  // ── Mission 11: Ride Hailing (like Uber) ──────────────────────────────────
+  // Cost: $0+30+35+20+150+15+25+40+10 = $325 | Latency: 140ms | Throughput: 88k | Avail: 99.99%
+  'ride-hailing': {
+    architecture: {
+      components: [
+        { id: 'sol-client',     type: 'client',      x: 300, y: 40  },
+        { id: 'sol-cdn',        type: 'cdn',         x: 580, y: 40  },
+        { id: 'sol-apigw',      type: 'apigateway',  x: 300, y: 160 },
+        { id: 'sol-lb',         type: 'loadbalancer',x: 300, y: 280 },
+        { id: 'sol-server1',    type: 'server',      x: 80,  y: 400 },
+        { id: 'sol-server2',    type: 'server',      x: 300, y: 400 },
+        { id: 'sol-server3',    type: 'server',      x: 520, y: 400 },
+        { id: 'sol-monitoring', type: 'monitoring',  x: 700, y: 400 },
+        { id: 'sol-cache',      type: 'cache',       x: 140, y: 520 },
+        { id: 'sol-queue',      type: 'queue',       x: 420, y: 520 },
+        { id: 'sol-db',         type: 'database',    x: 280, y: 640 },
+      ],
+      connections: [
+        { id: 'sc1',  from: 'sol-client',  to: 'sol-apigw'   },
+        { id: 'sc2',  from: 'sol-client',  to: 'sol-cdn'     },
+        { id: 'sc3',  from: 'sol-apigw',   to: 'sol-lb'      },
+        { id: 'sc4',  from: 'sol-lb',      to: 'sol-server1' },
+        { id: 'sc5',  from: 'sol-lb',      to: 'sol-server2' },
+        { id: 'sc6',  from: 'sol-lb',      to: 'sol-server3' },
+        { id: 'sc7',  from: 'sol-server1', to: 'sol-cache'   },
+        { id: 'sc8',  from: 'sol-server2', to: 'sol-cache'   },
+        { id: 'sc9',  from: 'sol-server3', to: 'sol-queue'   },
+        { id: 'sc10', from: 'sol-cache',   to: 'sol-db'      },
+        { id: 'sc11', from: 'sol-queue',   to: 'sol-db'      },
+        { id: 'sc12', from: 'sol-monitoring', to: 'sol-server1' },
+        { id: 'sc13', from: 'sol-monitoring', to: 'sol-server2' },
+        { id: 'sc14', from: 'sol-monitoring', to: 'sol-server3' },
+      ],
+    },
+    steps: [
+      'Client → API Gateway (WebSocket upgrades for real-time driver streams); CDN for map tiles',
+      'Load Balancer → 3 App Servers: location servers write to Cache; match servers read from it',
+      'Cache stores live driver GPS coordinates — updated every 3 seconds from driver apps',
+      'Queue decouples ride-request events from matching algorithm workers',
+      'Database persists completed trip records; Monitoring watches match latency',
+    ],
+    explanation:
+      'Real-time driver matching requires Cache as the primary geo-index — database reads would add 40ms of unnecessary latency per query. Three App Servers handle location updates and ride requests: location servers write driver coordinates to Cache every 3s, and matching servers query the nearest driver from Cache. A Queue buffers burst demand during rush hour. CDN serves map tiles at the edge, and API Gateway manages WebSocket connections for live location streaming.',
+  },
+
+  // ── Mission 12: Video Streaming (like Netflix) ────────────────────────────
+  // Cost: $0+30+35+20+200+15+25+20+40+10 = $395 | Latency: 135ms | Throughput: 583k | Avail: 99.99%
+  'video-streaming': {
+    architecture: {
+      components: [
+        { id: 'sol-client',     type: 'client',      x: 300, y: 30  },
+        { id: 'sol-cdn',        type: 'cdn',         x: 580, y: 30  },
+        { id: 'sol-apigw',      type: 'apigateway',  x: 300, y: 140 },
+        { id: 'sol-lb',         type: 'loadbalancer',x: 300, y: 260 },
+        { id: 'sol-server1',    type: 'server',      x: 40,  y: 380 },
+        { id: 'sol-server2',    type: 'server',      x: 180, y: 380 },
+        { id: 'sol-server3',    type: 'server',      x: 420, y: 380 },
+        { id: 'sol-server4',    type: 'server',      x: 560, y: 380 },
+        { id: 'sol-monitoring', type: 'monitoring',  x: 720, y: 380 },
+        { id: 'sol-cache',      type: 'cache',       x: 80,  y: 500 },
+        { id: 'sol-queue',      type: 'queue',       x: 300, y: 500 },
+        { id: 'sol-storage',    type: 'storage',     x: 500, y: 500 },
+        { id: 'sol-db',         type: 'database',    x: 190, y: 620 },
+      ],
+      connections: [
+        { id: 'sc1',  from: 'sol-client',  to: 'sol-apigw'   },
+        { id: 'sc2',  from: 'sol-client',  to: 'sol-cdn'     },
+        { id: 'sc3',  from: 'sol-apigw',   to: 'sol-lb'      },
+        { id: 'sc4',  from: 'sol-lb',      to: 'sol-server1' },
+        { id: 'sc5',  from: 'sol-lb',      to: 'sol-server2' },
+        { id: 'sc6',  from: 'sol-lb',      to: 'sol-server3' },
+        { id: 'sc7',  from: 'sol-lb',      to: 'sol-server4' },
+        { id: 'sc8',  from: 'sol-server1', to: 'sol-cache'   },
+        { id: 'sc9',  from: 'sol-server2', to: 'sol-cache'   },
+        { id: 'sc10', from: 'sol-server3', to: 'sol-queue'   },
+        { id: 'sc11', from: 'sol-server4', to: 'sol-storage' },
+        { id: 'sc12', from: 'sol-cache',   to: 'sol-db'      },
+        { id: 'sc13', from: 'sol-queue',   to: 'sol-storage' },
+        { id: 'sc14', from: 'sol-cdn',     to: 'sol-storage' },
+        { id: 'sc15', from: 'sol-monitoring', to: 'sol-server1' },
+        { id: 'sc16', from: 'sol-monitoring', to: 'sol-server2' },
+        { id: 'sc17', from: 'sol-monitoring', to: 'sol-server3' },
+        { id: 'sc18', from: 'sol-monitoring', to: 'sol-server4' },
+      ],
+    },
+    steps: [
+      'Client → CDN: video bytes MUST come from CDN edge — never directly from origin',
+      'API Gateway + Load Balancer route metadata and session requests to 4 App Servers',
+      'Cache stores video metadata, watch progress, and personalised recommendations',
+      'Queue handles async transcoding jobs (480p, 720p, 1080p, 4K renditions per title)',
+      'Storage holds all encoded video chunks; CDN pulls from Storage for edge caching',
+    ],
+    explanation:
+      'Video streaming at 500k concurrent viewers is only possible because CDN edge nodes serve video bytes — origin servers handle only metadata and session management. Four App Servers process 500k session requests. Cache serves metadata (titles, thumbnails, watch history) in memory. A Queue drives async transcoding so uploads are non-blocking. Storage holds the full video corpus, which CDN pre-warms at the edge for popular titles.',
+  },
+
+  // ── Mission 13: Payment Processing (like Stripe) ──────────────────────────
+  // Cost: $0+35+20+150+25+40+10 = $280 | Latency: 275ms | Throughput: 32k | Avail: 99.5%
+  'payment-processing': {
+    architecture: {
+      components: [
+        { id: 'sol-client',     type: 'client',      x: 300, y: 40  },
+        { id: 'sol-apigw',      type: 'apigateway',  x: 300, y: 160 },
+        { id: 'sol-lb',         type: 'loadbalancer',x: 300, y: 280 },
+        { id: 'sol-server1',    type: 'server',      x: 80,  y: 400 },
+        { id: 'sol-server2',    type: 'server',      x: 300, y: 400 },
+        { id: 'sol-server3',    type: 'server',      x: 520, y: 400 },
+        { id: 'sol-monitoring', type: 'monitoring',  x: 700, y: 400 },
+        { id: 'sol-queue',      type: 'queue',       x: 180, y: 520 },
+        { id: 'sol-db',         type: 'database',    x: 420, y: 520 },
+      ],
+      connections: [
+        { id: 'sc1',  from: 'sol-client',  to: 'sol-apigw'   },
+        { id: 'sc2',  from: 'sol-apigw',   to: 'sol-lb'      },
+        { id: 'sc3',  from: 'sol-lb',      to: 'sol-server1' },
+        { id: 'sc4',  from: 'sol-lb',      to: 'sol-server2' },
+        { id: 'sc5',  from: 'sol-lb',      to: 'sol-server3' },
+        { id: 'sc6',  from: 'sol-server1', to: 'sol-queue'   },
+        { id: 'sc7',  from: 'sol-server2', to: 'sol-queue'   },
+        { id: 'sc8',  from: 'sol-server3', to: 'sol-db'      },
+        { id: 'sc9',  from: 'sol-queue',   to: 'sol-db'      },
+        { id: 'sc10', from: 'sol-monitoring', to: 'sol-server1' },
+        { id: 'sc11', from: 'sol-monitoring', to: 'sol-server2' },
+        { id: 'sc12', from: 'sol-monitoring', to: 'sol-server3' },
+      ],
+    },
+    steps: [
+      'Client → API Gateway (TLS termination, auth, signature verification)',
+      'Load Balancer → 3 App Servers: each server verifies idempotency key before processing',
+      'Payment events published to Queue with idempotency key — guarantees exactly-once processing',
+      'Queue consumers commit the ACID transaction to the Database',
+      'Monitoring is mandatory: every payment failure triggers an immediate on-call alert',
+    ],
+    explanation:
+      'Payment systems have zero tolerance for double charges or lost transactions. The API Gateway enforces TLS and signature verification. Three App Servers handle 5k concurrent requests. Idempotency keys are attached to Queue messages, so retries never double-charge — the Queue consumer checks the key against the Database before committing. Monitoring is not optional in fintech: every anomaly must page on-call within seconds. No Cache is used to avoid stale reads on financial state.',
+  },
 };
 
-// ── Gap analysis helpers ────────────────────────────────────────────────────
+// ── Gap analysis helpers ─────────────────────────────────────────────────────────────
 
 export interface GapItem {
   type: string;
@@ -161,13 +620,11 @@ export function computeGap(current: Architecture, missionSlug: string): GapItem[
   const solution = MISSION_SOLUTIONS[missionSlug];
   if (!solution) return [];
 
-  // Count optimal component types
   const optimalCounts: Record<string, number> = {};
   for (const c of solution.architecture.components) {
     optimalCounts[c.type] = (optimalCounts[c.type] ?? 0) + 1;
   }
 
-  // Count current architecture component types
   const currentCounts: Record<string, number> = {};
   for (const c of current.components) {
     currentCounts[c.type] = (currentCounts[c.type] ?? 0) + 1;
@@ -188,32 +645,20 @@ export function computeOptimality(current: Architecture, missionSlug: string): n
   return Math.round(((total - gap) / total) * 100);
 }
 
-// ── Connection topology gap analysis ────────────────────────────────────────
+// ── Connection topology gap analysis ────────────────────────────────────────────
 
 export interface ConnectionGapItem {
-  /** Source component type */
   from: string;
-  /** Target component type */
   to: string;
-  /** How many of this edge exist in the ideal solution */
   needed: number;
-  /** How many the user currently has */
   have: number;
-  /** How many are still missing */
   missing: number;
-  /** Human-readable label, e.g. "Load Balancer → App Server" */
   label: string;
 }
 
 /**
  * Compares the connection topology of the current architecture against the
  * optimal solution for a mission.
- *
- * Connections are normalised by *component type* (not component ID) so that
- * the diff is meaningful regardless of how nodes are named on the canvas.
- * For example, the ideal edge `sol-lb → sol-server1` becomes `loadbalancer → server`.
- * If the ideal has two `loadbalancer → server` edges and the user only has one,
- * a gap of 1 is reported.
  */
 export function computeConnectionGap(
   current: Architecture,
@@ -222,11 +667,9 @@ export function computeConnectionGap(
   const solution = MISSION_SOLUTIONS[missionSlug];
   if (!solution) return [];
 
-  /** Resolve a component id to its type within an architecture */
   const typeOf = (arch: Architecture, id: string): string | undefined =>
     arch.components.find((c) => c.id === id)?.type;
 
-  // ── Build canonical edge-count map for the ideal solution ──────────────
   const optimalEdges: Record<string, number> = {};
   for (const conn of solution.architecture.connections) {
     const from = typeOf(solution.architecture, conn.from);
@@ -236,7 +679,6 @@ export function computeConnectionGap(
     optimalEdges[key] = (optimalEdges[key] ?? 0) + 1;
   }
 
-  // ── Build canonical edge-count map for the user's architecture ─────────
   const currentEdges: Record<string, number> = {};
   for (const conn of current.connections) {
     const from = typeOf(current, conn.from);
@@ -246,7 +688,6 @@ export function computeConnectionGap(
     currentEdges[key] = (currentEdges[key] ?? 0) + 1;
   }
 
-  // ── Diff: return edges present in ideal but missing / under-represented ─
   return Object.entries(optimalEdges)
     .map(([key, needed]) => {
       const [from, to] = key.split(':');

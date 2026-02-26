@@ -50,7 +50,7 @@ export interface ChatResult {
   chatId?: string;
 }
 
-// ── System prompt ─────────────────────────────────────────────────────────────
+// ── System prompt ────────────────────────────────────────────────────────────
 
 function buildSystemPrompt(ctx: ArchitectureContext): string {
   const compList = ctx.components.length
@@ -61,17 +61,8 @@ function buildSystemPrompt(ctx: ArchitectureContext): string {
     ? ctx.connections.map((c) => `  • ${c.from} → ${c.to}`).join('\n')
     : '  (no connections yet)';
 
-  // Simulation results block (only present post-run)
   const metricsBlock = ctx.simulationMetrics
-    ? `
-SIMULATION RESULTS (last run):
-  • Score:        ${ctx.simulationMetrics.score}/100
-  • Status:       ${ctx.missionPassed ? '✅ PASSED — all requirements met' : '❌ FAILED — one or more requirements not met'}
-  • Latency:      ${ctx.simulationMetrics.latencyMs}ms   (target ≤${ctx.requirements.latencyMs}ms) ${ctx.simulationMetrics.latencyMs <= ctx.requirements.latencyMs ? '✓' : '✗'}
-  • Availability: ${ctx.simulationMetrics.availability}%  (target ≥${ctx.requirements.availability}%) ${ctx.simulationMetrics.availability >= ctx.requirements.availability ? '✓' : '✗'}
-  • Throughput:   ${ctx.simulationMetrics.throughput}     (target ≥${ctx.requirements.throughput}) ${ctx.simulationMetrics.throughput >= ctx.requirements.throughput ? '✓' : '✗'}
-  • Cost:         $${ctx.simulationMetrics.monthlyCost}/mo (target ≤$${ctx.requirements.budget}) ${ctx.simulationMetrics.monthlyCost <= ctx.requirements.budget ? '✓' : '✗'}
-`
+    ? `\nSIMULATION RESULTS (last run):\n  • Score:        ${ctx.simulationMetrics.score}/100\n  • Status:       ${ctx.missionPassed ? '✅ PASSED — all requirements met' : '❌ FAILED — one or more requirements not met'}\n  • Latency:      ${ctx.simulationMetrics.latencyMs}ms   (target ≤${ctx.requirements.latencyMs}ms) ${ctx.simulationMetrics.latencyMs <= ctx.requirements.latencyMs ? '✓' : '✗'}\n  • Availability: ${ctx.simulationMetrics.availability}%  (target ≥${ctx.requirements.availability}%) ${ctx.simulationMetrics.availability >= ctx.requirements.availability ? '✓' : '✗'}\n  • Throughput:   ${ctx.simulationMetrics.throughput}     (target ≥${ctx.requirements.throughput}) ${ctx.simulationMetrics.throughput >= ctx.requirements.throughput ? '✓' : '✗'}\n  • Cost:         $${ctx.simulationMetrics.monthlyCost}/mo (target ≤$${ctx.requirements.budget}) ${ctx.simulationMetrics.monthlyCost <= ctx.requirements.budget ? '✓' : '✗'}\n`
     : '\nSIMULATION: Not yet run.';
 
   const objectivesBlock = ctx.objectives?.length
@@ -84,43 +75,7 @@ SIMULATION RESULTS (last run):
       : 'The user has FAILED this mission. Identify the specific failing metric(s) and explain exactly which component or connection gap caused it. Be constructive and guide them toward the fix.'
     : 'The user is actively building. Guide them toward meeting the requirements step by step.';
 
-  return `You are an expert system architecture tutor inside SystemQuest, a gamified learning platform where users design distributed systems.
-
-CURRENT MISSION: "${ctx.missionTitle}"
-${ctx.problemStatement ? `PROBLEM STATEMENT: ${ctx.problemStatement}` : ''}${objectivesBlock}
-
-REQUIREMENTS:
-  • Latency      ≤ ${ctx.requirements.latencyMs}ms
-  • Availability ≥ ${ctx.requirements.availability}%
-  • Throughput   ≥ ${ctx.requirements.throughput} concurrent users
-  • Budget       ≤ $${ctx.requirements.budget}/month
-  • Growth: ${ctx.requirements.growth}
-${metricsBlock}
-CURRENT ARCHITECTURE:
-Components:
-${compList}
-Connections:
-${connList}
-
-CURRENT PHASE: ${phaseInstruction}
-
-YOUR ROLE:
-1. Teach WHY a component is needed — always reference the specific metric it improves.
-2. Suggest the next step when a requirement looks unmet.
-3. Execute placement commands when the user explicitly asks ("add cache", "connect server to db").
-4. When explaining a design (passed or failed), reference the mission problem statement and connect each component to the real-world scenario.
-5. Keep responses concise (2–4 sentences for quick answers, up to 6 for design explanations). Be encouraging and educational.
-
-COMPONENT ACTIONS:
-When you need to add or connect components, embed this JSON block at the very end of your response (nothing after it):
-[ACTIONS]{"actions":[{"type":"add_component","componentType":"cache"}]}[/ACTIONS]
-
-For connections: {"type":"connect","fromType":"server","toType":"cache"}
-You may include multiple actions in one array.
-
-Available componentTypes: client | loadbalancer | server | database | cache | cdn | queue | storage | monitoring | apigateway
-
-IMPORTANT: Only include the [ACTIONS] block when the user explicitly asks you to add/connect something. Do NOT include it for explanation-only responses.`;
+  return `You are an expert system architecture tutor inside SystemQuest, a gamified learning platform where users design distributed systems.\n\nCURRENT MISSION: "${ctx.missionTitle}"\n${ctx.problemStatement ? `PROBLEM STATEMENT: ${ctx.problemStatement}` : ''}${objectivesBlock}\n\nREQUIREMENTS:\n  • Latency      ≤ ${ctx.requirements.latencyMs}ms\n  • Availability ≥ ${ctx.requirements.availability}%\n  • Throughput   ≥ ${ctx.requirements.throughput} concurrent users\n  • Budget       ≤ $${ctx.requirements.budget}/month\n  • Growth: ${ctx.requirements.growth}\n${metricsBlock}\nCURRENT ARCHITECTURE:\nComponents:\n${compList}\nConnections:\n${connList}\n\nCURRENT PHASE: ${phaseInstruction}\n\nYOUR ROLE:\n1. Teach WHY a component is needed — always reference the specific metric it improves.\n2. Suggest the next step when a requirement looks unmet.\n3. Execute placement commands when the user explicitly asks ("add cache", "connect server to db").\n4. When explaining a design (passed or failed), reference the mission problem statement and connect each component to the real-world scenario.\n5. Keep responses concise (2–4 sentences for quick answers, up to 6 for design explanations). Be encouraging and educational.\n\nCOMPONENT ACTIONS:\nWhen you need to add or connect components, embed this JSON block at the very end of your response (nothing after it):\n[ACTIONS]{"actions":[{"type":"add_component","componentType":"cache"}]}[/ACTIONS]\n\nFor connections: {"type":"connect","fromType":"server","toType":"cache"}\nYou may include multiple actions in one array.\n\nAvailable componentTypes: client | loadbalancer | server | database | cache | cdn | queue | storage | monitoring | apigateway\n\nIMPORTANT: Only include the [ACTIONS] block when the user explicitly asks you to add/connect something. Do NOT include it for explanation-only responses.`;
 }
 
 // ── Rule-based fallback ───────────────────────────────────────────────────────
@@ -210,7 +165,6 @@ async function callNvidia(
   const apiKey = process.env.NVIDIA_API_KEY;
   if (!apiKey) throw new Error('NVIDIA_API_KEY not configured');
 
-  // Build OpenAI-compatible messages array
   const messages: Array<{ role: string; content: string }> = [
     { role: 'system', content: systemPrompt },
     ...history.map((m) => ({ role: m.role, content: m.content })),
@@ -238,6 +192,130 @@ async function callNvidia(
   return res.data.choices[0].message.content as string;
 }
 
+// ── Simulation Analysis ───────────────────────────────────────────────────────
+
+export interface SimulationAnalysisRequest {
+  missionTitle: string;
+  problemStatement?: string;
+  objectives?: string[];
+  requirements: {
+    latencyMs: number;
+    availability: number;
+    throughput: number;
+    budget: number;
+  };
+  metrics: SimulationMetrics;
+  passed: boolean;
+  components: Array<{ id: string; type: string }>;
+  connections: Array<{ from: string; to: string }>;
+}
+
+export interface SimulationAnalysisResult {
+  narrative: string;
+  gaps?: string[];
+  type: 'pass' | 'fail';
+}
+
+function buildSimulationAnalysisPrompt(req: SimulationAnalysisRequest): string {
+  const compTypes = req.components.map((c) => c.type);
+  const uniqueTypes = [...new Set(compTypes)];
+  const serverCount = compTypes.filter((t) => t === 'server').length;
+  const connList = req.connections.map((c) => `${c.from}→${c.to}`).join(', ') || 'none';
+
+  const metricsBlock = `
+Simulation results:
+  • Score:        ${req.metrics.score}/100
+  • Latency:      ${req.metrics.latencyMs}ms   (target ≤${req.requirements.latencyMs}ms) ${req.metrics.latencyMs <= req.requirements.latencyMs ? '✓' : '✗ FAILED'}
+  • Availability: ${req.metrics.availability}%  (target ≥${req.requirements.availability}%) ${req.metrics.availability >= req.requirements.availability ? '✓' : '✗ FAILED'}
+  • Throughput:   ${req.metrics.throughput.toLocaleString()} users (target ≥${req.requirements.throughput.toLocaleString()}) ${req.metrics.throughput >= req.requirements.throughput ? '✓' : '✗ FAILED'}
+  • Cost:         $${req.metrics.monthlyCost}/mo (budget ≤$${req.requirements.budget}) ${req.metrics.monthlyCost <= req.requirements.budget ? '✓' : '✗ FAILED'}`;
+
+  const archBlock = `
+Architecture:
+  Components: ${uniqueTypes.join(', ')} (${req.components.length} total, ${serverCount} server${serverCount !== 1 ? 's' : ''})
+  Connections: ${connList}`;
+
+  if (req.passed) {
+    return `You are an expert system architecture tutor. A learner just PASSED the mission "${req.missionTitle}".
+
+Mission scenario: ${req.problemStatement ?? 'Design a scalable distributed system.'}
+
+${metricsBlock}
+${archBlock}
+
+Write a 3-5 sentence celebration + explanation of WHY this architecture succeeds. Be specific:
+- Connect each key component type to the exact metric it improved (e.g., "The load balancer distributes traffic across ${serverCount} servers, enabling ${req.metrics.throughput.toLocaleString()} concurrent users")
+- Reference the mission scenario to make it real
+- Mention one interesting architectural insight the learner may not have noticed
+- Be encouraging and make the learner feel like a real architect
+
+Respond in plain prose only. No bullet points, no markdown headers, no code.`;
+  } else {
+    const failedMetrics: string[] = [];
+    if (req.metrics.latencyMs      > req.requirements.latencyMs)      failedMetrics.push(`latency (${req.metrics.latencyMs}ms vs ≤${req.requirements.latencyMs}ms)`);
+    if (req.metrics.availability   < req.requirements.availability)   failedMetrics.push(`availability (${req.metrics.availability}% vs ≥${req.requirements.availability}%)`);
+    if (req.metrics.throughput     < req.requirements.throughput)     failedMetrics.push(`throughput (${req.metrics.throughput.toLocaleString()} vs ≥${req.requirements.throughput.toLocaleString()} users)`);
+    if (req.metrics.monthlyCost    > req.requirements.budget)         failedMetrics.push(`cost ($${req.metrics.monthlyCost} vs ≤$${req.requirements.budget})`);
+
+    return `You are an expert system architecture tutor. A learner just FAILED the mission "${req.missionTitle}".
+
+Mission scenario: ${req.problemStatement ?? 'Design a scalable distributed system.'}
+
+${metricsBlock}
+${archBlock}
+
+Failed metrics: ${failedMetrics.join(', ')}
+
+Write a response in TWO parts:
+
+PART 1 — NARRATIVE (3-4 sentences):
+Explain specifically why each failing metric failed, referencing the actual component topology. Mention what's missing or mis-connected. Be direct but encouraging — frame it as a diagnosis, not a failure. Reference the mission scenario.
+
+PART 2 — GAPS (a JSON array of 2-4 short gap strings, most impactful first):
+Format exactly as: [GAPS]["gap description 1","gap description 2"][/GAPS]
+Each gap should be one sentence, actionable, and reference a specific component and metric.
+Example: "Add 2 more App Servers behind the Load Balancer to reach 100,000 throughput"
+
+Do NOT include markdown headers or bullet points in Part 1.`;
+  }
+}
+
+export async function generateSimulationAnalysis(
+  request: SimulationAnalysisRequest,
+): Promise<SimulationAnalysisResult | null> {
+  const apiKey = process.env.NVIDIA_API_KEY;
+  if (!apiKey) {
+    console.warn('[ChatService] NVIDIA_API_KEY not set — skipping simulation analysis');
+    return null;
+  }
+
+  try {
+    const prompt = buildSimulationAnalysisPrompt(request);
+    const raw = await callNvidia(
+      prompt,
+      [],
+      'Please provide your analysis now.',
+    );
+
+    if (request.passed) {
+      return { narrative: raw.trim(), type: 'pass' };
+    }
+
+    // Extract [GAPS] block from fail path
+    const gapsMatch = raw.match(/\[GAPS\]([\s\S]*?)\[\/GAPS\]/);
+    const narrative = raw.replace(/\[GAPS\][\s\S]*?\[\/GAPS\]/g, '').trim();
+    let gaps: string[] | undefined;
+    if (gapsMatch) {
+      try { gaps = JSON.parse(gapsMatch[1].trim()); } catch { /* ignore */ }
+    }
+
+    return { narrative, gaps, type: 'fail' };
+  } catch (err) {
+    console.error('[ChatService] Simulation analysis error:', (err as Error).message);
+    return null;
+  }
+}
+
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export async function sendChatMessage(
@@ -257,7 +335,6 @@ export async function sendChatMessage(
     const systemPrompt = buildSystemPrompt(context);
     const raw = await callNvidia(systemPrompt, history, userMessage);
 
-    // Extract optional [ACTIONS] block
     const actionsMatch = raw.match(/\[ACTIONS\]([\s\S]*?)\[\/ACTIONS\]/);
     const message = raw.replace(/\[ACTIONS\][\s\S]*?\[\/ACTIONS\]/g, '').trim();
     let actions: ChatAction[] | undefined;

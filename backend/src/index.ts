@@ -8,6 +8,8 @@ import { authRouter } from './routes/auth';
 import { missionRouter } from './routes/missions';
 import { simulationRouter } from './routes/simulation';
 import { progressRouter } from './routes/progress';
+import { chatRouter } from './routes/chat';
+import { rubricRouter } from './routes/rubric';
 import { logger } from './services/logger';
 
 dotenv.config();
@@ -38,6 +40,8 @@ app.use('/api/auth', authRouter);
 app.use('/api/missions', missionRouter);
 app.use('/api/simulation', simulationRouter);
 app.use('/api/progress', progressRouter);
+app.use('/api/chat', chatRouter);
+app.use('/api/rubric', rubricRouter);
 
 // 404 handler
 app.use((_req, res) => {

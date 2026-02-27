@@ -335,11 +335,21 @@ export async function sendChatMessage(
     const systemPrompt = buildSystemPrompt(context);
     const raw = await callNvidia(systemPrompt, history, userMessage);
 
-    const actionsMatch = raw.match(/\[ACTIONS\]([\s\S]*?)\[\/ACTIONS\]/);
-    const message = raw.replace(/\[ACTIONS\][\s\S]*?\[\/ACTIONS\]/g, '').trim();
+    // BUG-001 fix: handle both [ACTIONS]...[/ACTIONS] (well-formed) and
+    // [ACTIONS]... (no closing tag — LLM sometimes omits [/ACTIONS]).
+    // The greedy strip to end-of-string ensures raw JSON never leaks into
+    // data.message regardless of whether the closing tag is present.
+    const actionsMatch = raw.match(/\[ACTIONS\]([\s\S]*?)(?:\[\/ACTIONS\]|$)/);
+    const message = raw.replace(/\[ACTIONS\][\s\S]*$/, '').trim();
     let actions: ChatAction[] | undefined;
     if (actionsMatch) {
-      try { actions = JSON.parse(actionsMatch[1].trim()).actions; } catch { /* ignore */ }
+      try {
+        // Strip any residual closing tag from the captured group before parsing
+        const jsonStr = actionsMatch[1].replace(/\[\/ACTIONS\][\s\S]*$/, '').trim();
+        actions = JSON.parse(jsonStr).actions;
+      } catch (e) {
+        console.error('[ChatService] Failed to parse ACTIONS payload:', e);
+      }
     }
 
     return { message, actions };

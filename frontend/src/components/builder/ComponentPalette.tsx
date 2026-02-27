@@ -1,19 +1,26 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { useDraggable } from '@dnd-kit/core';
-import { ComponentType, COMPONENT_META } from '../../data/types';
+import { ComponentType, COMPONENT_META, COMPONENT_COSTS } from '../../data/types';
 
 interface PaletteItemProps {
   type: ComponentType;
   isHighlighted: boolean;
+  /** Current running cost of the canvas — used to show delta on hover */
+  currentCost: number;
+  budget: number;
 }
 
-const PaletteItem: React.FC<PaletteItemProps> = ({ type, isHighlighted }) => {
+const PaletteItem: React.FC<PaletteItemProps> = ({ type, isHighlighted, currentCost, budget }) => {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `palette-${type}`,
     data: { type, fromPalette: true },
   });
 
+  const [hovered, setHovered] = useState(false);
   const meta = COMPONENT_META[type];
+  const cost = COMPONENT_COSTS[type];
+  const costDelta = cost;
+  const wouldExceed = currentCost + costDelta > budget;
 
   return (
     <div
@@ -21,6 +28,8 @@ const PaletteItem: React.FC<PaletteItemProps> = ({ type, isHighlighted }) => {
       {...listeners}
       {...attributes}
       data-palette-type={type}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       className={`flex items-start gap-3 p-3 rounded-xl border cursor-grab active:cursor-grabbing transition-all duration-150
         ${isDragging
           ? 'opacity-40 border-brand-500 bg-brand-900/20'
@@ -29,11 +38,11 @@ const PaletteItem: React.FC<PaletteItemProps> = ({ type, isHighlighted }) => {
             : 'border-gray-700 bg-gray-800/40 hover:border-brand-500/50 hover:bg-gray-800'
         }`}
     >
-      {/* Icon — bounces when highlighted */}
+      {/* Icon — pulses when highlighted */}
       <span className={`text-2xl flex-shrink-0 mt-0.5 ${isHighlighted ? 'animate-bounce' : ''}`}>
         {meta.icon}
       </span>
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <div className={`text-sm font-semibold ${isHighlighted ? 'text-brand-300' : 'text-white'}`}>
           {meta.label}
           {isHighlighted && (
@@ -43,6 +52,23 @@ const PaletteItem: React.FC<PaletteItemProps> = ({ type, isHighlighted }) => {
           )}
         </div>
         <div className="text-xs text-gray-300 leading-relaxed mt-0.5">{meta.description}</div>
+
+        {/* Cost delta — shown only on hover */}
+        {hovered && (
+          <div className="mt-1.5">
+            {cost === 0 ? (
+              <span className="text-[11px] text-green-400 font-medium">Free</span>
+            ) : (
+              <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded-md ${
+                wouldExceed
+                  ? 'bg-red-500/15 text-red-300'
+                  : 'bg-emerald-500/15 text-emerald-300'
+              }`}>
+                {wouldExceed ? '⚠ ' : ''}+${costDelta}/mo
+              </span>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -52,9 +78,17 @@ interface ComponentPaletteProps {
   availableTypes: ComponentType[];
   /** When set, the matching palette item will be highlighted with a ring + bounce */
   highlightedType?: ComponentType | null;
+  /** Current total cost on canvas — used to show per-item cost delta */
+  currentCost: number;
+  budget: number;
 }
 
-export const ComponentPalette: React.FC<ComponentPaletteProps> = ({ availableTypes, highlightedType }) => {
+export const ComponentPalette: React.FC<ComponentPaletteProps> = ({
+  availableTypes,
+  highlightedType,
+  currentCost,
+  budget,
+}) => {
   const listRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to the highlighted item whenever it changes
@@ -78,6 +112,8 @@ export const ComponentPalette: React.FC<ComponentPaletteProps> = ({ availableTyp
             key={type}
             type={type}
             isHighlighted={highlightedType === type}
+            currentCost={currentCost}
+            budget={budget}
           />
         ))}
       </div>

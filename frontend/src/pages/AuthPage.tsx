@@ -5,9 +5,11 @@ import { RegisterForm } from '../components/auth/RegisterForm';
 import { useAuthStore } from '../stores/authStore';
 
 export const AuthPage: React.FC = () => {
-  const { user } = useAuthStore();
+  const { user, _hasHydrated } = useAuthStore();
   const [mode, setMode] = useState<'login' | 'register'>('login');
 
+  // Don't redirect until persisted state has loaded — prevents flicker loop
+  if (!_hasHydrated) return null;
   if (user) return <Navigate to="/dashboard" replace />;
 
   return (

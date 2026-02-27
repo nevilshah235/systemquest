@@ -1,35 +1,37 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useAuthStore } from './stores/authStore';
 import { AuthPage } from './pages/AuthPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { MissionPage } from './pages/MissionPage';
 import { ProgressPage } from './pages/ProgressPage';
-import { Navbar } from './components/dashboard/Navbar';
-import { useAuthStore } from './stores/authStore';
+import { Navbar } from './components/ui/Navbar';
+import { ConceptAdvisorButton } from './components/concept/ConceptAdvisorButton';
 
-const ProtectedLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuthStore();
-  if (!user) return <Navigate to="/" replace />;
-  return (
-    <div className="min-h-screen bg-gray-950">
-      <Navbar />
-      {children}
-    </div>
-  );
+  return user ? <>{children}</> : <Navigate to="/auth" replace />;
 };
 
-function App() {
+export const App: React.FC = () => {
+  const { user } = useAuthStore();
+
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<AuthPage />} />
-        <Route path="/dashboard" element={<ProtectedLayout><DashboardPage /></ProtectedLayout>} />
-        <Route path="/mission/:slug" element={<ProtectedLayout><MissionPage /></ProtectedLayout>} />
-        <Route path="/progress" element={<ProtectedLayout><ProgressPage /></ProtectedLayout>} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <div className="min-h-screen bg-gray-950 text-gray-100">
+        {user && <Navbar />}
+        <main className={user ? 'pt-14' : ''}>
+          <Routes>
+            <Route path="/auth" element={user ? <Navigate to="/dashboard" /> : <AuthPage />} />
+            <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+            <Route path="/mission/:slug" element={<ProtectedRoute><MissionPage /></ProtectedRoute>} />
+            <Route path="/progress" element={<ProtectedRoute><ProgressPage /></ProtectedRoute>} />
+            <Route path="/" element={<Navigate to={user ? '/dashboard' : '/auth'} />} />
+          </Routes>
+        </main>
+        {/* Persistent concept advisor button — available on all authenticated pages */}
+        {user && <ConceptAdvisorButton />}
+      </div>
     </BrowserRouter>
   );
-}
-
-export default App;
+};

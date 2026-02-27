@@ -28,6 +28,13 @@ export interface Mission {
   learningPath: string;
   /** beginner | intermediate | advanced */
   skillLevel: string;
+  /**
+   * Server-computed: true when the path-unlock rules prevent this mission from being played.
+   * Populated by GET /api/missions. Treat as false when absent (e.g. on single-mission fetch).
+   */
+  isLocked?: boolean;
+  /** Human-readable explanation of why the mission is locked, or null when unlocked. */
+  lockReason?: string | null;
   userProgress?: UserMissionProgress;
   savedArchitecture?: Architecture | null;
 }

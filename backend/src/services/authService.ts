@@ -15,6 +15,28 @@ export interface LoginInput {
   password: string;
 }
 
+/**
+ * Fields returned on every auth response.
+ * skillLevel is required so the dashboard adaptive logic works on first render.
+ */
+function serializeUser(user: {
+  id: string;
+  email: string;
+  username: string;
+  xp: number;
+  level: number;
+  skillLevel: string;
+}) {
+  return {
+    id: user.id,
+    email: user.email,
+    username: user.username,
+    xp: user.xp,
+    level: user.level,
+    skillLevel: user.skillLevel,
+  };
+}
+
 function generateTokens(userId: string) {
   const accessToken = jwt.sign(
     { userId },
@@ -44,10 +66,7 @@ export const authService = {
     });
 
     const tokens = generateTokens(user.id);
-    return {
-      user: { id: user.id, email: user.email, username: user.username, xp: user.xp, level: user.level },
-      ...tokens,
-    };
+    return { user: serializeUser(user), ...tokens };
   },
 
   async login(input: LoginInput) {
@@ -58,10 +77,7 @@ export const authService = {
     if (!valid) throw new Error('Invalid email or password');
 
     const tokens = generateTokens(user.id);
-    return {
-      user: { id: user.id, email: user.email, username: user.username, xp: user.xp, level: user.level },
-      ...tokens,
-    };
+    return { user: serializeUser(user), ...tokens };
   },
 
   async refreshToken(token: string) {

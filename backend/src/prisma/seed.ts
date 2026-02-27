@@ -492,7 +492,67 @@ async function main() {
     },
   });
 
-  console.log('✅ Seed complete! 13 missions across 6 learning paths.');
+  // ── SCALE & STREAMING PATH — Mission 19: Design YouTube ─────────────────────
+
+  const youtubeComponents = JSON.stringify({
+    available: ['client', 'loadbalancer', 'server', 'database', 'cache', 'cdn', 'queue', 'storage', 'monitoring', 'apigateway'],
+    required: ['client', 'server', 'storage', 'cdn', 'queue', 'database'],
+    hints: [
+      'Queue handles async transcoding jobs — one upload triggers 6+ parallel encoding workers (480p, 720p, 1080p, 4K, audio)',
+      'Storage holds the entire video corpus — original uploads and all encoded variants per title',
+      'CDN is mandatory — video bytes MUST be served from edge nodes, never from origin on each play request',
+      'Cache stores video metadata, watch history, and recommendation signals for sub-50ms page loads',
+    ],
+  });
+  await prisma.mission.upsert({
+    where: { slug: 'design-youtube' },
+    update: { components: youtubeComponents, learningPath: 'scale-streaming', skillLevel: 'advanced' },
+    create: {
+      slug: 'design-youtube',
+      title: 'Mission 19: Design YouTube',
+      difficulty: 5,
+      estimatedTime: '45-55 min',
+      xpReward: 1200,
+      order: 19,
+      learningPath: 'scale-streaming',
+      skillLevel: 'advanced',
+      description: 'Design a video platform that ingests 500 hours of video per minute, transcodes to multiple formats, and streams to 2 billion users globally via CDN.',
+      scenario: "YouTube receives 500 hours of video every minute. Your task: design the video upload and ingestion pipeline, the multi-resolution transcoding system, and the global delivery infrastructure. A viral video must be streamable in all quality tiers within minutes of upload and must serve 10 million concurrent viewers without buffering.",
+      objectives: JSON.stringify([
+        'Ingest 500 hours of video per minute upload throughput',
+        'Transcode to 6 quality tiers (360p → 4K) within 5 minutes of upload',
+        'Serve 10 million concurrent video streams with <200ms start time',
+        'Deliver via CDN globally with adaptive bitrate (ABR) support',
+        'Maintain 99.99% availability',
+      ]),
+      requirements: JSON.stringify({
+        traffic: { concurrent: 10000000, daily: 1000000000 },
+        performance: { latencyMs: 200, availability: 99.99 },
+        budget: 100000,
+        growth: '2B users, 500 hours uploaded/min, 1B hours watched/day',
+        required: ['client', 'server', 'storage', 'cdn', 'queue', 'database'],
+        bonus: [
+          { component: 'cache', xp: 45, label: 'Add metadata + recommendation cache (+45 XP)' },
+          { component: 'loadbalancer', xp: 35, label: 'Add Load Balancer (+35 XP)' },
+          { component: 'monitoring', xp: 30, label: 'Add monitoring (+30 XP)' },
+          { component: 'apigateway', xp: 35, label: 'Add API Gateway (+35 XP)' },
+        ],
+      }),
+      components: youtubeComponents,
+      feedbackData: JSON.stringify({
+        learned: [
+          'Video upload path: client → chunked upload → raw storage → transcoding queue → encoded variants → CDN',
+          'Transcoding farm uses a queue-worker pattern — horizontal scaling handles 500 hrs/min upload throughput',
+          'CDN is the entire delivery layer — origin servers never serve video bytes to end users directly',
+          'Metadata DB stores video title, description, tags, view counts; watch history in a separate wide-column store',
+        ],
+        nextMission: 'social-feed',
+        nextPreview: 'Scale & Streaming continues — fan-out posts to 500M followers!',
+      }),
+    },
+  });
+
+  console.log('✅ Seed complete! 19 missions across 6 learning paths.');
 }
 
 main()

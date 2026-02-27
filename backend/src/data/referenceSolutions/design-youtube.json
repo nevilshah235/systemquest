@@ -1,0 +1,44 @@
+{
+  "missionSlug": "design-youtube",
+  "components": [
+    { "id": "client", "label": "Browser/App Client", "description": "Chunked video upload; adaptive bitrate (ABR) video playback via CDN" },
+    { "id": "apigateway", "label": "API Gateway", "description": "Rate limiting, auth, upload session management, request routing" },
+    { "id": "loadbalancer", "label": "Load Balancer", "description": "Distributes upload and metadata API traffic across app server fleet" },
+    { "id": "server", "label": "App Server", "description": "Handles upload initiation, metadata writes, search, recommendations API" },
+    { "id": "queue", "label": "Transcoding Queue (Kafka)", "description": "Receives raw upload events; dispatches parallel transcoding jobs per quality tier" },
+    { "id": "database", "label": "Metadata DB (MySQL + Bigtable)", "description": "MySQL for video metadata and user data; Bigtable/Cassandra for watch history and activity" },
+    { "id": "cache", "label": "Cache (Redis + Memcached)", "description": "Video metadata cache, recommendation signals, view count aggregation buffer" },
+    { "id": "storage", "label": "Object Storage (GCS/S3)", "description": "Raw video uploads and all transcoded output variants (6+ quality tiers per video)" },
+    { "id": "cdn", "label": "CDN", "description": "Global edge delivery for all video streams; supports HLS/DASH adaptive bitrate" },
+    { "id": "monitoring", "label": "Monitoring", "description": "Upload throughput, transcoding queue depth, CDN bandwidth, buffering ratio per CDN PoP" }
+  ],
+  "connections": [
+    { "from": "client", "to": "apigateway", "label": "Upload initiation + metadata API" },
+    { "from": "client", "to": "storage", "label": "Chunked video upload (resumable)" },
+    { "from": "apigateway", "to": "server", "label": "Route API calls" },
+    { "from": "server", "to": "database", "label": "Write/read video metadata" },
+    { "from": "server", "to": "cache", "label": "Cache metadata + recommendations" },
+    { "from": "storage", "to": "queue", "label": "Upload complete event triggers transcoding" },
+    { "from": "queue", "to": "server", "label": "Transcoding workers process jobs" },
+    { "from": "server", "to": "storage", "label": "Write encoded variants" },
+    { "from": "storage", "to": "cdn", "label": "Origin pull for video segments" },
+    { "from": "cdn", "to": "client", "label": "Stream HLS/DASH segments" }
+  ],
+  "keyInsights": [
+    "Chunked resumable uploads (GCS/S3 multipart) are mandatory — video files are too large for single-request uploads",
+    "Transcoding is a queue-worker fan-out: one raw video spawns 6+ parallel jobs (360p, 480p, 720p, 1080p, 1440p, 4K)",
+    "CDN delivers HLS/DASH manifests and video segments — the origin never streams directly to viewers",
+    "View count is a hot-write problem: use Redis counter + async flush to DB to avoid thundering-herd on viral videos"
+  ],
+  "tradeoffs": [
+    { "decision": "Horizontal transcoding workers via queue", "pro": "Scales elastically with upload volume; failure of one worker does not lose the job", "con": "Transcoding delay before video is available (target: <5 min); queue depth spikes during upload bursts" },
+    { "decision": "HLS/DASH adaptive bitrate", "pro": "Client switches quality tiers seamlessly based on bandwidth; reduces buffering", "con": "Generates 6x storage per video; CDN must serve large numbers of small segment files" },
+    { "decision": "CDN as primary delivery layer", "pro": "Origin servers serve zero video bytes in steady state; infinite scale at edge", "con": "Cold cache on new/rare videos causes cache misses hitting origin; requires cache warming strategy" }
+  ],
+  "antiPatterns": [
+    "Streaming video bytes from app servers — impossible to serve 10M concurrent streams from a fixed server fleet",
+    "Synchronous transcoding in the upload request cycle — 500 hrs/min would require infinite synchronous capacity",
+    "Storing view counts as single DB row updates — every view on a viral video causes DB lock contention",
+    "Single-region storage without CDN replication — global viewers experience unacceptable latency from origin"
+  ]
+}

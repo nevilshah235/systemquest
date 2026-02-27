@@ -30,6 +30,51 @@ interface ChatState {
   clearChat: () => void;
 }
 
+// ── BUG-001: Defensive AI response parser ────────────────────────────────────
+// Safety-net utility that strips any residual [ACTIONS] payload from the
+// message string before it reaches chat state. This guards against cases
+// where the backend parser misses the block (e.g. malformed LLM output).
+// Primary stripping is done server-side in chatService.ts; this is the
+// render-layer safety net called for in the BUG-001 spec.
+
+interface ParsedAIResponse {
+  message: string;
+  actions: ChatAction[] | null;
+}
+
+/**
+ * Parses an AI response string, separating the display text from any
+ * embedded [ACTIONS] payload. Handles both [ACTIONS]...[/ACTIONS] and
+ * unclosed [ACTIONS]... variants.
+ *
+ * @param rawResponse - The raw string returned by the AI (or API)
+ * @returns An object with the clean message and optional parsed actions
+ */
+function parseAIResponse(rawResponse: string): ParsedAIResponse {
+  const ACTIONS_MARKER = '[ACTIONS]';
+  const markerIndex = rawResponse.indexOf(ACTIONS_MARKER);
+
+  if (markerIndex === -1) {
+    return { message: rawResponse.trim(), actions: null };
+  }
+
+  const message = rawResponse.slice(0, markerIndex).trim();
+  const afterMarker = rawResponse.slice(markerIndex + ACTIONS_MARKER.length);
+  // Remove closing [/ACTIONS] tag if present before attempting JSON parse
+  const jsonStr = afterMarker.replace(/\[\/ACTIONS\][\s\S]*$/, '').trim();
+
+  try {
+    const parsed = JSON.parse(jsonStr);
+    return { message, actions: parsed.actions ?? null };
+  } catch (e) {
+    // Malformed JSON — still strip the marker block, log for debugging
+    console.error('[parseAIResponse] Failed to parse ACTIONS payload:', e);
+    return { message, actions: null };
+  }
+}
+
+// ── Store ─────────────────────────────────────────────────────────────────────
+
 export const useChatStore = create<ChatState>()((set, get) => ({
   messages: [],
   isLoading: false,
@@ -87,14 +132,20 @@ export const useChatStore = create<ChatState>()((set, get) => ({
         })
         .then((r) => r.data);
 
+      // BUG-001 safety net: defensively strip any residual [ACTIONS] block
+      // from the message string in case the backend parser missed it.
+      const { message: safeMessage, actions: parsedActions } = parseAIResponse(data.message ?? '');
+
+      // Prefer structured actions from the API; fall back to any parsed from message string
+      const actions: ChatAction[] = data.actions ?? parsedActions ?? [];
+
       // Apply any builder actions the AI returned
-      const actions: ChatAction[] = data.actions ?? [];
       executeActions(actions);
 
       const assistantMsg: ChatMessage = {
         id: `msg-${Date.now() + 1}`,
         role: 'assistant',
-        content: data.message,
+        content: safeMessage,
         timestamp: new Date(),
         actions: actions.length ? actions : undefined,
       };

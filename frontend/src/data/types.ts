@@ -6,8 +6,15 @@ export interface User {
   username: string;
   xp: number;
   level: number;
-  /** beginner | intermediate | advanced */
+  /** Stored / self-declared level. Default 'beginner'. Auto-upgraded by the server after promotion. */
   skillLevel: string;
+  /**
+   * Performance-derived level computed from mission attempt history.
+   * Always >= skillLevel after a promotion event.
+   * Use this (or the higher of the two) for badge display and path recommendations.
+   * Absent on legacy/cached auth tokens — fall back to skillLevel.
+   */
+  derivedSkillLevel?: string;
 }
 
 export interface Mission {
@@ -115,6 +122,17 @@ export interface SimulationMetrics {
   bonusXp: number;
   feedback: FeedbackItem[];
   achievements: string[];
+}
+
+export interface SimulationResult {
+  metrics: SimulationMetrics;
+  missionTitle: string;
+  /** Present only when a completed run triggered a skill level upgrade */
+  skillPromotion: {
+    promoted: boolean;
+    newLevel: string;
+    derivedSkillLevel: string;
+  } | null;
 }
 
 export interface FeedbackItem {

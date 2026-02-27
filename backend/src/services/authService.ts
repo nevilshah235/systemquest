@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
+import { computeDerivedSkillLevel, effectiveSkillLevel } from './skillService';
 
 const prisma = new PrismaClient();
 
@@ -16,24 +17,33 @@ export interface LoginInput {
 }
 
 /**
- * Fields returned on every auth response.
- * skillLevel is required so the dashboard adaptive logic works on first render.
+ * Canonical shape returned on every auth response.
+ *
+ * - skillLevel: the stored / self-declared level (what the DB holds)
+ * - derivedSkillLevel: computed from performance history (what performance says)
+ *
+ * The UI should use derivedSkillLevel (or the higher of the two) for badges
+ * and path recommendations, while skillLevel acts as a floor/override.
  */
-function serializeUser(user: {
-  id: string;
-  email: string;
-  username: string;
-  xp: number;
-  level: number;
-  skillLevel: string;
-}) {
+function serializeUser(
+  user: {
+    id: string;
+    email: string;
+    username: string;
+    xp: number;
+    level: number;
+    skillLevel: string;
+  },
+  derivedSkillLevel: string,
+) {
   return {
     id: user.id,
     email: user.email,
     username: user.username,
     xp: user.xp,
     level: user.level,
-    skillLevel: user.skillLevel,
+    skillLevel: user.skillLevel,       // stored / self-declared floor
+    derivedSkillLevel,                  // performance-derived (always ≥ skillLevel after promotion)
   };
 }
 
@@ -65,8 +75,11 @@ export const authService = {
       data: { email: input.email, username: input.username, passwordHash },
     });
 
+    // New users have no attempts so derived is always 'beginner' here,
+    // but we keep the call consistent so the shape is guaranteed correct.
+    const derived = await computeDerivedSkillLevel(user.id);
     const tokens = generateTokens(user.id);
-    return { user: serializeUser(user), ...tokens };
+    return { user: serializeUser(user, derived), ...tokens };
   },
 
   async login(input: LoginInput) {
@@ -76,8 +89,10 @@ export const authService = {
     const valid = await bcrypt.compare(input.password, user.passwordHash);
     if (!valid) throw new Error('Invalid email or password');
 
+    // Re-derive on every login so returning users always get an up-to-date level.
+    const derived = await computeDerivedSkillLevel(user.id);
     const tokens = generateTokens(user.id);
-    return { user: serializeUser(user), ...tokens };
+    return { user: serializeUser(user, derived), ...tokens };
   },
 
   async refreshToken(token: string) {
@@ -101,6 +116,15 @@ export const authService = {
       },
     });
     if (!user) throw new Error('User not found');
-    return user;
+
+    const derived = await computeDerivedSkillLevel(userId);
+    const effective = effectiveSkillLevel(derived, user.skillLevel);
+
+    return {
+      ...user,
+      derivedSkillLevel: derived,
+      // Effective level is the single value the UI should trust for gating
+      effectiveSkillLevel: effective,
+    };
   },
 };

@@ -1,5 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
 import { useMissionStore } from '../stores/missionStore';
 import { useChatStore } from '../stores/chatStore';
 import { MissionBriefing } from '../components/mission/MissionBriefing';
@@ -7,12 +8,12 @@ import { RequirementsPhase } from '../components/mission/RequirementsPhase';
 import { DragDropBuilder } from '../components/builder/DragDropBuilder';
 import { SimulationResults } from '../components/mission/SimulationResults';
 import { ChatAssistant } from '../components/mission/ChatAssistant';
+import { ComparePanel } from '../components/mission/ComparePanel';
 import { Mission } from '../data/types';
 
 const PHASE_LABELS = ['Briefing', 'Requirements', 'Builder', 'Results'];
 const PHASE_ORDER = ['briefing', 'requirements', 'builder', 'results'] as const;
 
-/** Register enriched mission context globally so chatStore can read it without prop-drilling */
 function useMissionContext(
   mission: Mission | null,
   phase: string,
@@ -57,13 +58,13 @@ export const MissionPage: React.FC = () => {
     simulationMetrics, simulationXpGranted, isLoading, isSimulating, resetMission,
   } = useMissionStore();
   const { isOpen: chatOpen, toggleOpen: toggleChat, clearChat } = useChatStore();
+  const [showCompare, setShowCompare] = useState(false);
 
   useEffect(() => {
     if (slug) startMission(slug);
     return () => { resetMission(); clearChat(); };
   }, [slug]);
 
-  // Register enriched mission context (including simulation results) for the chat store
   useMissionContext(activeMission, phase, simulationMetrics);
 
   if (isLoading) {
@@ -87,6 +88,7 @@ export const MissionPage: React.FC = () => {
   const isBuilderPhase  = phase === 'builder';
   const isResultsPhase  = phase === 'results';
   const showChat        = isBuilderPhase || isResultsPhase;
+  const hasReference    = !!activeMission.referenceSolution;
 
   return (
     <div className={`flex flex-col ${isBuilderPhase || isResultsPhase ? 'h-[calc(100vh-56px)]' : 'min-h-[calc(100vh-56px)]'}`}>
@@ -115,6 +117,15 @@ export const MissionPage: React.FC = () => {
             ))}
           </div>
           <div className="flex items-center gap-2">
+            {/* Compare button — only in results phase when reference is available */}
+            {isResultsPhase && hasReference && (
+              <button
+                onClick={() => setShowCompare(true)}
+                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full font-medium border bg-purple-800/20 border-purple-600/50 text-purple-400 hover:text-purple-200 transition-all"
+              >
+                ⚖️ Compare
+              </button>
+            )}
             {showChat && (
               <button
                 onClick={toggleChat}
@@ -151,7 +162,6 @@ export const MissionPage: React.FC = () => {
         )}
         {phase === 'builder' && (
           <>
-            {/* Builder takes remaining width */}
             <div className="flex-1 min-w-0 overflow-hidden">
               <DragDropBuilder
                 mission={activeMission}
@@ -159,8 +169,6 @@ export const MissionPage: React.FC = () => {
                 isSimulating={isSimulating}
               />
             </div>
-
-            {/* Chat panel — slides in from right */}
             {chatOpen && (
               <div className="w-80 flex-shrink-0 border-l border-gray-800 overflow-hidden">
                 <ChatAssistant missionSlug={activeMission.slug} />
@@ -170,7 +178,6 @@ export const MissionPage: React.FC = () => {
         )}
         {phase === 'results' && simulationMetrics && (
           <>
-            {/* Results takes remaining width */}
             <div className="flex-1 min-w-0 overflow-auto">
               <SimulationResults
                 metrics={simulationMetrics}
@@ -179,8 +186,6 @@ export const MissionPage: React.FC = () => {
                 onRetry={() => setPhase('builder')}
               />
             </div>
-
-            {/* Chat panel — slides in from right */}
             {chatOpen && (
               <div className="w-80 flex-shrink-0 border-l border-gray-800 overflow-hidden">
                 <ChatAssistant missionSlug={activeMission.slug} />
@@ -189,6 +194,16 @@ export const MissionPage: React.FC = () => {
           </>
         )}
       </div>
+
+      {/* Compare panel overlay */}
+      <AnimatePresence>
+        {showCompare && activeMission && (
+          <ComparePanel
+            missionSlug={activeMission.slug}
+            onClose={() => setShowCompare(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };

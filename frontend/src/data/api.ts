@@ -1,64 +1,81 @@
 import axios from 'axios';
-import { Architecture } from './types';
 
-const api = axios.create({
-  baseURL: '/api',
-  timeout: 10000,
-});
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
-// Attach JWT token on every request
-api.interceptors.request.use((config) => {
+const http = axios.create({ baseURL: BASE_URL });
+
+// Attach JWT automatically
+http.interceptors.request.use((config) => {
   const token = localStorage.getItem('accessToken');
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
-// Auto-refresh on 401
-api.interceptors.response.use(
-  (res) => res,
-  async (error) => {
-    const original = error.config;
-    if (error.response?.status === 401 && !original._retry) {
-      original._retry = true;
-      try {
-        const refreshToken = localStorage.getItem('refreshToken');
-        const { data } = await axios.post('/api/auth/refresh', { refreshToken });
-        localStorage.setItem('accessToken', data.accessToken);
-        localStorage.setItem('refreshToken', data.refreshToken);
-        original.headers.Authorization = `Bearer ${data.accessToken}`;
-        return api(original);
-      } catch {
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        window.location.href = '/login';
-      }
-    }
-    return Promise.reject(error);
-  }
-);
-
-export const authApi = {
-  register: (data: { email: string; username: string; password: string }) =>
-    api.post('/auth/register', data).then((r) => r.data),
-  login: (data: { email: string; password: string }) =>
-    api.post('/auth/login', data).then((r) => r.data),
-  me: () => api.get('/auth/me').then((r) => r.data),
+// Generic typed GET helper used by components
+export const apiClient = {
+  get: async <T>(path: string): Promise<T> => {
+    const res = await http.get<T>(path);
+    return res.data;
+  },
+  post: async <T>(path: string, body?: unknown): Promise<T> => {
+    const res = await http.post<T>(path, body);
+    return res.data;
+  },
 };
 
-export const missionsApi = {
-  list: () => api.get('/missions').then((r) => r.data),
-  get: (slug: string) => api.get(`/missions/${slug}`).then((r) => r.data),
-  save: (slug: string, architecture: Architecture) =>
-    api.post(`/missions/${slug}/save`, { architecture }).then((r) => r.data),
+export const authApi = {
+  login: async (data: { email: string; password: string }) => {
+    const res = await http.post('/auth/login', data);
+    return res.data;
+  },
+  register: async (data: { email: string; username: string; password: string }) => {
+    const res = await http.post('/auth/register', data);
+    return res.data;
+  },
+  refresh: async (refreshToken: string) => {
+    const res = await http.post('/auth/refresh', { refreshToken });
+    return res.data;
+  },
+  me: async () => {
+    const res = await http.get('/auth/me');
+    return res.data;
+  },
+};
+
+export const missionApi = {
+  getAll: async () => {
+    const res = await http.get('/missions');
+    return res.data;
+  },
+  getBySlug: async (slug: string) => {
+    const res = await http.get(`/missions/${slug}`);
+    return res.data;
+  },
+  save: async (slug: string, architecture: unknown) => {
+    const res = await http.post(`/missions/${slug}/save`, { architecture });
+    return res.data;
+  },
 };
 
 export const simulationApi = {
-  run: (missionSlug: string, architecture: Architecture) =>
-    api.post('/simulation/run', { missionSlug, architecture }).then((r) => r.data),
+  run: async (missionSlug: string, architecture: unknown) => {
+    const res = await http.post('/simulation/run', { missionSlug, architecture });
+    return res.data;
+  },
 };
 
-export const progressApi = {
-  get: () => api.get('/progress').then((r) => r.data),
+export const comparisonApi = {
+  compare: async (missionSlug: string) => {
+    const res = await http.get(`/comparison/${missionSlug}`);
+    return res.data;
+  },
 };
 
-export default api;
+export const conceptsApi = {
+  getRecommendations: async () => {
+    const res = await http.get('/concepts/recommendations');
+    return res.data;
+  },
+};
+
+export default http;

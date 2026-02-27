@@ -10,6 +10,7 @@ import { simulationRouter } from './routes/simulation';
 import { progressRouter } from './routes/progress';
 import { chatRouter } from './routes/chat';
 import { rubricRouter } from './routes/rubric';
+import { comparisonRouter } from './routes/comparison';
 import { logger } from './services/logger';
 
 dotenv.config();
@@ -17,7 +18,6 @@ dotenv.config();
 const app = express();
 const PORT = parseInt(process.env.PORT || '4000', 10);
 
-// Security & middleware
 app.use(helmet());
 app.use(compression());
 app.use(cors({
@@ -30,25 +30,19 @@ app.use(morgan('combined', {
   stream: { write: (msg) => logger.info(msg.trim()) },
 }));
 
-// Health check
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'systemquest-api' });
 });
 
-// API Routes
 app.use('/api/auth', authRouter);
 app.use('/api/missions', missionRouter);
 app.use('/api/simulation', simulationRouter);
 app.use('/api/progress', progressRouter);
 app.use('/api/chat', chatRouter);
 app.use('/api/rubric', rubricRouter);
+app.use('/api/comparison', comparisonRouter);
 
-// 404 handler
-app.use((_req, res) => {
-  res.status(404).json({ error: 'Route not found' });
-});
-
-// Global error handler
+app.use((_req, res) => { res.status(404).json({ error: 'Route not found' }); });
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   logger.error('Unhandled error', { error: err.message, stack: err.stack });
   res.status(500).json({ error: 'Internal server error' });

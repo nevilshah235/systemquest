@@ -360,7 +360,42 @@ async function main() {
   });
   await prisma.mission.upsert({
     where: { slug: 'booking-system' },
-    update: { components: bookingSystemComponents, learningPath: 'consistency', skillLevel: 'advanced' },
+    update: {
+      components: bookingSystemComponents,
+      learningPath: 'consistency',
+      skillLevel: 'advanced',
+      referenceSolution: JSON.stringify({
+        components: [
+          { type: 'client' }, { type: 'loadbalancer' }, { type: 'server' },
+          { type: 'database' }, { type: 'cache' }, { type: 'queue' },
+          { type: 'monitoring' }, { type: 'apigateway' },
+        ],
+        connections: [
+          { from: 'client', to: 'apigateway' },
+          { from: 'apigateway', to: 'loadbalancer' },
+          { from: 'loadbalancer', to: 'server' },
+          { from: 'server', to: 'cache' },
+          { from: 'server', to: 'queue' },
+          { from: 'server', to: 'database' },
+          { from: 'server', to: 'monitoring' },
+        ],
+        keyInsights: [
+          'Distributed lock in the cache (e.g. Redis SET NX with TTL) prevents two users booking the same property simultaneously',
+          'Queue serializes concurrent booking requests for the same property, eliminating race conditions at the application level',
+          'ACID transaction in the database guarantees the booking is created atomically with inventory decrement',
+          'API Gateway rate-limits automated booking bots that hammer inventory to lock popular dates',
+        ],
+        tradeoffs: [
+          { decision: 'Pessimistic locking via cache TTL', reason: 'Holding a short-lived lock during checkout prevents double-booking without permanent reservation bloat' },
+          { decision: 'Queue serialization for hot properties', reason: 'Ensures fairness and eliminates race conditions during flash sale peaks, at cost of slightly higher latency' },
+        ],
+        antiPatterns: [
+          'Relying on application-level checks (read-then-write) without database transactions — classic TOCTOU race condition',
+          'No distributed lock — two users can simultaneously pass availability checks and both complete bookings',
+          'No monitoring — booking failures during peak periods go undetected until users complain',
+        ],
+      }),
+    },
     create: {
       slug: 'booking-system', title: 'Mission 9: Booking System',
       difficulty: 4, estimatedTime: '30-35 min', xpReward: 550, order: 9,
@@ -379,6 +414,37 @@ async function main() {
       feedbackData: JSON.stringify({
         learned: ['Cache-based distributed locks prevent race conditions in concurrent reservations','ACID transactions in the database guarantee atomic booking creation','Queue serialization prevents thundering-herd double-booking during flash sales'],
         nextMission: 'payment-processing', nextPreview: 'Concurrency conquered! Now process payments with financial-grade reliability.',
+      }),
+      referenceSolution: JSON.stringify({
+        components: [
+          { type: 'client' }, { type: 'loadbalancer' }, { type: 'server' },
+          { type: 'database' }, { type: 'cache' }, { type: 'queue' },
+          { type: 'monitoring' }, { type: 'apigateway' },
+        ],
+        connections: [
+          { from: 'client', to: 'apigateway' },
+          { from: 'apigateway', to: 'loadbalancer' },
+          { from: 'loadbalancer', to: 'server' },
+          { from: 'server', to: 'cache' },
+          { from: 'server', to: 'queue' },
+          { from: 'server', to: 'database' },
+          { from: 'server', to: 'monitoring' },
+        ],
+        keyInsights: [
+          'Distributed lock in the cache (e.g. Redis SET NX with TTL) prevents two users booking the same property simultaneously',
+          'Queue serializes concurrent booking requests for the same property, eliminating race conditions at the application level',
+          'ACID transaction in the database guarantees the booking is created atomically with inventory decrement',
+          'API Gateway rate-limits automated booking bots that hammer inventory to lock popular dates',
+        ],
+        tradeoffs: [
+          { decision: 'Pessimistic locking via cache TTL', reason: 'Holding a short-lived lock during checkout prevents double-booking without permanent reservation bloat' },
+          { decision: 'Queue serialization for hot properties', reason: 'Ensures fairness and eliminates race conditions during flash sale peaks, at cost of slightly higher latency' },
+        ],
+        antiPatterns: [
+          'Relying on application-level checks (read-then-write) without database transactions — classic TOCTOU race condition',
+          'No distributed lock — two users can simultaneously pass availability checks and both complete bookings',
+          'No monitoring — booking failures during peak periods go undetected until users complain',
+        ],
       }),
     },
   });
@@ -433,7 +499,43 @@ async function main() {
   });
   await prisma.mission.upsert({
     where: { slug: 'social-feed' },
-    update: { components: socialFeedComponents, learningPath: 'scale-streaming', skillLevel: 'advanced' },
+    update: {
+      components: socialFeedComponents,
+      learningPath: 'scale-streaming',
+      skillLevel: 'advanced',
+      referenceSolution: JSON.stringify({
+        components: [
+          { type: 'client' }, { type: 'loadbalancer' }, { type: 'server' },
+          { type: 'database' }, { type: 'cache' }, { type: 'queue' },
+          { type: 'storage' }, { type: 'cdn' }, { type: 'monitoring' },
+        ],
+        connections: [
+          { from: 'client', to: 'loadbalancer' },
+          { from: 'loadbalancer', to: 'server' },
+          { from: 'server', to: 'queue' },
+          { from: 'queue', to: 'cache' },
+          { from: 'server', to: 'database' },
+          { from: 'server', to: 'storage' },
+          { from: 'storage', to: 'cdn' },
+          { from: 'server', to: 'monitoring' },
+        ],
+        keyInsights: [
+          'Fan-out on write: when a user posts, a queue worker pushes the post to all followers\' cached timelines immediately',
+          'Timeline reads never touch the database — they are served entirely from the cache',
+          'CDN delivers all media (images, videos) so origin servers never handle static asset traffic',
+          'A Load Balancer across 4+ app servers is required to handle 500k concurrent readers',
+        ],
+        tradeoffs: [
+          { decision: 'Fan-out on write vs fan-out on read', reason: 'Fan-out on write is expensive for high-follower accounts but makes reads instant for all users' },
+          { decision: 'Eventual consistency for feeds', reason: 'A 100-500ms delay in timeline freshness is acceptable vs the cost of strong consistency at this scale' },
+        ],
+        antiPatterns: [
+          'Reading timelines directly from the database on every request — will collapse at 500k concurrent',
+          'Storing media files in the database instead of object storage + CDN',
+          'Single app server without a load balancer — obvious single point of failure',
+        ],
+      }),
+    },
     create: {
       slug: 'social-feed', title: 'Mission 10: Social Feed',
       difficulty: 5, estimatedTime: '35-45 min', xpReward: 900, order: 10,
@@ -453,6 +555,38 @@ async function main() {
         learned: ['Fan-out on write pre-computes feeds for fast reads at massive scale','Cache is the primary read store for timelines — database is source of truth only','CDN + object storage offload all media delivery entirely from app servers'],
         nextMission: 'video-streaming', nextPreview: '500,000 users handled! Now stream video to 500k concurrent viewers.',
       }),
+      referenceSolution: JSON.stringify({
+        components: [
+          { type: 'client' }, { type: 'loadbalancer' }, { type: 'server' },
+          { type: 'database' }, { type: 'cache' }, { type: 'queue' },
+          { type: 'storage' }, { type: 'cdn' }, { type: 'monitoring' },
+        ],
+        connections: [
+          { from: 'client', to: 'loadbalancer' },
+          { from: 'loadbalancer', to: 'server' },
+          { from: 'server', to: 'queue' },
+          { from: 'queue', to: 'cache' },
+          { from: 'server', to: 'database' },
+          { from: 'server', to: 'storage' },
+          { from: 'storage', to: 'cdn' },
+          { from: 'server', to: 'monitoring' },
+        ],
+        keyInsights: [
+          'Fan-out on write: when a user posts, a queue worker pushes the post to all followers\' cached timelines immediately',
+          'Timeline reads never touch the database — they are served entirely from the cache',
+          'CDN delivers all media (images, videos) so origin servers never handle static asset traffic',
+          'A Load Balancer across 4+ app servers is required to handle 500k concurrent readers',
+        ],
+        tradeoffs: [
+          { decision: 'Fan-out on write vs fan-out on read', reason: 'Fan-out on write is expensive for high-follower accounts but makes reads instant for all users' },
+          { decision: 'Eventual consistency for feeds', reason: 'A 100-500ms delay in timeline freshness is acceptable vs the cost of strong consistency at this scale' },
+        ],
+        antiPatterns: [
+          'Reading timelines directly from the database on every request — will collapse at 500k concurrent',
+          'Storing media files in the database instead of object storage + CDN',
+          'Single app server without a load balancer — obvious single point of failure',
+        ],
+      }),
     },
   });
 
@@ -469,7 +603,44 @@ async function main() {
   });
   await prisma.mission.upsert({
     where: { slug: 'video-streaming' },
-    update: { components: videoStreamingComponents, learningPath: 'scale-streaming', skillLevel: 'advanced' },
+    update: {
+      components: videoStreamingComponents,
+      learningPath: 'scale-streaming',
+      skillLevel: 'advanced',
+      referenceSolution: JSON.stringify({
+        components: [
+          { type: 'client' }, { type: 'loadbalancer' }, { type: 'server' },
+          { type: 'database' }, { type: 'cache' }, { type: 'queue' },
+          { type: 'storage' }, { type: 'cdn' }, { type: 'monitoring' },
+        ],
+        connections: [
+          { from: 'client', to: 'cdn' },
+          { from: 'client', to: 'loadbalancer' },
+          { from: 'loadbalancer', to: 'server' },
+          { from: 'server', to: 'queue' },
+          { from: 'queue', to: 'storage' },
+          { from: 'storage', to: 'cdn' },
+          { from: 'server', to: 'database' },
+          { from: 'server', to: 'cache' },
+          { from: 'server', to: 'monitoring' },
+        ],
+        keyInsights: [
+          'Video bytes are ALWAYS served from CDN edge nodes — origin servers never handle streaming traffic directly',
+          'Async transcoding queue converts uploaded videos to multiple resolutions (480p/720p/1080p/4K) without blocking uploads',
+          'Object storage holds the entire video corpus — terabytes of content at low cost',
+          'Cache stores video metadata, thumbnails, watch history, and recommendations for fast API responses',
+        ],
+        tradeoffs: [
+          { decision: 'Adaptive bitrate streaming (ABR)', reason: 'Serving multiple resolutions lets clients auto-adjust quality to network speed, reducing buffering' },
+          { decision: 'Async encoding pipeline', reason: 'Decoupling uploads from transcoding means users get instant upload confirmation even for large files' },
+        ],
+        antiPatterns: [
+          'Serving video bytes directly from origin app servers — will collapse at 500k concurrent streams',
+          'Blocking upload API on transcoding completion — makes uploads appear broken for large files',
+          'Storing video files in the database instead of object storage',
+        ],
+      }),
+    },
     create: {
       slug: 'video-streaming', title: 'Mission 12: Video Streaming',
       difficulty: 5, estimatedTime: '40-50 min', xpReward: 1000, order: 12,
@@ -488,6 +659,39 @@ async function main() {
       feedbackData: JSON.stringify({
         learned: ['CDN edge delivery is mandatory for video — origin servers cannot serve at this scale','Async transcoding queues handle multi-format encoding without blocking video uploads','Cache makes video metadata, thumbnails, and watch progress blazing fast to retrieve'],
         nextMission: null, nextPreview: 'Scale & Streaming path complete! You are a System Design Master! 🏆',
+      }),
+      referenceSolution: JSON.stringify({
+        components: [
+          { type: 'client' }, { type: 'loadbalancer' }, { type: 'server' },
+          { type: 'database' }, { type: 'cache' }, { type: 'queue' },
+          { type: 'storage' }, { type: 'cdn' }, { type: 'monitoring' },
+        ],
+        connections: [
+          { from: 'client', to: 'cdn' },
+          { from: 'client', to: 'loadbalancer' },
+          { from: 'loadbalancer', to: 'server' },
+          { from: 'server', to: 'queue' },
+          { from: 'queue', to: 'storage' },
+          { from: 'storage', to: 'cdn' },
+          { from: 'server', to: 'database' },
+          { from: 'server', to: 'cache' },
+          { from: 'server', to: 'monitoring' },
+        ],
+        keyInsights: [
+          'Video bytes are ALWAYS served from CDN edge nodes — origin servers never handle streaming traffic directly',
+          'Async transcoding queue converts uploaded videos to multiple resolutions (480p/720p/1080p/4K) without blocking uploads',
+          'Object storage holds the entire video corpus — terabytes of content at low cost',
+          'Cache stores video metadata, thumbnails, watch history, and recommendations for fast API responses',
+        ],
+        tradeoffs: [
+          { decision: 'Adaptive bitrate streaming (ABR)', reason: 'Serving multiple resolutions lets clients auto-adjust quality to network speed, reducing buffering' },
+          { decision: 'Async encoding pipeline', reason: 'Decoupling uploads from transcoding means users get instant upload confirmation even for large files' },
+        ],
+        antiPatterns: [
+          'Serving video bytes directly from origin app servers — will collapse at 500k concurrent streams',
+          'Blocking upload API on transcoding completion — makes uploads appear broken for large files',
+          'Storing video files in the database instead of object storage',
+        ],
       }),
     },
   });

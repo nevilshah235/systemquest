@@ -27,37 +27,18 @@ function groupByPath(missions: Mission[]): Record<string, Mission[]> {
   return groups;
 }
 
-// ── Per-path unlock logic ───────────────────────────────────────────────────────
-/**
- * Returns true if `mission` should be locked.
- * Rules:
- *  - Foundations path: sequential — first mission always open; each next requires previous complete
- *  - Other paths: all foundations missions must be complete first; then sequential within path
- */
-function isMissionLocked(
-  mission: Mission,
-  pathMissions: Mission[],
-  foundationsComplete: boolean,
-): boolean {
-  const idx = pathMissions.findIndex((m) => m.id === mission.id);
-  if (mission.learningPath === 'foundations') {
-    return idx > 0 && !pathMissions[idx - 1].userProgress?.completed;
-  }
-  if (!foundationsComplete) return true;
-  return idx > 0 && !pathMissions[idx - 1].userProgress?.completed;
-}
-
 // ── Learning Path Section ──────────────────────────────────────────────────────
 interface PathSectionProps {
   meta: LearningPathMeta;
   missions: Mission[];
-  foundationsComplete: boolean;
   defaultOpen?: boolean;
 }
 
-const PathSection: React.FC<PathSectionProps> = ({ meta, missions, foundationsComplete, defaultOpen = false }) => {
+const PathSection: React.FC<PathSectionProps> = ({ meta, missions, defaultOpen = false }) => {
   const [open, setOpen] = useState(defaultOpen);
-  const isPathLocked = meta.slug !== 'foundations' && !foundationsComplete;
+
+  // A path is "locked" when every mission in it is locked (server-determined)
+  const isPathLocked = missions.length > 0 && missions.every((m) => m.isLocked);
   const completedInPath = missions.filter((m) => m.userProgress?.completed).length;
   const pct = missions.length > 0 ? (completedInPath / missions.length) * 100 : 0;
 
@@ -129,7 +110,8 @@ const PathSection: React.FC<PathSectionProps> = ({ meta, missions, foundationsCo
                 <MissionCard
                   key={mission.id}
                   mission={mission}
-                  isLocked={isMissionLocked(mission, missions, foundationsComplete)}
+                  // Trust the server-computed isLocked flag; fall back to false when absent
+                  isLocked={mission.isLocked ?? false}
                   index={i}
                 />
               ))}
@@ -248,8 +230,10 @@ export const DashboardPage: React.FC = () => {
               key={slug}
               meta={meta}
               missions={missionsByPath[slug] ?? []}
-              foundationsComplete={foundationsComplete}
-              defaultOpen={slug === 'foundations' || (foundationsComplete && slug === getRecommendedPath(user?.skillLevel, missionsByPath))}
+              defaultOpen={
+                slug === 'foundations' ||
+                (foundationsComplete && slug === getRecommendedPath(user?.skillLevel, missionsByPath))
+              }
             />
           ))}
         </div>
@@ -266,7 +250,7 @@ function levelThreshold(level: number): number {
 }
 
 /**
- * Returns the slug of the first non-foundations path that has incomplete missions,
+ * Returns the slug of the first non-foundations path that has incomplete missions
  * matching the user's skill level. Used to auto-expand the recommended path.
  */
 function getRecommendedPath(

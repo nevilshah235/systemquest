@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { runSimulation, Architecture } from '../services/simulationEngine';
+import { promoteIfEarned, SkillLevel } from '../services/skillService';
 
 export const simulationRouter = Router();
 const prisma = new PrismaClient();
@@ -32,7 +33,9 @@ simulationRouter.post('/run', authenticate, async (req: AuthRequest, res: Respon
       bonusComponents: requirements.bonus,
     });
 
-    // Save/update attempt if score qualifies (> 50)
+    // ── Persist attempt ──────────────────────────────────────────────────────
+    let skillPromotion: { promoted: boolean; newLevel: SkillLevel; derivedSkillLevel: SkillLevel } | null = null;
+
     if (metrics.score > 0) {
       const existing = await prisma.missionAttempt.findFirst({
         where: { userId: req.userId!, missionId: mission.id, completed: false },
@@ -66,30 +69,45 @@ simulationRouter.post('/run', authenticate, async (req: AuthRequest, res: Respon
         });
       }
 
-      // Award XP if mission completed
       if (completed) {
+        // Award XP and recalculate level
+        const updatedUser = await prisma.user.update({
+          where: { id: req.userId! },
+          data: { xp: { increment: xpEarned } },
+          select: { xp: true },
+        });
+        const newLevel = calculateLevel(updatedUser.xp);
         await prisma.user.update({
           where: { id: req.userId! },
-          data: {
-            xp: { increment: xpEarned },
-            level: { set: calculateLevel(xpEarned) },
-          },
+          data: { level: newLevel },
         });
+
+        // ── Adaptive skill promotion ──────────────────────────────────────────
+        // Re-evaluate the user's skill level based on their full completion history.
+        // If they've now scored ≥90 on 3+ missions at the next tier, upgrade them.
+        const promotion = await promoteIfEarned(req.userId!);
+        skillPromotion = promotion;
       }
     }
 
-    res.json({ metrics, missionTitle: mission.title });
+    res.json({
+      metrics,
+      missionTitle: mission.title,
+      // Included only on a completed run; null otherwise
+      skillPromotion,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Simulation failed' });
   }
 });
 
-function calculateLevel(xp: number): number {
-  if (xp < 100) return 1;
-  if (xp < 300) return 2;
-  if (xp < 600) return 3;
-  if (xp < 1000) return 4;
-  if (xp < 1500) return 5;
-  return Math.floor(xp / 300) + 1;
+// ── XP → Level threshold ──────────────────────────────────────────────────────────
+function calculateLevel(totalXp: number): number {
+  if (totalXp < 100)  return 1;
+  if (totalXp < 300)  return 2;
+  if (totalXp < 600)  return 3;
+  if (totalXp < 1000) return 4;
+  if (totalXp < 1500) return 5;
+  return Math.floor(totalXp / 300) + 1;
 }

@@ -6,6 +6,15 @@ export interface User {
   username: string;
   xp: number;
   level: number;
+  /** Stored / self-declared level. Default 'beginner'. Auto-upgraded by the server after promotion. */
+  skillLevel: string;
+  /**
+   * Performance-derived level computed from mission attempt history.
+   * Always >= skillLevel after a promotion event.
+   * Use this (or the higher of the two) for badge display and path recommendations.
+   * Absent on legacy/cached auth tokens — fall back to skillLevel.
+   */
+  derivedSkillLevel?: string;
 }
 
 export interface Mission {
@@ -22,6 +31,17 @@ export interface Mission {
   requirements: MissionRequirements;
   components: MissionComponents;
   feedbackData: FeedbackData;
+  /** foundations | async-queues | high-read | real-time | consistency | scale-streaming */
+  learningPath: string;
+  /** beginner | intermediate | advanced */
+  skillLevel: string;
+  /**
+   * Server-computed: true when the path-unlock rules prevent this mission from being played.
+   * Populated by GET /api/missions. Treat as false when absent (e.g. on single-mission fetch).
+   */
+  isLocked?: boolean;
+  /** Human-readable explanation of why the mission is locked, or null when unlocked. */
+  lockReason?: string | null;
   userProgress?: UserMissionProgress;
   savedArchitecture?: Architecture | null;
 }
@@ -84,7 +104,7 @@ export interface Connection {
   id: string;
   from: string;
   to: string;
-  label?: string;  // optional relationship label e.g. "queries", "HTTP", "data flow"
+  label?: string;
 }
 
 export interface Architecture {
@@ -102,6 +122,17 @@ export interface SimulationMetrics {
   bonusXp: number;
   feedback: FeedbackItem[];
   achievements: string[];
+}
+
+export interface SimulationResult {
+  metrics: SimulationMetrics;
+  missionTitle: string;
+  /** Present only when a completed run triggered a skill level upgrade */
+  skillPromotion: {
+    promoted: boolean;
+    newLevel: string;
+    derivedSkillLevel: string;
+  } | null;
 }
 
 export interface FeedbackItem {
@@ -134,6 +165,78 @@ export interface UserAchievement {
   icon: string;
   unlockedAt: string;
 }
+
+// ── Learning Path metadata ───────────────────────────────────────────────────────────
+
+export interface LearningPathMeta {
+  slug: string;
+  title: string;
+  icon: string;
+  description: string;
+  /** Tailwind border+bg colour classes for the path card */
+  colorClass: string;
+  /** Display order on dashboard */
+  order: number;
+  /** Minimum skill level label shown */
+  skillLabel: string;
+}
+
+export const LEARNING_PATHS: Record<string, LearningPathMeta> = {
+  'foundations': {
+    slug: 'foundations',
+    title: 'Foundations',
+    icon: '🏗️',
+    description: 'Core concepts every system designer must master',
+    colorClass: 'border-blue-500/40 bg-blue-500/5',
+    order: 0,
+    skillLabel: 'Beginner',
+  },
+  'async-queues': {
+    slug: 'async-queues',
+    title: 'Async & Queues',
+    icon: '⚡',
+    description: 'Decouple processing with message queues and workers',
+    colorClass: 'border-orange-500/40 bg-orange-500/5',
+    order: 1,
+    skillLabel: 'Intermediate',
+  },
+  'high-read': {
+    slug: 'high-read',
+    title: 'High-Read Systems',
+    icon: '🚀',
+    description: 'Caching, CDN, and read-path optimisation at scale',
+    colorClass: 'border-green-500/40 bg-green-500/5',
+    order: 2,
+    skillLabel: 'Intermediate → Advanced',
+  },
+  'real-time': {
+    slug: 'real-time',
+    title: 'Real-Time Systems',
+    icon: '📡',
+    description: 'Live data, pub/sub, and event streaming architectures',
+    colorClass: 'border-purple-500/40 bg-purple-500/5',
+    order: 3,
+    skillLabel: 'Intermediate → Advanced',
+  },
+  'consistency': {
+    slug: 'consistency',
+    title: 'Consistency & Transactions',
+    icon: '🔒',
+    description: 'Distributed locks, ACID guarantees, and correctness',
+    colorClass: 'border-red-500/40 bg-red-500/5',
+    order: 4,
+    skillLabel: 'Advanced',
+  },
+  'scale-streaming': {
+    slug: 'scale-streaming',
+    title: 'Scale & Streaming',
+    icon: '🌍',
+    description: 'Fan-out patterns, CDN-first delivery, and massive scale',
+    colorClass: 'border-cyan-500/40 bg-cyan-500/5',
+    order: 5,
+    skillLabel: 'Advanced',
+  },
+};
 
 // Component display metadata
 export const COMPONENT_META: Record<ComponentType, { label: string; icon: string; color: string; description: string }> = {

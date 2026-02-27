@@ -1,0 +1,43 @@
+{
+  "missionSlug": "design-instagram",
+  "components": [
+    { "id": "client", "label": "Mobile/Web Client", "description": "Uploads photos via pre-signed S3 URL; reads feed via API" },
+    { "id": "apigateway", "label": "API Gateway", "description": "Rate limiting, auth, request routing for upload and feed endpoints" },
+    { "id": "loadbalancer", "label": "Load Balancer", "description": "Distributes API traffic across app server fleet" },
+    { "id": "server", "label": "App Server", "description": "Handles upload metadata, feed pagination, like/comment writes" },
+    { "id": "queue", "label": "Fan-out Queue (Kafka)", "description": "Broadcasts new post events to feed-builder workers for follower timeline updates" },
+    { "id": "database", "label": "Database (PostgreSQL + Cassandra)", "description": "PostgreSQL for user graph and post metadata; Cassandra for feed timelines and activity" },
+    { "id": "cache", "label": "Feed Cache (Redis)", "description": "Stores pre-computed home feed (ordered post-id list) per user; read-through on miss" },
+    { "id": "storage", "label": "Object Storage (S3)", "description": "Stores original photos and all generated thumbnail variants" },
+    { "id": "cdn", "label": "CDN", "description": "Delivers photos from edge nodes; supports on-the-fly image resizing" },
+    { "id": "monitoring", "label": "Monitoring", "description": "Tracks upload throughput, fan-out queue depth, feed cache hit rate, CDN bandwidth" }
+  ],
+  "connections": [
+    { "from": "client", "to": "apigateway", "label": "API requests" },
+    { "from": "client", "to": "storage", "label": "Direct upload (pre-signed URL)" },
+    { "from": "apigateway", "to": "server", "label": "Route requests" },
+    { "from": "server", "to": "database", "label": "Write metadata / read social graph" },
+    { "from": "server", "to": "queue", "label": "Publish new-post event" },
+    { "from": "queue", "to": "server", "label": "Fan-out workers build follower feeds" },
+    { "from": "server", "to": "cache", "label": "Read/write feed cache" },
+    { "from": "storage", "to": "cdn", "label": "Origin pull" },
+    { "from": "cdn", "to": "client", "label": "Serve photos" }
+  ],
+  "keyInsights": [
+    "Direct S3 upload with pre-signed URLs offloads all photo bandwidth from app servers",
+    "Hybrid fan-out: push to cache for regular users (<10k followers), pull from DB for celebrities (>1M followers)",
+    "Feed cache stores only post IDs — full post data fetched in a single batched DB/cache read at display time",
+    "CDN image resizing at edge eliminates a dedicated image processing microservice for thumbnails"
+  ],
+  "tradeoffs": [
+    { "decision": "Fan-out on write vs pull on read", "pro": "Fan-out: O(1) feed reads; feed always fresh in cache", "con": "Celebrity posts fan-out to 50M caches — use hybrid pull for mega-accounts" },
+    { "decision": "Cassandra for feed storage", "pro": "Scales writes linearly; ideal for time-series feed data", "con": "Eventual consistency; no ad-hoc queries; schema must be query-driven" },
+    { "decision": "Pre-signed direct upload to S3", "pro": "Eliminates app server as upload proxy; scales infinitely", "con": "Client must make two requests (get URL, then upload); slightly more complex client logic" }
+  ],
+  "antiPatterns": [
+    "Routing photo uploads through app servers — saturates server bandwidth at 500M photos/day",
+    "Storing photo binary data in the relational database — kills query performance",
+    "Generating feeds on every read from the social graph — O(followers) per request at 1B users is catastrophic",
+    "Single CDN origin without regional replication — global latency spikes for non-US users"
+  ]
+}

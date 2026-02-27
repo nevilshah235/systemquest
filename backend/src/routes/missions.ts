@@ -5,7 +5,82 @@ import { authenticate, AuthRequest } from '../middleware/auth';
 export const missionRouter = Router();
 const prisma = new PrismaClient();
 
-// GET /api/missions — list all missions with user progress
+// ── Server-side path unlock logic ─────────────────────────────────────────────────
+/**
+ * Determines lock status for every mission based on:
+ *  1. Foundations path: sequential — first mission always open; next requires previous complete
+ *  2. Non-foundations paths: fully locked until the Foundations path is 100% complete
+ *  3. Within an unlocked non-foundations path: sequential unlock
+ */
+function computeLockedStatus(
+  missions: Array<{ id: number; order: number; learningPath: string }>,
+  completedIds: Set<number>,
+): Map<number, { isLocked: boolean; lockReason: string | null }> {
+  const result = new Map<number, { isLocked: boolean; lockReason: string | null }>();
+
+  // Group by path, sorted by global `order` (preserves within-path sequence)
+  const byPath = new Map<string, typeof missions>();
+  for (const m of missions) {
+    const group = byPath.get(m.learningPath) ?? [];
+    group.push(m);
+    byPath.set(m.learningPath, group);
+  }
+  for (const [path, group] of byPath) {
+    group.sort((a, b) => a.order - b.order);
+    byPath.set(path, group);
+  }
+
+  // Is the entire foundations path finished?
+  const foundationsMissions = byPath.get('foundations') ?? [];
+  const foundationsComplete =
+    foundationsMissions.length > 0 &&
+    foundationsMissions.every((m) => completedIds.has(m.id));
+
+  for (const [path, group] of byPath) {
+    if (path === 'foundations') {
+      // Sequential unlock within foundations
+      group.forEach((m, idx) => {
+        if (idx === 0) {
+          result.set(m.id, { isLocked: false, lockReason: null });
+        } else {
+          const prevDone = completedIds.has(group[idx - 1].id);
+          result.set(m.id, {
+            isLocked: !prevDone,
+            lockReason: prevDone ? null : 'Complete the previous mission to unlock this one',
+          });
+        }
+      });
+    } else {
+      if (!foundationsComplete) {
+        // Gate: entire non-foundations path is locked until Foundations finishes
+        group.forEach((m) =>
+          result.set(m.id, {
+            isLocked: true,
+            lockReason: 'Complete the Foundations path to unlock this learning path',
+          }),
+        );
+      } else {
+        // Sequential unlock within the now-open path
+        group.forEach((m, idx) => {
+          if (idx === 0) {
+            result.set(m.id, { isLocked: false, lockReason: null });
+          } else {
+            const prevDone = completedIds.has(group[idx - 1].id);
+            result.set(m.id, {
+              isLocked: !prevDone,
+              lockReason: prevDone ? null : 'Complete the previous mission in this path to unlock',
+            });
+          }
+        });
+      }
+    }
+  }
+
+  return result;
+}
+
+// ── GET /api/missions ─────────────────────────────────────────────────────────────
+// List all missions with user progress + server-enforced isLocked / lockReason fields
 missionRouter.get('/', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const missions = await prisma.mission.findMany({ orderBy: { order: 'asc' } });
@@ -14,15 +89,26 @@ missionRouter.get('/', authenticate, async (req: AuthRequest, res: Response): Pr
       orderBy: { updatedAt: 'desc' },
     });
 
+    const completedIds = new Set<number>(
+      attempts.filter((a) => a.completed).map((a) => a.missionId),
+    );
+    const lockStatus = computeLockedStatus(
+      missions.map((m) => ({ id: m.id, order: m.order, learningPath: m.learningPath })),
+      completedIds,
+    );
+
     const missionsWithProgress = missions.map((m) => {
       const userAttempts = attempts.filter((a) => a.missionId === m.id);
       const bestAttempt = userAttempts.find((a) => a.completed);
+      const lock = lockStatus.get(m.id) ?? { isLocked: false, lockReason: null };
       return {
         ...m,
         objectives: JSON.parse(m.objectives),
         requirements: JSON.parse(m.requirements),
         components: JSON.parse(m.components),
         feedbackData: JSON.parse(m.feedbackData),
+        isLocked: lock.isLocked,
+        lockReason: lock.lockReason,
         userProgress: {
           completed: !!bestAttempt,
           bestScore: bestAttempt?.score ?? null,
@@ -38,12 +124,30 @@ missionRouter.get('/', authenticate, async (req: AuthRequest, res: Response): Pr
   }
 });
 
-// GET /api/missions/:slug — single mission detail
+// ── GET /api/missions/:slug ───────────────────────────────────────────────────────
+// Single mission detail — returns 403 Forbidden if the mission is locked
 missionRouter.get('/:slug', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const mission = await prisma.mission.findUnique({ where: { slug: req.params.slug } });
     if (!mission) {
       res.status(404).json({ error: 'Mission not found' });
+      return;
+    }
+
+    // Re-derive lock status across all missions to enforce the gate server-side
+    const allMissions = await prisma.mission.findMany({ orderBy: { order: 'asc' } });
+    const attempts = await prisma.missionAttempt.findMany({ where: { userId: req.userId! } });
+    const completedIds = new Set<number>(
+      attempts.filter((a) => a.completed).map((a) => a.missionId),
+    );
+    const lockStatus = computeLockedStatus(
+      allMissions.map((m) => ({ id: m.id, order: m.order, learningPath: m.learningPath })),
+      completedIds,
+    );
+
+    const lock = lockStatus.get(mission.id) ?? { isLocked: false, lockReason: null };
+    if (lock.isLocked) {
+      res.status(403).json({ error: 'Mission locked', lockReason: lock.lockReason });
       return;
     }
 
@@ -66,7 +170,8 @@ missionRouter.get('/:slug', authenticate, async (req: AuthRequest, res: Response
   }
 });
 
-// POST /api/missions/:slug/save — auto-save architecture
+// ── POST /api/missions/:slug/save ─────────────────────────────────────────────────
+// Auto-save architecture draft
 missionRouter.post('/:slug/save', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const mission = await prisma.mission.findUnique({ where: { slug: req.params.slug } });

@@ -11,6 +11,9 @@ import { progressRouter } from './routes/progress';
 import { chatRouter } from './routes/chat';
 import { rubricRouter } from './routes/rubric';
 import { conceptsRouter } from './routes/concepts';
+import { lldRouter } from './routes/lld';
+import { comparisonRouter } from './routes/comparison';
+import { interviewRouter } from './routes/interview';
 import { logger } from './services/logger';
 
 dotenv.config();
@@ -36,6 +39,9 @@ app.use('/api/progress', progressRouter);
 app.use('/api/chat', chatRouter);
 app.use('/api/rubric', rubricRouter);
 app.use('/api/concepts', conceptsRouter);
+app.use('/api/lld', lldRouter);
+app.use('/api/comparison', comparisonRouter);
+app.use('/api/interview', interviewRouter);
 
 app.use((_req, res) => { res.status(404).json({ error: 'Route not found' }); });
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

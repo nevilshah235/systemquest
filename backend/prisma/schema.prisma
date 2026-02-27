@@ -19,8 +19,10 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  missionAttempts MissionAttempt[]
-  achievements    UserAchievement[]
+  missionAttempts   MissionAttempt[]
+  achievements      UserAchievement[]
+  lldAttempts       LLDAttempt[]
+  interviewSessions InterviewSession[]
 
   @@map("users")
 }
@@ -43,8 +45,16 @@ model Mission {
   learningPath  String  @default("foundations")
   /// Skill level gate: beginner | intermediate | advanced
   skillLevel    String  @default("beginner")
+  /// Whether the LLD phase is enabled for this mission
+  lldEnabled    Boolean @default(false)
+  /// JSON: LLDContent — classes, apiEndpoints, dataSchema, keyEntities
+  lldContent    String?
+  /// JSON: ReferenceSolution — components, connections, keyInsights, tradeoffs, antiPatterns
+  referenceSolution String?
 
-  missionAttempts MissionAttempt[]
+  missionAttempts   MissionAttempt[]
+  lldAttempts       LLDAttempt[]
+  interviewSessions InterviewSession[]
 
   @@map("missions")
 }
@@ -58,6 +68,8 @@ model MissionAttempt {
   completed    Boolean  @default(false)
   architecture String   @default("{}") // JSON - saved architecture
   metrics      String   @default("{}") // JSON - simulation metrics
+  /// True once the user has opened the Compare panel for this attempt
+  comparisonViewed Boolean @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -65,6 +77,62 @@ model MissionAttempt {
   mission Mission @relation(fields: [missionId], references: [id], onDelete: Cascade)
 
   @@map("mission_attempts")
+}
+
+/// LLD Phase submission — stores the user's class design, API contracts, and data schema
+model LLDAttempt {
+  id           String   @id @default(cuid())
+  userId       String
+  missionId    String
+  /// User's class/entity design — free-form text or structured JSON
+  classDesign  String   @default("")
+  /// User's API endpoint contracts — e.g. "POST /messages → { chatId, content }"
+  apiContracts String   @default("")
+  /// User's data schema — table/collection definitions
+  dataSchema   String   @default("")
+  /// Computed score 0-100
+  score        Int      @default(0)
+  /// JSON array of feedback items
+  feedback     String   @default("[]")
+  /// XP earned from this LLD attempt
+  xpEarned     Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mission Mission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+
+  @@map("lld_attempts")
+}
+
+/// Interview simulation session — timed 45-min FAANG-style system design session
+model InterviewSession {
+  id              String    @id @default(cuid())
+  userId          String
+  missionId       String
+  /// active | completed | abandoned
+  status          String    @default("active")
+  /// Allowed duration in minutes (default 45)
+  durationMinutes Int       @default(45)
+  startedAt       DateTime  @default(now())
+  submittedAt     DateTime?
+  /// JSON: array of { questionId, askedAt, userAnswer }
+  followupLog     String    @default("[]")
+  /// JSON: RubricScores { correctness, depth, tradeoffs, apiDesign, timeManagement }
+  rubricScores    String    @default("{}")
+  /// Overall score 0-100 computed from rubric
+  totalScore      Int       @default(0)
+  /// XP awarded for this session
+  xpEarned        Int       @default(0)
+  /// Snapshot of the architecture submitted at end
+  finalArchitecture String  @default("{}")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mission Mission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+
+  @@map("interview_sessions")
 }
 
 model Achievement {

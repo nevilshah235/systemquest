@@ -492,7 +492,67 @@ async function main() {
     },
   });
 
-  console.log('✅ Seed complete! 13 missions across 6 learning paths.');
+  // ── SCALE & STREAMING PATH — Mission 15: Design Instagram ───────────────────
+
+  const instagramComponents = JSON.stringify({
+    available: ['client', 'loadbalancer', 'server', 'database', 'cache', 'cdn', 'queue', 'storage', 'monitoring', 'apigateway'],
+    required: ['client', 'server', 'database', 'cache', 'storage', 'cdn'],
+    hints: [
+      'Storage + CDN are the backbone — 500M photos/day means all media bypasses app servers entirely',
+      'Queue fans out new posts to follower feed caches (fan-out on write for most users)',
+      'Cache stores pre-computed home feeds — reading a feed must NEVER hit the database directly',
+      'Database stores user graph, post metadata, and likes — not the photo binary data',
+    ],
+  });
+  await prisma.mission.upsert({
+    where: { slug: 'design-instagram' },
+    update: { components: instagramComponents, learningPath: 'scale-streaming', skillLevel: 'advanced' },
+    create: {
+      slug: 'design-instagram',
+      title: 'Mission 15: Design Instagram',
+      difficulty: 5,
+      estimatedTime: '40-50 min',
+      xpReward: 1100,
+      order: 15,
+      learningPath: 'scale-streaming',
+      skillLevel: 'advanced',
+      description: 'Design a photo-sharing platform that ingests 500 million photos per day, generates personalised feeds for 1 billion users, and delivers media globally via CDN.',
+      scenario: "Instagram just hit 1 billion monthly active users. Users upload 500M photos daily. Your job: design the photo upload pipeline, the personalised home feed, and the global media delivery infrastructure. A celebrity's post must fan-out to 50M followers' feeds within seconds.",
+      objectives: JSON.stringify([
+        'Handle 500 million photo uploads per day (≈5,800/sec)',
+        'Generate and serve personalised feeds for 1 billion users under 200ms',
+        'Deliver photos globally via CDN with sub-100ms time-to-first-byte',
+        'Support fan-out for celebrity accounts (50M+ followers)',
+        'Maintain 99.99% availability',
+      ]),
+      requirements: JSON.stringify({
+        traffic: { concurrent: 10000000, daily: 500000000 },
+        performance: { latencyMs: 200, availability: 99.99 },
+        budget: 80000,
+        growth: '1B users, 500M uploads/day',
+        required: ['client', 'server', 'database', 'cache', 'storage', 'cdn'],
+        bonus: [
+          { component: 'queue', xp: 45, label: 'Add fan-out queue for feed generation (+45 XP)' },
+          { component: 'loadbalancer', xp: 35, label: 'Add Load Balancer (+35 XP)' },
+          { component: 'monitoring', xp: 30, label: 'Add monitoring (+30 XP)' },
+          { component: 'apigateway', xp: 35, label: 'Add API Gateway (+35 XP)' },
+        ],
+      }),
+      components: instagramComponents,
+      feedbackData: JSON.stringify({
+        learned: [
+          'Fan-out on write pre-computes feeds for fast reads — hybrid (fan-out + pull) for celebrity accounts',
+          'Photo upload path: client → pre-signed S3 URL (direct upload) → async processing queue → CDN propagation',
+          'Feed cache stores ordered post-id lists per user — never full post objects (avoids cache bloat)',
+          'CDN with image resizing at edge eliminates separate thumbnail generation infrastructure',
+        ],
+        nextMission: 'video-streaming',
+        nextPreview: 'Scale & Streaming continues — now stream video to 500k concurrent viewers!',
+      }),
+    },
+  });
+
+  console.log('✅ Seed complete! 15 missions across 6 learning paths.');
 }
 
 main()

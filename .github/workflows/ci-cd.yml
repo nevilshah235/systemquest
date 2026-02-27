@@ -1,0 +1,330 @@
+# .github/workflows/ci-cd.yml
+# SystemQuest CI/CD Pipeline
+# Runs on every branch push and on PRs targeting main/develop.
+# All jobs must pass before a PR can merge to main.
+
+name: SystemQuest CI/CD
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main, develop]
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  # ────────────────────────────────────────────────────────────────────────────
+  # JOB 1: Lint & Type Check (fast gate — runs first, unblocks remaining jobs)
+  # ────────────────────────────────────────────────────────────────────────────
+  lint-typecheck:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            frontend/package-lock.json
+            backend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Type-check frontend
+        working-directory: ./frontend
+        run: npm run type-check
+
+      - name: Type-check backend
+        working-directory: ./backend
+        run: npm run type-check
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # JOB 2: Build Verification (frontend Vite build + backend tsc)
+  # ────────────────────────────────────────────────────────────────────────────
+  build:
+    name: Build Verification
+    runs-on: ubuntu-latest
+    needs: lint-typecheck
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            frontend/package-lock.json
+            backend/package-lock.json
+
+      - name: Install & build frontend
+        working-directory: ./frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Install & build backend
+        working-directory: ./backend
+        run: |
+          npm ci
+          npx prisma generate
+          npm run build
+
+      - name: Upload frontend build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+          retention-days: 3
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # JOB 3: Backend Unit Tests (no database required)
+  # ────────────────────────────────────────────────────────────────────────────
+  unit-tests:
+    name: Backend Unit Tests
+    runs-on: ubuntu-latest
+    needs: lint-typecheck
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Generate Prisma client
+        working-directory: ./backend
+        run: npx prisma generate
+
+      - name: Run backend unit tests
+        working-directory: ./backend
+        env:
+          NODE_ENV: test
+          JWT_SECRET: ci-test-jwt-secret-key-32chars!!
+          JWT_REFRESH_SECRET: ci-test-refresh-secret-32chars!!
+          DATABASE_URL: file:./prisma/test.db
+        run: npm run test:unit -- --coverage
+
+      - name: Upload unit test coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-backend-unit
+          path: coverage/backend/
+          retention-days: 7
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # JOB 4: Backend Integration Tests (SQLite test DB, no external services needed)
+  # ────────────────────────────────────────────────────────────────────────────
+  integration-tests:
+    name: Backend Integration Tests
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Generate Prisma client & push schema to test DB
+        working-directory: ./backend
+        env:
+          DATABASE_URL: file:./prisma/test.db
+        run: |
+          npx prisma generate
+          npx prisma db push --accept-data-loss --skip-generate
+
+      - name: Run backend integration tests
+        working-directory: ./backend
+        env:
+          NODE_ENV: test
+          DATABASE_URL: file:./prisma/test.db
+          JWT_SECRET: ci-test-jwt-secret-key-32chars!!
+          JWT_REFRESH_SECRET: ci-test-refresh-secret-32chars!!
+          JWT_EXPIRES_IN: 15m
+          JWT_REFRESH_EXPIRES_IN: 7d
+        run: npm run test:integration -- --coverage
+
+      - name: Upload integration test coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-backend-integration
+          path: coverage/backend/
+          retention-days: 7
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # JOB 5: Frontend Unit Tests (Vitest + jsdom)
+  # ────────────────────────────────────────────────────────────────────────────
+  frontend-unit-tests:
+    name: Frontend Unit Tests
+    runs-on: ubuntu-latest
+    needs: lint-typecheck
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Run frontend unit tests
+        working-directory: ./frontend
+        run: npm run test:unit -- --coverage
+
+      - name: Upload frontend coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-frontend
+          path: coverage/frontend/
+          retention-days: 7
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # JOB 6: E2E Tests (Playwright — PR to main/develop only to save minutes)
+  # ────────────────────────────────────────────────────────────────────────────
+  e2e-tests:
+    name: E2E Tests (Playwright)
+    runs-on: ubuntu-latest
+    needs: [integration-tests, build]
+    # Run E2E on PRs to main/develop and direct pushes to main
+    if: >
+      github.event_name == 'pull_request' ||
+      github.ref == 'refs/heads/main' ||
+      github.ref == 'refs/heads/develop'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            frontend/package-lock.json
+            backend/package-lock.json
+
+      - name: Install all dependencies
+        run: |
+          cd frontend && npm ci
+          cd ../backend && npm ci
+
+      - name: Generate Prisma client & push test schema
+        working-directory: ./backend
+        env:
+          DATABASE_URL: file:./prisma/test.db
+        run: |
+          npx prisma generate
+          npx prisma db push --accept-data-loss --skip-generate
+
+      - name: Build frontend
+        working-directory: ./frontend
+        run: npm run build
+
+      - name: Start backend server
+        working-directory: ./backend
+        env:
+          DATABASE_URL: file:./prisma/test.db
+          JWT_SECRET: ci-test-jwt-secret-key-32chars!!
+          JWT_REFRESH_SECRET: ci-test-refresh-secret-32chars!!
+          NODE_ENV: production
+          PORT: 4000
+        run: |
+          npx prisma generate
+          npm run build
+          nohup node dist/index.js > /tmp/backend.log 2>&1 &
+          echo "Backend PID: $!"
+
+      - name: Serve frontend (static)
+        run: |
+          npm install -g serve
+          nohup serve frontend/dist -p 3000 > /tmp/frontend.log 2>&1 &
+
+      - name: Wait for services to be ready
+        run: |
+          npx wait-on http://localhost:4000/health http://localhost:3000 --timeout 30000
+
+      - name: Install Playwright browsers
+        working-directory: ./frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        working-directory: ./frontend
+        env:
+          CI: 'true'
+          PLAYWRIGHT_BASE_URL: http://localhost:3000
+          VITE_API_URL: http://localhost:4000
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 7
+
+      - name: Upload backend logs on failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-server-logs
+          path: /tmp/*.log
+          retention-days: 3
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # JOB 7: CI Status Gate — single required check for branch protection rules
+  # ────────────────────────────────────────────────────────────────────────────
+  ci-gate:
+    name: CI Gate (all checks passed)
+    runs-on: ubuntu-latest
+    needs:
+      - lint-typecheck
+      - build
+      - unit-tests
+      - integration-tests
+      - frontend-unit-tests
+    if: always()
+    steps:
+      - name: Check all required jobs passed
+        run: |
+          if [[ "${{ needs.lint-typecheck.result }}" != "success" ||
+                "${{ needs.build.result }}" != "success" ||
+                "${{ needs.unit-tests.result }}" != "success" ||
+                "${{ needs.integration-tests.result }}" != "success" ||
+                "${{ needs.frontend-unit-tests.result }}" != "success" ]]; then
+            echo "One or more required CI jobs failed."
+            exit 1
+          fi
+          echo "All CI gates passed ✅"

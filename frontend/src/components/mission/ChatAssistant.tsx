@@ -55,7 +55,6 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
         {isUser ? msg.content : renderMarkdown(msg.content)}
       </div>
 
-      {/* Action badges below assistant messages */}
       {!isUser && msg.actions && msg.actions.length > 0 && (
         <div className="flex flex-wrap gap-1 max-w-[85%]">
           {msg.actions.map((a, i) => (
@@ -104,7 +103,6 @@ export const ChatAssistant: React.FC<ChatAssistantProps> = ({ missionSlug }) => 
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Auto-scroll to bottom on new messages
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);

@@ -492,7 +492,67 @@ async function main() {
     },
   });
 
-  console.log('✅ Seed complete! 13 missions across 6 learning paths.');
+  // ── REAL-TIME PATH — Mission 14: Design WhatsApp ──────────────────────────────
+
+  const whatsappComponents = JSON.stringify({
+    available: ['client', 'loadbalancer', 'server', 'database', 'cache', 'cdn', 'queue', 'storage', 'monitoring', 'apigateway'],
+    required: ['client', 'server', 'database', 'cache', 'queue'],
+    hints: [
+      'Queue (pub/sub) routes messages between sender and recipient server nodes — never poll the DB for new messages',
+      'Cache stores online-presence status and undelivered message queues for 2B users',
+      'Storage holds media files (images, video, voice notes) — never store binary in the database',
+      'API Gateway manages persistent WebSocket connections for real-time message delivery',
+    ],
+  });
+  await prisma.mission.upsert({
+    where: { slug: 'design-whatsapp' },
+    update: { components: whatsappComponents, learningPath: 'real-time', skillLevel: 'advanced' },
+    create: {
+      slug: 'design-whatsapp',
+      title: 'Mission 14: Design WhatsApp',
+      difficulty: 5,
+      estimatedTime: '40-50 min',
+      xpReward: 1100,
+      order: 14,
+      learningPath: 'real-time',
+      skillLevel: 'advanced',
+      description: 'Design a real-time messaging platform that delivers 100 billion messages per day to 2 billion users with end-to-end encryption and offline delivery guarantees.',
+      scenario: "You're the lead architect at a messaging startup that just hit 2 billion monthly active users. The board demands 100B messages/day capacity, sub-200ms delivery latency globally, and guaranteed delivery even when recipients are offline. How do you design the core messaging infrastructure?",
+      objectives: JSON.stringify([
+        'Handle 100 billion messages per day (≈1.16M messages/sec)',
+        'Deliver messages in under 200ms globally',
+        'Guarantee delivery to offline users via durable message queues',
+        'Support media attachments (images, video, voice) at scale',
+        'Maintain 99.99% availability',
+      ]),
+      requirements: JSON.stringify({
+        traffic: { concurrent: 100000000, daily: 100000000000 },
+        performance: { latencyMs: 200, availability: 99.99 },
+        budget: 50000,
+        growth: '2B users, 60B+ messages/day baseline',
+        required: ['client', 'server', 'database', 'cache', 'queue'],
+        bonus: [
+          { component: 'storage', xp: 45, label: 'Add object storage for media (+45 XP)' },
+          { component: 'cdn', xp: 40, label: 'Add CDN for media delivery (+40 XP)' },
+          { component: 'monitoring', xp: 30, label: 'Add monitoring (+30 XP)' },
+          { component: 'apigateway', xp: 35, label: 'Add API Gateway for WebSocket management (+35 XP)' },
+        ],
+      }),
+      components: whatsappComponents,
+      feedbackData: JSON.stringify({
+        learned: [
+          'Fan-out service routes messages via pub/sub queues — direct DB polling cannot scale to 1M msgs/sec',
+          'Separate message store (Cassandra-style wide-column) from presence/status store (Redis)',
+          'Offline delivery queues guarantee at-least-once delivery when recipients reconnect',
+          'Media always goes through object storage + CDN — never inline in message payloads',
+        ],
+        nextMission: 'ride-hailing',
+        nextPreview: 'Real-Time path continues — match drivers to riders in real time!',
+      }),
+    },
+  });
+
+  console.log('✅ Seed complete! 14 missions across 6 learning paths.');
 }
 
 main()

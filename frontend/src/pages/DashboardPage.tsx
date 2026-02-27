@@ -13,6 +13,18 @@ const SKILL_DISPLAY: Record<string, { label: string; icon: string; cls: string }
   advanced:     { label: 'Advanced',     icon: '🔥', cls: 'bg-red-900/40 text-red-300 border-red-700/50' },
 };
 
+/**
+ * Resolves the single skill level to show in the UI.
+ * Uses the higher of derivedSkillLevel (performance-based) and skillLevel (stored/override).
+ * Falls back to 'beginner' when neither is set (e.g. cached auth token missing the field).
+ */
+function resolveDisplaySkill(skillLevel?: string, derivedSkillLevel?: string): string {
+  const order = ['beginner', 'intermediate', 'advanced'];
+  const stored  = order.indexOf(skillLevel ?? 'beginner');
+  const derived = order.indexOf(derivedSkillLevel ?? 'beginner');
+  return order[Math.max(stored, derived)] ?? 'beginner';
+}
+
 // ── Group missions by learning path and sort within each group ───────────────
 function groupByPath(missions: Mission[]): Record<string, Mission[]> {
   const groups: Record<string, Mission[]> = {};
@@ -37,7 +49,7 @@ interface PathSectionProps {
 const PathSection: React.FC<PathSectionProps> = ({ meta, missions, defaultOpen = false }) => {
   const [open, setOpen] = useState(defaultOpen);
 
-  // A path is "locked" when every mission in it is locked (server-determined)
+  // A path is "locked" when every mission in it carries the server-set isLocked flag
   const isPathLocked = missions.length > 0 && missions.every((m) => m.isLocked);
   const completedInPath = missions.filter((m) => m.userProgress?.completed).length;
   const pct = missions.length > 0 ? (completedInPath / missions.length) * 100 : 0;
@@ -133,9 +145,12 @@ export const DashboardPage: React.FC = () => {
   const completedCount  = missions.filter((m) => m.userProgress?.completed).length;
   const totalXP         = user?.xp ?? 0;
   const userLevel       = user?.level ?? 1;
-  const skillDisplay    = SKILL_DISPLAY[user?.skillLevel ?? 'beginner'];
   const xpThisLevel     = totalXP - levelThreshold(userLevel);
   const xpForLevel      = levelThreshold(userLevel + 1) - levelThreshold(userLevel);
+
+  // Use the higher of derived (performance) and stored (self-declared) skill levels for display
+  const displaySkill    = resolveDisplaySkill(user?.skillLevel, user?.derivedSkillLevel);
+  const skillDisplay    = SKILL_DISPLAY[displaySkill];
 
   const missionsByPath  = groupByPath(missions);
   const foundationMissions = missionsByPath['foundations'] ?? [];
@@ -163,7 +178,7 @@ export const DashboardPage: React.FC = () => {
                 : `${completedCount} of ${missions.length} missions completed`}
             </p>
           </div>
-          {/* Skill level badge */}
+          {/* Skill level badge — reflects performance-derived level, not just stored override */}
           {skillDisplay && (
             <span className={`badge border px-3 py-1 text-sm font-medium ${skillDisplay.cls}`}>
               {skillDisplay.icon} {skillDisplay.label}
@@ -232,7 +247,7 @@ export const DashboardPage: React.FC = () => {
               missions={missionsByPath[slug] ?? []}
               defaultOpen={
                 slug === 'foundations' ||
-                (foundationsComplete && slug === getRecommendedPath(user?.skillLevel, missionsByPath))
+                (foundationsComplete && slug === getRecommendedPath(displaySkill, missionsByPath))
               }
             />
           ))}
@@ -251,22 +266,21 @@ function levelThreshold(level: number): number {
 
 /**
  * Returns the slug of the first non-foundations path that has incomplete missions
- * matching the user's skill level. Used to auto-expand the recommended path.
+ * matching the user's resolved skill level. Used to auto-expand the recommended path.
  */
 function getRecommendedPath(
-  userSkill: string | undefined,
+  displaySkill: string,
   missionsByPath: Record<string, Mission[]>,
 ): string {
-  const skill = userSkill ?? 'beginner';
   const pathOrder = Object.entries(LEARNING_PATHS)
     .sort(([, a], [, b]) => a.order - b.order)
     .map(([slug]) => slug)
     .filter((s) => s !== 'foundations');
 
-  // Prefer paths with missions matching user's skill level that are not yet complete
+  // Prefer paths with missions matching the user's effective skill level that are incomplete
   for (const slug of pathOrder) {
     const pathMissions = missionsByPath[slug] ?? [];
-    const hasMatchingSkill = pathMissions.some((m) => m.skillLevel === skill);
+    const hasMatchingSkill = pathMissions.some((m) => m.skillLevel === displaySkill);
     const hasIncomplete = pathMissions.some((m) => !m.userProgress?.completed);
     if (hasMatchingSkill && hasIncomplete) return slug;
   }

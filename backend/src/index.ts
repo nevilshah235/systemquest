@@ -14,6 +14,8 @@ import { conceptsRouter } from './routes/concepts';
 import { lldRouter } from './routes/lld';
 import { comparisonRouter } from './routes/comparison';
 import { interviewRouter } from './routes/interview';
+import { reviewRouter } from './routes/review';
+import { patternsRouter } from './routes/patterns';
 import { logger } from './services/logger';
 
 dotenv.config();
@@ -32,16 +34,19 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'systemquest-api' });
 });
 
-app.use('/api/auth', authRouter);
-app.use('/api/missions', missionRouter);
+app.use('/api/auth',       authRouter);
+app.use('/api/missions',   missionRouter);
 app.use('/api/simulation', simulationRouter);
-app.use('/api/progress', progressRouter);
-app.use('/api/chat', chatRouter);
-app.use('/api/rubric', rubricRouter);
-app.use('/api/concepts', conceptsRouter);
-app.use('/api/lld', lldRouter);
+app.use('/api/progress',   progressRouter);
+app.use('/api/chat',       chatRouter);
+app.use('/api/rubric',     rubricRouter);
+app.use('/api/concepts',   conceptsRouter);
+app.use('/api/lld',        lldRouter);
 app.use('/api/comparison', comparisonRouter);
-app.use('/api/interview', interviewRouter);
+app.use('/api/interview',  interviewRouter);
+// ── Sprint 2 routes ────────────────────────────────────────────────────────────
+app.use('/api/review',     reviewRouter);   // F-005 Spaced Repetition
+app.use('/api/patterns',   patternsRouter); // F-003 Mistake Patterns
 
 app.use((_req, res) => { res.status(404).json({ error: 'Route not found' }); });
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

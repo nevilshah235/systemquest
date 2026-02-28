@@ -3,6 +3,8 @@ import { PrismaClient } from '@prisma/client';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { runSimulation, Architecture } from '../services/simulationEngine';
 import { promoteIfEarned, SkillLevel } from '../services/skillService';
+import { upsertSRItem } from '../services/spacedRepetitionService';
+import { refreshMistakePatterns } from '../services/mistakePatternService';
 
 export const simulationRouter = Router();
 const prisma = new PrismaClient();
@@ -69,6 +71,11 @@ simulationRouter.post('/run', authenticate, async (req: AuthRequest, res: Respon
         });
       }
 
+      // ── F-005: Spaced Repetition — update SR queue (fire-and-forget) ──────
+      upsertSRItem(req.userId!, mission.id, metrics.score).catch((err) => {
+        console.error('[SR] upsertSRItem failed:', err?.message);
+      });
+
       if (completed) {
         // Award XP and recalculate level
         const updatedUser = await prisma.user.update({
@@ -83,17 +90,19 @@ simulationRouter.post('/run', authenticate, async (req: AuthRequest, res: Respon
         });
 
         // ── Adaptive skill promotion ──────────────────────────────────────────
-        // Re-evaluate the user's skill level based on their full completion history.
-        // If they've now scored ≥90 on 3+ missions at the next tier, upgrade them.
         const promotion = await promoteIfEarned(req.userId!);
         skillPromotion = promotion;
+
+        // ── F-003: Mistake Patterns — refresh report async ───────────────────
+        refreshMistakePatterns(req.userId!).catch((err) => {
+          console.error('[Patterns] refresh failed:', err?.message);
+        });
       }
     }
 
     res.json({
       metrics,
       missionTitle: mission.title,
-      // Included only on a completed run; null otherwise
       skillPromotion,
     });
   } catch (err) {

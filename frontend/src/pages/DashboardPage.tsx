@@ -3,21 +3,17 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useMissionStore } from '../stores/missionStore';
 import { useAuthStore } from '../stores/authStore';
 import { MissionCard } from '../components/dashboard/MissionCard';
+import { DueForReviewWidget } from '../components/dashboard/DueForReviewWidget';
 import { XPBar } from '../components/ui/XPBar';
 import { Mission, LEARNING_PATHS, LearningPathMeta } from '../data/types';
 
-// ── Skill level display config ──────────────────────────────────────────────────────
+// ── Skill level display config ──────────────────────────────────────────────────
 const SKILL_DISPLAY: Record<string, { label: string; icon: string; cls: string }> = {
   beginner:     { label: 'Beginner',     icon: '🌱', cls: 'bg-green-900/40 text-green-300 border-green-700/50' },
   intermediate: { label: 'Intermediate', icon: '📈', cls: 'bg-yellow-900/40 text-yellow-300 border-yellow-700/50' },
   advanced:     { label: 'Advanced',     icon: '🔥', cls: 'bg-red-900/40 text-red-300 border-red-700/50' },
 };
 
-/**
- * Resolves the single skill level to show in the UI.
- * Uses the higher of derivedSkillLevel (performance-based) and skillLevel (stored/override).
- * Falls back to 'beginner' when neither is set (e.g. cached auth token missing the field).
- */
 function resolveDisplaySkill(skillLevel?: string, derivedSkillLevel?: string): string {
   const order = ['beginner', 'intermediate', 'advanced'];
   const stored  = order.indexOf(skillLevel ?? 'beginner');
@@ -25,7 +21,6 @@ function resolveDisplaySkill(skillLevel?: string, derivedSkillLevel?: string): s
   return order[Math.max(stored, derived)] ?? 'beginner';
 }
 
-// ── Group missions by learning path and sort within each group ───────────────
 function groupByPath(missions: Mission[]): Record<string, Mission[]> {
   const groups: Record<string, Mission[]> = {};
   for (const m of missions) {
@@ -39,7 +34,7 @@ function groupByPath(missions: Mission[]): Record<string, Mission[]> {
   return groups;
 }
 
-// ── Learning Path Section ──────────────────────────────────────────────────────
+// ── Learning Path Section ──────────────────────────────────────────────────
 interface PathSectionProps {
   meta: LearningPathMeta;
   missions: Mission[];
@@ -49,7 +44,6 @@ interface PathSectionProps {
 const PathSection: React.FC<PathSectionProps> = ({ meta, missions, defaultOpen = false }) => {
   const [open, setOpen] = useState(defaultOpen);
 
-  // A path is "locked" when every mission in it carries the server-set isLocked flag
   const isPathLocked = missions.length > 0 && missions.every((m) => m.isLocked);
   const completedInPath = missions.filter((m) => m.userProgress?.completed).length;
   const pct = missions.length > 0 ? (completedInPath / missions.length) * 100 : 0;
@@ -60,7 +54,6 @@ const PathSection: React.FC<PathSectionProps> = ({ meta, missions, defaultOpen =
       animate={{ opacity: 1, y: 0 }}
       className={`mb-6 rounded-xl border-2 overflow-hidden ${meta.colorClass} ${isPathLocked ? 'opacity-60' : ''}`}
     >
-      {/* Path header — click to collapse/expand */}
       <button
         className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-white/5 transition-colors"
         onClick={() => setOpen((v) => !v)}
@@ -81,14 +74,12 @@ const PathSection: React.FC<PathSectionProps> = ({ meta, missions, defaultOpen =
         </div>
 
         <div className="flex items-center gap-3 flex-shrink-0 ml-4">
-          {/* Progress pill */}
           <div className="text-right">
             <div className="text-sm font-semibold text-gray-300">
               {completedInPath}<span className="text-gray-600">/{missions.length}</span>
             </div>
             <div className="text-xs text-gray-500">completed</div>
           </div>
-          {/* Chevron */}
           <svg
             className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
             fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
@@ -98,7 +89,6 @@ const PathSection: React.FC<PathSectionProps> = ({ meta, missions, defaultOpen =
         </div>
       </button>
 
-      {/* Progress bar */}
       <div className="h-0.5 bg-gray-800">
         <div
           className="h-full bg-gradient-to-r from-brand-500 to-brand-400 transition-all duration-500"
@@ -106,7 +96,6 @@ const PathSection: React.FC<PathSectionProps> = ({ meta, missions, defaultOpen =
         />
       </div>
 
-      {/* Mission cards */}
       <AnimatePresence initial={false}>
         {open && (
           <motion.div
@@ -122,7 +111,6 @@ const PathSection: React.FC<PathSectionProps> = ({ meta, missions, defaultOpen =
                 <MissionCard
                   key={mission.id}
                   mission={mission}
-                  // Trust the server-computed isLocked flag; fall back to false when absent
                   isLocked={mission.isLocked ?? false}
                   index={i}
                 />
@@ -135,7 +123,7 @@ const PathSection: React.FC<PathSectionProps> = ({ meta, missions, defaultOpen =
   );
 };
 
-// ── Dashboard Page ─────────────────────────────────────────────────────────────────
+// ── Dashboard Page ───────────────────────────────────────────────────────────────
 export const DashboardPage: React.FC = () => {
   const { missions, fetchMissions, isLoading } = useMissionStore();
   const { user } = useAuthStore();
@@ -148,7 +136,6 @@ export const DashboardPage: React.FC = () => {
   const xpThisLevel     = totalXP - levelThreshold(userLevel);
   const xpForLevel      = levelThreshold(userLevel + 1) - levelThreshold(userLevel);
 
-  // Use the higher of derived (performance) and stored (self-declared) skill levels for display
   const displaySkill    = resolveDisplaySkill(user?.skillLevel, user?.derivedSkillLevel);
   const skillDisplay    = SKILL_DISPLAY[displaySkill];
 
@@ -157,7 +144,6 @@ export const DashboardPage: React.FC = () => {
   const foundationsComplete = foundationMissions.length > 0 &&
     foundationMissions.every((m) => m.userProgress?.completed);
 
-  // Order paths for display
   const orderedPaths = Object.entries(LEARNING_PATHS)
     .sort(([, a], [, b]) => a.order - b.order)
     .filter(([slug]) => (missionsByPath[slug]?.length ?? 0) > 0);
@@ -178,7 +164,6 @@ export const DashboardPage: React.FC = () => {
                 : `${completedCount} of ${missions.length} missions completed`}
             </p>
           </div>
-          {/* Skill level badge — reflects performance-derived level, not just stored override */}
           {skillDisplay && (
             <span className={`badge border px-3 py-1 text-sm font-medium ${skillDisplay.cls}`}>
               {skillDisplay.icon} {skillDisplay.label}
@@ -198,7 +183,7 @@ export const DashboardPage: React.FC = () => {
       </motion.div>
 
       {/* Stats overview */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-3 gap-4 mb-6">
         {([
           { icon: '✅', label: 'Completed', value: completedCount },
           { icon: '⭐', label: 'Total XP',  value: totalXP },
@@ -217,7 +202,15 @@ export const DashboardPage: React.FC = () => {
         ))}
       </div>
 
-      {/* ── Foundations progress notice ─────────────────────────────────────── */}
+      {/* ── F-005: Due for Review widget ───────────────────────────────── */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1, transition: { delay: 0.2 } }}
+      >
+        <DueForReviewWidget />
+      </motion.div>
+
+      {/* Foundations progress notice */}
       {!foundationsComplete && foundationMissions.length > 0 && (
         <motion.div
           initial={{ opacity: 0 }}
@@ -231,7 +224,7 @@ export const DashboardPage: React.FC = () => {
         </motion.div>
       )}
 
-      {/* ── Learning path sections ────────────────────────────────────────── */}
+      {/* Learning path sections */}
       {isLoading ? (
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
@@ -257,17 +250,13 @@ export const DashboardPage: React.FC = () => {
   );
 };
 
-// ── Helpers ────────────────────────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 function levelThreshold(level: number): number {
   const t: Record<number, number> = { 1: 0, 2: 100, 3: 300, 4: 600, 5: 1000, 6: 1500 };
   return t[level] ?? level * 300;
 }
 
-/**
- * Returns the slug of the first non-foundations path that has incomplete missions
- * matching the user's resolved skill level. Used to auto-expand the recommended path.
- */
 function getRecommendedPath(
   displaySkill: string,
   missionsByPath: Record<string, Mission[]>,
@@ -277,7 +266,6 @@ function getRecommendedPath(
     .map(([slug]) => slug)
     .filter((s) => s !== 'foundations');
 
-  // Prefer paths with missions matching the user's effective skill level that are incomplete
   for (const slug of pathOrder) {
     const pathMissions = missionsByPath[slug] ?? [];
     const hasMatchingSkill = pathMissions.some((m) => m.skillLevel === displaySkill);
@@ -285,6 +273,9 @@ function getRecommendedPath(
     if (hasMatchingSkill && hasIncomplete) return slug;
   }
 
-  // Fallback: first path with incomplete missions
-  return pathOrder.find((slug) => (missionsByPath[slug] ?? []).some((m) => !m.userProgress?.completed)) ?? 'async-queues';
+  return (
+    pathOrder.find((slug) =>
+      (missionsByPath[slug] ?? []).some((m) => !m.userProgress?.completed),
+    ) ?? 'async-queues'
+  );
 }

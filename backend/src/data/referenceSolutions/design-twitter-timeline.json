@@ -1,0 +1,36 @@
+{
+  "missionSlug": "design-twitter-timeline",
+  "components": [
+    { "id": "client", "label": "Web/Mobile Client", "description": "Requests home timeline via REST API; renders tweet_id list and fetches tweet content from a separate tweet store" },
+    { "id": "server", "label": "Timeline Query Service + Fan-out Service", "description": "Two separate services: Fan-out Service writes to follower caches at tweet time; Timeline Query Service reads from cache and merges celebrity tweets at read time" },
+    { "id": "database", "label": "Tweet Store + Social Graph DB", "description": "Tweet Store holds full tweet objects (content, media URLs, metadata); Social Graph DB holds follower/following relationships used by the fan-out service" },
+    { "id": "cache", "label": "Timeline Cache (Redis)", "description": "Stores pre-computed ordered tweet_id lists per user — NOT full tweet objects; key: user:{id}:timeline → sorted set of tweet_ids by timestamp" },
+    { "id": "queue", "label": "Fan-out Queue (Kafka)", "description": "Fan-out Service publishes a fan-out job per tweet; worker pool reads follower lists from Social Graph DB and writes tweet_id to each follower's timeline cache" }
+  ],
+  "connections": [
+    { "from": "client", "to": "server", "label": "GET /timeline — fetch home feed" },
+    { "from": "server", "to": "cache", "label": "Read tweet_id list from timeline cache" },
+    { "from": "server", "to": "database", "label": "Fetch full tweet objects by IDs + merge celebrity feed" },
+    { "from": "server", "to": "queue", "label": "Publish fan-out job on new tweet" },
+    { "from": "queue", "to": "server", "label": "Fan-out workers write tweet_id to follower caches" },
+    { "from": "server", "to": "database", "label": "Read follower list from Social Graph DB" }
+  ],
+  "keyInsights": [
+    "Timeline cache stores tweet_id ordered sets — NOT tweet objects — so fan-out is just appending an integer to N sorted sets; tweet content (text, media) is fetched separately and can be independently cached or updated",
+    "Hybrid fan-out threshold (~1M followers): below the threshold, push tweet_id to all follower caches at write time; above the threshold, skip fan-out and merge the celebrity's latest tweets at read time by fetching their personal feed",
+    "CQRS in practice: the Fan-out Service (write model) and Timeline Query Service (read model) share no code, no database tables, and no in-process state — they scale independently",
+    "Cache invalidation on delete: tweet deletion must remove the tweet_id from all timeline caches that contain it — this is handled by publishing a delete-fan-out job to the same queue; the Timeline Query Service also filters deleted tweet_ids before returning results",
+    "'While you were away' is a separate batch pipeline: it runs every few hours on users with no recent activity, computes a ranked summary of top missed tweets, and prepends it as a synthetic feed item — it never blocks the real-time read path"
+  ],
+  "tradeoffs": [
+    { "decision": "Fan-out on write (push) for regular users", "pro": "O(1) read latency — timeline load is a single cache lookup; no computation at read time", "con": "Write amplification proportional to follower count; a viral tweet from a user with 999K followers triggers 999K cache writes" },
+    { "decision": "Fan-out on read (pull) for celebrity accounts", "pro": "Zero write amplification at tweet time — one DB write regardless of follower count", "con": "Read-time merge cost proportional to number of celebrities a user follows; must be bounded (e.g. top 20 celebrities merged per read)" },
+    { "decision": "Storing tweet_ids in sorted sets vs full tweet objects", "pro": "Fan-out write is O(1) per follower; tweet edits/deletes only require one object update, not N cache invalidations", "con": "Every timeline read requires a second DB/cache lookup to hydrate tweet content; adds one network round-trip" }
+  ],
+  "antiPatterns": [
+    "Storing full tweet objects in the timeline cache — a tweet edit or delete would require invalidating millions of cache entries across all follower timelines",
+    "Applying the same fan-out strategy to all users regardless of follower count — celebrity fan-out at 50M followers takes minutes and causes cache write storms",
+    "Querying the Social Graph DB synchronously on every tweet to find followers — at 6K tweets/sec this generates 6K expensive graph traversals per second; fan-out must be async via a queue",
+    "Using LIMIT/OFFSET for timeline pagination — timeline items are scored by timestamp, not row number; use cursor-based pagination with the last seen tweet_id as the cursor"
+  ]
+}

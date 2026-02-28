@@ -1,0 +1,38 @@
+{
+  "missionSlug": "design-slack",
+  "components": [
+    { "id": "client", "label": "Web/Desktop/Mobile Client", "description": "Maintains a persistent WebSocket connection to the gateway node; handles reconnection with exponential backoff" },
+    { "id": "loadbalancer", "label": "Sticky Load Balancer", "description": "Routes WebSocket connections using consistent hashing on user_id — ensures reconnects land on the same gateway node without a cache lookup" },
+    { "id": "server", "label": "WebSocket Gateway / Chat Server", "description": "Stateful server holding active WebSocket connections; subscribes to pub/sub channels for each workspace the user belongs to" },
+    { "id": "queue", "label": "Pub/Sub Broker (Kafka / Redis Pub/Sub)", "description": "Fan-out backbone — message written once, broadcast to all gateway nodes subscribed to that channel; decouples sender from recipient delivery" },
+    { "id": "database", "label": "Message Store (Cassandra, sharded by workspace_id)", "description": "Append-only wide-column store; partition key is (workspace_id, channel_id), cluster key is message_id DESC for efficient range reads" },
+    { "id": "cache", "label": "Hot Cache (Redis)", "description": "Stores last 100 messages per channel, channel membership lists, unread counts, and presence TTL keys — eliminates DB reads on the hot path" }
+  ],
+  "connections": [
+    { "from": "client", "to": "loadbalancer", "label": "WebSocket upgrade request" },
+    { "from": "loadbalancer", "to": "server", "label": "Sticky route by user_id hash" },
+    { "from": "server", "to": "queue", "label": "Publish message event to channel topic" },
+    { "from": "queue", "to": "server", "label": "Fan-out to all gateway nodes subscribed to channel" },
+    { "from": "server", "to": "database", "label": "Persist message to Cassandra" },
+    { "from": "server", "to": "cache", "label": "Update hot message cache + presence TTL" },
+    { "from": "cache", "to": "server", "label": "Read last 100 messages on channel open" }
+  ],
+  "keyInsights": [
+    "Sticky load balancing by user_id means a reconnecting client always lands on the same gateway node — no round-trip to presence cache to find which server holds the connection",
+    "The pub/sub broker is the fan-out engine: a 10K-member channel requires the message to be delivered to potentially thousands of gateway nodes, each of which pushes to their connected clients",
+    "Cassandra sharded by workspace_id gives strong tenant isolation — all messages for a workspace live on the same shard set, making cross-tenant queries structurally impossible",
+    "Cursor-based pagination uses (channel_id, message_id DESC) composite index — the client passes the oldest message_id it has loaded, the server returns the next page; no OFFSET, O(log n) at any depth",
+    "Presence TTL: client heartbeats every 30s call EXPIRE(user:presence:{id}, 35s) — if the client disconnects, the key expires naturally within 35s with no explicit DELETE or socket-close handler"
+  ],
+  "tradeoffs": [
+    { "decision": "Cassandra over PostgreSQL for message storage", "pro": "Linear write scalability, time-series optimised, partition-per-workspace gives natural isolation", "con": "No joins or transactions; eventual consistency requires idempotent message delivery; complex operational model" },
+    { "decision": "Redis Pub/Sub over Kafka for fan-out", "pro": "Sub-millisecond latency, zero operational overhead for small deployments", "con": "No message persistence or replay — if a gateway node is down during delivery, the message is lost from pub/sub; Cassandra is the source of truth for recovery" },
+    { "decision": "Sticky load balancing over stateless routing", "pro": "Eliminates per-message presence cache lookup; simpler gateway code", "con": "Uneven load distribution if some users send far more messages; requires consistent hashing to rebalance gracefully when nodes are added or removed" }
+  ],
+  "antiPatterns": [
+    "Polling the database for new messages — at 5B messages/day this would generate 300K DB queries/sec just to check for updates",
+    "Storing presence state in the database — presence changes thousands of times per second; a relational DB cannot absorb this write rate",
+    "Using OFFSET for channel history pagination — OFFSET forces a full sequential scan of all prior rows; at channel depth of 1M messages this is catastrophically slow",
+    "Fan-out by querying channel membership on every message send — membership lists must live in cache, not the DB, to avoid a DB round-trip for every message"
+  ]
+}

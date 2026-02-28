@@ -2,6 +2,11 @@ import { Router, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { CONCEPTS, rankConceptsByGap, STARTER_CONCEPTS } from '../data/concepts';
+import { SPRINT3_CONCEPTS } from '../data/concepts-sprint3';
+
+// Merge Sprint 3 concepts into the main taxonomy at startup
+// (avoids circular dependency: concepts-sprint3 imports Concept type FROM concepts)
+CONCEPTS.push(...SPRINT3_CONCEPTS);
 
 export const conceptsRouter = Router();
 const prisma = new PrismaClient();

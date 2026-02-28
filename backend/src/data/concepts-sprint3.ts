@@ -1,10 +1,12 @@
 /**
  * concepts-sprint3.ts
  * Sprint 3 new concepts — append to CONCEPTS in concepts.ts
+ * Now includes concepts for BOTH sprint3 missions 26–40 AND concept-depth missions 41–48
  */
 import { Concept } from './concepts';
 
 export const SPRINT3_CONCEPTS: Concept[] = [
+  // ── Concepts for missions 26–40 ───────────────────────────────────────────
   {
     slug: 'database-sharding-advanced',
     title: 'Database Sharding (Advanced)',
@@ -32,7 +34,7 @@ export const SPRINT3_CONCEPTS: Concept[] = [
     deepDive: 'Circuit breaker states: CLOSED (normal), OPEN (block calls, return fallback), HALF-OPEN (send one probe). Trips when error rate exceeds threshold (e.g. 50% in 10s). Bulkhead pattern isolates service thread pools. Resilience4J, Hystrix, and Istio implement this. Timeout + circuit breaker together: timeout prevents slow threads; circuit breaker prevents retrying a broken service.',
     emoji: '⚡',
     difficulty: 'advanced',
-    relatedMissions: ['circuit-breaker'],
+    relatedMissions: ['circuit-breaker', 'service-mesh-microservices'],
     relatedPaths: ['scale-streaming', 'consistency'],
   },
   {
@@ -62,7 +64,7 @@ export const SPRINT3_CONCEPTS: Concept[] = [
     deepDive: 'Event sourcing: state = replay of all events. Benefits: full audit trail, time-travel queries, event replay for debugging. Outbox pattern: write event to local DB table atomically with business operation, then relay publishes to queue — prevents lost events on crash. Event schema versioning is critical for long-running systems.',
     emoji: '📜',
     difficulty: 'advanced',
-    relatedMissions: ['event-driven-microservice', 'how-bluesky-works'],
+    relatedMissions: ['event-driven-microservice', 'how-bluesky-works', 'cqrs-event-sourcing'],
     relatedPaths: ['async-queues', 'consistency'],
   },
   {
@@ -82,7 +84,7 @@ export const SPRINT3_CONCEPTS: Concept[] = [
     deepDive: '2PC Phase 1: coordinator asks all participants to PREPARE (lock resources and vote). Phase 2: all YES → COMMIT, any NO → ROLLBACK. Key weakness: blocking — participants hold locks until Phase 2. Coordinator crash = indefinite lock hold. Saga: each service does a local transaction and publishes an event. On failure, compensating transactions undo. Saga is non-blocking; 2PC provides stronger atomicity.',
     emoji: '🤝',
     difficulty: 'advanced',
-    relatedMissions: ['two-phase-commit-practice', 'event-driven-microservice'],
+    relatedMissions: ['two-phase-commit-practice', 'event-driven-microservice', 'the-saga-pattern'],
     relatedPaths: ['high-read', 'consistency'],
   },
   {
@@ -124,5 +126,87 @@ export const SPRINT3_CONCEPTS: Concept[] = [
     difficulty: 'intermediate',
     relatedMissions: ['presence-at-scale'],
     relatedPaths: ['real-time'],
+  },
+
+  // ── Concepts for concept-depth missions 41–48 ────────────────────────────────
+  {
+    slug: 'jwt-refresh-rotation',
+    title: 'JWT Auth & Refresh Token Rotation',
+    summary: 'Access token lifecycle, refresh token rotation strategy, and brute-force prevention.',
+    deepDive: 'JWT access tokens are short-lived (15 min) and stateless — validated by signature without DB lookup. Refresh tokens are long-lived (7 days) and stored in DB — revocation requires a DB row delete plus blacklist cache entry. Token rotation: every refresh call issues a new refresh token and invalidates the old one, limiting the replay attack window to one rotation period. Rate limiting on auth endpoints uses a Redis sliding window counter: track failed attempts by IP + user_id, auto-lockout after N failures. API Gateway enforces JWT validation centrally — app servers trust the gateway header.',
+    emoji: '🔑',
+    difficulty: 'intermediate',
+    relatedMissions: ['secure-the-gates'],
+    relatedPaths: ['foundations'],
+  },
+  {
+    slug: 'async-file-processing',
+    title: 'Async File Processing & Pre-Signed URLs',
+    summary: 'Queue-driven file conversion, object storage, and pre-signed URL delivery.',
+    deepDive: 'Async upload pattern: API returns 202 Accepted + jobId immediately; conversion runs in background. Queue decouples fast upload path from slow CPU-intensive workers. Object storage (S3/GCS) holds all binary files; DB stores only metadata (status, owner, expiry). Pre-signed URLs: storage generates a time-limited HMAC-signed URL — client downloads directly from edge without proxying through app servers. DLQ captures failures after N retries for manual inspection + user notification. Paid vs free tiers: set S3 object TTL policy per user tier.',
+    emoji: '📂',
+    difficulty: 'beginner',
+    relatedMissions: ['the-file-converter', 'file-converter'],
+    relatedPaths: ['foundations', 'async-queues'],
+  },
+  {
+    slug: 'reddit-vote-architecture',
+    title: 'Reddit-Style Vote Counting at Scale',
+    summary: 'Atomic Redis counters, hot score calculation, and batch DB writes under viral load.',
+    deepDive: 'At 50K votes/second, writing directly to a relational DB causes deadlocks. Solution: Redis atomic INCR/DECR as the primary vote counter. A periodic batch writer (every 30s) flushes aggregated counts to the DB — eventual consistency with zero vote loss. Hot score formula: score / (age_hours + 2)^gravity is pre-computed in Redis on each vote change. Separate read/write paths: POST /vote goes to write servers; GET /feed reads Cache-backed read servers. Elasticsearch for full-text search is updated asynchronously via Queue.',
+    emoji: '👍',
+    difficulty: 'intermediate',
+    relatedMissions: ['how-reddit-works'],
+    relatedPaths: ['async-queues', 'high-read'],
+  },
+  {
+    slug: 'object-storage-architecture',
+    title: 'Object Storage Architecture (S3-style)',
+    summary: 'Consistent hashing for object placement, replication for durability, and CDN for read scale.',
+    deepDive: 'S3-style storage separates two concerns: Metadata Service (stores WHERE an object lives) and Storage Nodes (store actual bytes). Objects are placed via consistent hash ring — adding nodes only remaps the adjacent arc. 11 nines durability requires 3x replication across 3+ availability zones plus periodic checksum scrubbing to detect silent bit rot. CDN accelerates GET requests — 90% of reads hit CDN edge without touching Storage origin. Multipart upload: large objects split into 5MB+ parts, uploaded in parallel, assembled atomically server-side.',
+    emoji: '🗄️',
+    difficulty: 'advanced',
+    relatedMissions: ['how-amazon-s3-works'],
+    relatedPaths: ['high-read', 'scale-streaming'],
+  },
+  {
+    slug: 'cdc-pipeline',
+    title: 'Change Data Capture (CDC) Pipelines',
+    summary: 'Binary log replication, Debezium connectors, and zero-impact production data streaming.',
+    deepDive: 'CDC reads the database binary log (WAL in Postgres, binlog in MySQL) using a logical replication slot. Unlike query-based replication (polling SELECT), WAL reading has near-zero performance impact on production. Debezium is the leading open-source CDC connector. Event envelope: { op: c/u/d, before: {...}, after: {...}, source: { lsn, ts_ms } }. Events flow to Kafka for high-throughput fan-out to multiple consumers (warehouse, search, cache invalidation). Schema registry stores Avro/Protobuf schemas for safe schema evolution. Idempotency: consumer uses LSN + primary key as deduplication key.',
+    emoji: '🔄',
+    difficulty: 'advanced',
+    relatedMissions: ['change-data-capture'],
+    relatedPaths: ['consistency', 'async-queues'],
+  },
+  {
+    slug: 'saga-orchestration',
+    title: 'Saga Pattern — Orchestration & Compensation',
+    summary: 'Distributed transaction alternative: local transactions + compensating events, no distributed locks.',
+    deepDive: 'Saga replaces 2PC for distributed transactions. Orchestration: a central Saga Orchestrator sends commands to services and awaits outcome events. Each service performs a local ACID transaction and publishes a success or failure event. On failure, the Orchestrator triggers compensating transactions in reverse order. Choreography variant: no central coordinator — each service reacts to events and triggers the next step. Sagas provide eventual consistency, not atomicity. Idempotency keys prevent double-execution on retry. Saga state machine: STARTED → each step → COMPLETED or COMPENSATING → CANCELLED.',
+    emoji: '🎭',
+    difficulty: 'advanced',
+    relatedMissions: ['the-saga-pattern', 'event-driven-microservice'],
+    relatedPaths: ['consistency', 'async-queues'],
+  },
+  {
+    slug: 'service-mesh-envoy',
+    title: 'Service Mesh & Sidecar Proxy (Istio/Envoy)',
+    summary: 'Infrastructure-layer service communication: circuit breakers, mTLS, tracing, and canary routing.',
+    deepDive: 'A service mesh is an infrastructure layer that handles service-to-service communication transparently. App code never implements retries, circuit breakers, or mTLS. Sidecar pattern: Envoy proxy is injected next to each service pod — intercepts all inbound/outbound traffic. Istio control plane configures sidecar behavior: circuit breaker thresholds, retry policies, traffic weights. Distributed tracing: trace_id is injected by API Gateway and propagated via HTTP headers across all downstream calls (Jaeger/Zipkin). Canary deployment: weighted traffic routing 10% → v2, auto-rollback if error rate exceeds threshold.',
+    emoji: '🕸️',
+    difficulty: 'advanced',
+    relatedMissions: ['service-mesh-microservices', 'circuit-breaker'],
+    relatedPaths: ['scale-streaming'],
+  },
+  {
+    slug: 'cqrs-event-store',
+    title: 'CQRS + Event Sourcing Pattern',
+    summary: 'Separate write (command) and read (query) models; derive state from an immutable event log.',
+    deepDive: 'CQRS (Command Query Responsibility Segregation): write side validates business rules and appends events; read side serves queries from a pre-projected read model. Event Sourcing: state is never stored directly — only immutable domain events (Deposited, Withdrawn, TransferCompleted). Current state = replay of all events. Benefits: full audit trail, time-travel queries, event replay for debugging. Projection: a worker subscribes to the Event Store and updates the Read Model (e.g. current balance) — eventually consistent. Snapshots: after N events, store a state snapshot to avoid full replay on every query. Temporal queries: replay events up to target timestamp.',
+    emoji: '📈',
+    difficulty: 'advanced',
+    relatedMissions: ['cqrs-event-sourcing'],
+    relatedPaths: ['scale-streaming', 'consistency'],
   },
 ];

@@ -1,0 +1,43 @@
+{
+  "missionSlug": "design-whatsapp",
+  "components": [
+    { "id": "client", "label": "Mobile/Web Client", "description": "Maintains persistent WebSocket connection to chat server" },
+    { "id": "apigateway", "label": "API Gateway / WebSocket Manager", "description": "Manages long-lived WebSocket connections; routes to correct chat server shard" },
+    { "id": "loadbalancer", "label": "Load Balancer", "description": "Distributes WebSocket connection load across chat server fleet" },
+    { "id": "server", "label": "Chat Server", "description": "Stateful server holding active WebSocket connections; forwards messages to queue" },
+    { "id": "queue", "label": "Message Queue (Kafka)", "description": "Pub/sub backbone — decouples sender from recipient delivery; enables fan-out" },
+    { "id": "database", "label": "Message Store (Cassandra)", "description": "Write-optimised wide-column store for message history; partitioned by chat_id" },
+    { "id": "cache", "label": "Presence & Session Cache (Redis)", "description": "Stores online/offline status, active server mapping, undelivered message pointers" },
+    { "id": "storage", "label": "Object Storage (S3)", "description": "Stores media attachments — images, video, voice notes, documents" },
+    { "id": "cdn", "label": "CDN", "description": "Delivers media from edge nodes; reduces latency for image/video downloads globally" },
+    { "id": "monitoring", "label": "Monitoring", "description": "Tracks message delivery rate, queue depth, WebSocket connection counts, p99 latency" }
+  ],
+  "connections": [
+    { "from": "client", "to": "apigateway", "label": "WebSocket / HTTPS" },
+    { "from": "apigateway", "to": "server", "label": "Route to shard" },
+    { "from": "server", "to": "queue", "label": "Publish message event" },
+    { "from": "queue", "to": "server", "label": "Fan-out to recipient server" },
+    { "from": "server", "to": "database", "label": "Persist message" },
+    { "from": "server", "to": "cache", "label": "Read/write presence & session" },
+    { "from": "client", "to": "storage", "label": "Upload media directly" },
+    { "from": "storage", "to": "cdn", "label": "Edge replication" },
+    { "from": "cdn", "to": "client", "label": "Serve media" }
+  ],
+  "keyInsights": [
+    "Chat servers are stateful — each holds active WebSocket connections; the presence cache maps user→server",
+    "Cassandra's wide-column model is ideal: partition by chat_id, cluster by timestamp for efficient range reads",
+    "Offline delivery: message queue persists undelivered messages until recipient reconnects and polls",
+    "Media upload goes client→S3 directly (pre-signed URL); message payload carries only the S3 object key"
+  ],
+  "tradeoffs": [
+    { "decision": "Kafka for message routing", "pro": "High throughput, durable, replay capability", "con": "Operational complexity; adds latency vs direct server-to-server routing" },
+    { "decision": "Cassandra for message storage", "pro": "Writes at massive scale, time-series friendly", "con": "No joins; complex consistency model; eventual consistency requires careful conflict handling" },
+    { "decision": "Stateful chat servers", "pro": "No round-trip to presence store for every message", "con": "Server failure drops all connected sessions; requires graceful reconnect logic on client" }
+  ],
+  "antiPatterns": [
+    "Storing media blobs inside the message database — explodes storage costs and query performance",
+    "Polling the database for new messages instead of using push/WebSocket — cannot scale past 10k users",
+    "Single monolithic server for all chat connections — single point of failure at 2B users",
+    "Delivering messages synchronously in the HTTP request cycle — blocks sender until recipient confirms"
+  ]
+}

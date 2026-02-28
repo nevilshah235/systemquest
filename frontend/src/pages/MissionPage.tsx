@@ -212,7 +212,7 @@ export const MissionPage: React.FC = () => {
       </div>
 
       {/* ── Floating chat bar — visible during builder & results phases ──────── */}
-      {showChat && <FloatingChatBar missionSlug={activeMission.slug} />}
+      {showChat && <FloatingChatBar missionSlug={activeMission.slug} logoSrc="/arch-assistant.png" />}
 
       {/* ── Compare panel overlay ────────────────────────────────────────── */}
       <AnimatePresence>

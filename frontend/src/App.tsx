@@ -9,7 +9,18 @@ import { Navbar } from './components/ui/Navbar';
 import { ConceptAdvisorButton } from './components/concept/ConceptAdvisorButton';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuthStore();
+  const { user, _hasHydrated } = useAuthStore();
+  // Wait for persisted auth state to rehydrate before deciding to redirect
+  if (!_hasHydrated) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="text-4xl animate-pulse">🏗️</div>
+          <p className="text-gray-400 text-sm">Loading...</p>
+        </div>
+      </div>
+    );
+  }
   return user ? <>{children}</> : <Navigate to="/auth" replace />;
 };
 

@@ -6,13 +6,21 @@ import { useAuthStore } from '../stores/authStore';
 import { XPBar } from '../components/ui/XPBar';
 
 export const ProgressPage: React.FC = () => {
-  const { user } = useAuthStore();
+  const { updateUser } = useAuthStore();
   const [progress, setProgress] = useState<Progress | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    progressApi.get().then(setProgress).finally(() => setLoading(false));
-  }, []);
+    setLoading(true);
+    progressApi
+      .get()
+      .then((data) => {
+        setProgress(data);
+        // Keep authStore (navbar XP bar) in sync with the server's latest values
+        updateUser({ xp: data.xp, level: data.level });
+      })
+      .finally(() => setLoading(false));
+  }, []); // re-runs every time the page mounts (e.g. after returning from a mission)
 
   if (loading) return <div className="flex items-center justify-center min-h-[60vh] text-gray-400 animate-pulse">Loading...</div>;
   if (!progress) return null;

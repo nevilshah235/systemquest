@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { Mission, SimulationMetrics } from '../data/types';
 import { missionsApi, simulationApi } from '../data/api';
 import { useBuilderStore } from './builderStore';
+import { useAuthStore } from './authStore';
 
 type MissionPhase = 'briefing' | 'requirements' | 'builder' | 'results';
 
@@ -10,6 +11,7 @@ interface MissionState {
   activeMission: Mission | null;
   phase: MissionPhase;
   simulationMetrics: SimulationMetrics | null;
+  simulationXpGranted: number;   // actual XP added this run (0 on re-runs)
   isLoading: boolean;
   isSimulating: boolean;
   error: string | null;
@@ -25,6 +27,7 @@ export const useMissionStore = create<MissionState>()((set, get) => ({
   activeMission: null,
   phase: 'briefing',
   simulationMetrics: null,
+  simulationXpGranted: 0,
   isLoading: false,
   isSimulating: false,
   error: null,
@@ -64,8 +67,17 @@ export const useMissionStore = create<MissionState>()((set, get) => ({
     try {
       const architecture = useBuilderStore.getState().architecture;
       const result = await simulationApi.run(activeMission.slug, architecture);
-      set({ simulationMetrics: result.metrics, phase: 'results', isSimulating: false });
+      set({
+        simulationMetrics: result.metrics,
+        simulationXpGranted: result.xpGranted ?? 0,
+        phase: 'results',
+        isSimulating: false,
+      });
       useBuilderStore.getState().markClean();
+      // Sync XP and level into authStore so navbar/dashboard reflect the latest values
+      if (result.user) {
+        useAuthStore.getState().updateUser({ xp: result.user.xp, level: result.user.level });
+      }
     } catch {
       set({ error: 'Simulation failed', isSimulating: false });
     }
@@ -73,6 +85,6 @@ export const useMissionStore = create<MissionState>()((set, get) => ({
 
   resetMission: () => {
     useBuilderStore.getState().resetArchitecture();
-    set({ activeMission: null, phase: 'briefing', simulationMetrics: null });
+    set({ activeMission: null, phase: 'briefing', simulationMetrics: null, simulationXpGranted: 0 });
   },
 }));

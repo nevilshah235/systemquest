@@ -1,5 +1,5 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Mission, COMPONENT_META } from '../../data/types';
 
 interface RequirementsPhaseProps {
@@ -10,6 +10,7 @@ interface RequirementsPhaseProps {
 
 export const RequirementsPhase: React.FC<RequirementsPhaseProps> = ({ mission, onContinue, onBack }) => {
   const req = mission.requirements;
+  const [showBonus, setShowBonus] = useState(false);
 
   return (
     <motion.div
@@ -66,24 +67,46 @@ export const RequirementsPhase: React.FC<RequirementsPhaseProps> = ({ mission, o
         </div>
       </div>
 
-      {/* Bonus objectives */}
+      {/* Bonus objectives — hidden by default */}
       {req.bonus.length > 0 && (
-        <div className="card p-6 mb-6">
-          <h2 className="text-xs font-semibold text-amber-400 uppercase tracking-widest mb-4">⭐ Bonus Objectives</h2>
-          <div className="space-y-2">
-            {req.bonus.map((bonus) => {
-              const meta = COMPONENT_META[bonus.component];
-              return (
-                <div key={bonus.component} className="flex items-center justify-between p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
-                  <div className="flex items-center gap-2">
-                    <span>{meta?.icon}</span>
-                    <span className="text-sm text-gray-300">{bonus.label}</span>
-                  </div>
-                  <span className="badge bg-amber-900/50 text-amber-400 border border-amber-700/50">+{bonus.xp} XP</span>
+        <div className="mb-6">
+          <button
+            onClick={() => setShowBonus((s) => !s)}
+            className="w-full flex items-center justify-between px-4 py-2.5 bg-amber-500/10 hover:bg-amber-500/15 rounded-xl border border-amber-500/20 transition-colors text-sm"
+          >
+            <span className="flex items-center gap-2 text-amber-400 font-medium">
+              <span>⭐</span>
+              <span>Bonus Objectives ({req.bonus.length})</span>
+            </span>
+            <span className={`text-amber-500/60 transition-transform duration-200 ${showBonus ? 'rotate-180' : ''}`}>▾</span>
+          </button>
+
+          <AnimatePresence>
+            {showBonus && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="mt-2 space-y-2">
+                  {req.bonus.map((bonus) => {
+                    const meta = COMPONENT_META[bonus.component];
+                    return (
+                      <div key={bonus.component} className="flex items-center justify-between p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
+                        <div className="flex items-center gap-2">
+                          <span>{meta?.icon}</span>
+                          <span className="text-sm text-gray-300">{bonus.label}</span>
+                        </div>
+                        <span className="badge bg-amber-900/50 text-amber-400 border border-amber-700/50">+{bonus.xp} XP</span>
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
-          </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       )}
 

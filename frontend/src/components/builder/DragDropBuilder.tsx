@@ -12,7 +12,7 @@ import {
 import { ComponentPalette } from './ComponentPalette';
 import { ArchitectureCanvas } from './ArchitectureCanvas';
 import { useBuilderStore } from '../../stores/builderStore';
-import { Mission, ComponentType, COMPONENT_META, Architecture } from '../../data/types';
+import { Mission, ComponentType, COMPONENT_META, COMPONENT_COSTS, Architecture } from '../../data/types';
 import { missionsApi } from '../../data/api';
 
 interface DragDropBuilderProps {
@@ -206,6 +206,20 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
   const placedTypes = architecture.components.map((c) => c.type);
   const requiredMet = mission.requirements.required.every((r) => placedTypes.includes(r));
 
+  // Live cost tracking
+  const budget = mission.requirements.budget;
+  const currentCost = useMemo(
+    () => placedTypes.reduce((sum, t) => sum + (COMPONENT_COSTS[t as ComponentType] ?? 0), 0),
+    [placedTypes]
+  );
+  const costRatio = budget > 0 ? currentCost / budget : 0;
+  const costColor =
+    currentCost > budget
+      ? 'bg-red-500/10 border-red-500/30 text-red-300'
+      : costRatio >= 0.8
+      ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+      : 'bg-green-500/10 border-green-500/30 text-green-300';
+
   const currentHint = hints[hintIdx] ?? hints[0];
   const hintMeta    = HINT_META[currentHint.type];
   const totalHints  = hints.length;
@@ -216,11 +230,24 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
 
         {/* ── Builder toolbar ── */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <span className="text-sm text-gray-400">
               {architecture.components.length} components · {architecture.connections.length} connections
             </span>
             {isDirty && <span className="text-xs text-amber-400">● Unsaved</span>}
+            {/* Live cost tracker */}
+            <div
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${costColor}`}
+              title={`Budget: $${budget}/month`}
+            >
+              <span>💰</span>
+              <span className="font-semibold">${currentCost}</span>
+              <span className="opacity-50">/</span>
+              <span className="opacity-70">${budget}/mo</span>
+              {currentCost > budget && (
+                <span className="font-bold ml-0.5">⚠ Over!</span>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-2">
             {/* Undo / Redo */}
@@ -266,6 +293,8 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
             <ComponentPalette
               availableTypes={mission.components.available}
               highlightedType={showHint ? (currentHint.componentType ?? null) : null}
+              currentCost={currentCost}
+              budget={budget}
             />
           </div>
           <div className="flex-1 overflow-hidden">

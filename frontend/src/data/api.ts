@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { Architecture } from './types';
+import { useAuthStore } from '../stores/authStore';
 
 const api = axios.create({
   baseURL: '/api',
@@ -28,9 +29,9 @@ api.interceptors.response.use(
         original.headers.Authorization = `Bearer ${data.accessToken}`;
         return api(original);
       } catch {
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        window.location.href = '/login';
+        // Clear both localStorage AND Zustand store, then go to the real login route '/'
+        useAuthStore.getState().logout();
+        window.location.href = '/';
       }
     }
     return Promise.reject(error);

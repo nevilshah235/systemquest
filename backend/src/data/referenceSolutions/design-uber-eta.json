@@ -1,0 +1,36 @@
+{
+  "missionSlug": "design-uber-eta",
+  "components": [
+    { "id": "client", "label": "Driver App / Rider App", "description": "Driver app streams GPS pings every 4 seconds; Rider app requests ETA on ride request and receives live driver location updates" },
+    { "id": "server", "label": "Location Ingest Service + ETA Computation Service", "description": "Location Ingest Service receives GPS pings and writes to Kafka; ETA Service reads from geo cache, runs Dijkstra on road graph, and returns estimated arrival time" },
+    { "id": "database", "label": "Road Network Graph DB + Trip History DB", "description": "Road Network Graph stores nodes (intersections) and edges (road segments with distance/speed); Trip History DB stores completed trip data for ML model training" },
+    { "id": "cache", "label": "Geo Cache (Redis with GEO commands)", "description": "Stores live driver locations using Redis GEOADD; GEOSEARCH returns drivers within a radius in microseconds; 10-second TTL auto-expires stale driver entries" },
+    { "id": "queue", "label": "Location Ingest Queue (Kafka)", "description": "Buffers 1.25M GPS pings/sec from driver apps; Location Ingest workers consume and write to Redis geo cache; decouples ingest rate from Redis write throughput" }
+  ],
+  "connections": [
+    { "from": "client", "to": "server", "label": "GPS ping every 4s (driver) / ETA request (rider)" },
+    { "from": "server", "to": "queue", "label": "Publish location update event" },
+    { "from": "queue", "to": "cache", "label": "Ingest worker: GEOADD driver location to Redis" },
+    { "from": "server", "to": "cache", "label": "GEOSEARCH: find drivers within 2km radius" },
+    { "from": "server", "to": "database", "label": "Load road graph segment for ETA path computation" },
+    { "from": "database", "to": "server", "label": "Return road graph with real-time traffic weights" }
+  ],
+  "keyInsights": [
+    "Geohashing is the indexing breakthrough: by encoding lat/lng into a base32 string (e.g. 'dr5ru'), all points within the same geohash cell share a common prefix — range queries become simple string prefix lookups rather than expensive 2D spatial scans",
+    "Redis GEOADD/GEOSEARCH is the production implementation: Redis stores geo points in a sorted set using the geohash as the score, enabling GEOSEARCH key FROMLONLAT lon lat BYRADIUS 2 km ASC COUNT 10 to run in O(log n + m) time",
+    "The Kafka queue between driver apps and Redis is essential: at 1.25M pings/sec, direct Redis writes would require a 1.25M ops/sec Redis cluster; Kafka absorbs bursty ingest and smooths the write rate to Redis",
+    "ETA uses a pre-computed road graph with real-time traffic overlay: the base graph (Dijkstra-ready weighted adjacency list) is pre-loaded into memory; traffic speed updates from a traffic data feed adjust edge weights every 60 seconds without reloading the full graph",
+    "TTL-based staleness is the correct design: each GEOADD sets a 10-second expiry on the driver's entry; if no ping arrives, the entry expires automatically — no explicit 'driver went offline' event is needed, eliminating a whole class of race conditions"
+  ],
+  "tradeoffs": [
+    { "decision": "Redis GEO over PostGIS for live driver locations", "pro": "Sub-millisecond proximity queries; in-memory speed; TTL-based auto-expiry of stale drivers", "con": "Redis is not durable by default; driver location history cannot be queried; limited to a single Redis cluster's memory capacity" },
+    { "decision": "Kafka buffer between driver apps and Redis", "pro": "Absorbs 1.25M pings/sec bursts; decouples ingest latency from Redis write latency; enables replay for debugging", "con": "Adds ~50-200ms latency between a driver moving and their location appearing in the geo cache; acceptable for ETA but not for turn-by-turn navigation" },
+    { "decision": "Pre-computed road graph over real-time routing API", "pro": "ETA computed in <10ms using in-memory Dijkstra on cached graph; no external API dependency", "con": "Graph must be refreshed periodically; does not reflect sudden road closures or accidents until next refresh cycle" }
+  ],
+  "antiPatterns": [
+    "Querying PostgreSQL with ST_DWithin for every driver proximity search — at 10K ETA queries/sec this generates 10K complex geospatial DB queries per second; unsustainable",
+    "Storing driver locations in a relational table without geospatial indexing — full table scan for every proximity search; O(n) where n is the number of active drivers",
+    "Computing ETA by calling an external routing API (e.g. Google Maps API) per request — external API latency is 100-500ms plus cost; cannot be used at 10K queries/sec",
+    "Not implementing location staleness — without TTL-based expiry, disconnected drivers remain in the geo index indefinitely, causing ghost drivers to appear in proximity searches"
+  ]
+}

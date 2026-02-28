@@ -1,11 +1,12 @@
 /**
  * followupQuestions-sprint3.ts
- * Sprint 3 interview follow-up questions — missions 26-40
+ * Sprint 3 interview follow-up questions — missions 26-40 AND concept-depth missions 41-48
  * Append entries into FOLLOWUP_QUESTIONS in followupQuestions.ts
  */
 import { FollowupQuestion } from './followupQuestions';
 
 export const SPRINT3_FOLLOWUP_QUESTIONS: Record<string, FollowupQuestion[]> = {
+  // ── Missions 26–40 ───────────────────────────────────────────────────────
   'shard-or-die': [
     { id: 'sod-1', question: 'User ID 1,500,000,001 is in shard 3. A celebrity posts and 500M users hit their profile simultaneously — all landing on shard 3. How do you handle this hotspot?', dimension: 'scalability' },
     { id: 'sod-2', question: 'You need to add a 4th shard. How do you migrate existing data without taking the system offline or causing data loss?', dimension: 'deep-dive' },
@@ -80,5 +81,47 @@ export const SPRINT3_FOLLOWUP_QUESTIONS: Record<string, FollowupQuestion[]> = {
     { id: 'cap-1', question: 'Your platform is at 99.99% uptime. A single DB node failure causes 10 minutes of downtime. Which architectural change has the highest impact on reducing downtime?', dimension: 'tradeoffs' },
     { id: 'cap-2', question: 'A CDN edge node in Singapore goes down. Walk me through how traffic reroutes, what users experience, and how long recovery takes.', dimension: 'reliability' },
     { id: 'cap-3', question: 'A security incident requires rotating all session tokens globally within 15 minutes for 500M users. Walk me through the architecture changes needed.', dimension: 'deep-dive' },
+  ],
+
+  // ── Concept-depth missions 41–48 ──────────────────────────────────────────────
+  'secure-the-gates': [
+    { id: 'stg-1', question: 'A user\'s refresh token is stolen by an XSS attack. The attacker refreshes every 5 minutes to keep issuing new tokens indefinitely. How do you detect and invalidate this session?', dimension: 'edge-cases' },
+    { id: 'stg-2', question: 'Your API Gateway validates JWTs on every request using the public key. The private key is rotated. For 15 minutes both old and new tokens are valid. How do you handle the transition?', dimension: 'deep-dive' },
+    { id: 'stg-3', question: 'You want to add MFA (TOTP). The user\'s TOTP app is on the same phone as the browser. Has MFA actually improved security? What would truly improve it?', dimension: 'tradeoffs' },
+  ],
+  'the-file-converter': [
+    { id: 'tfc-1', question: 'A paid user\'s 5GB video conversion fails on attempt 3 and lands in the DLQ. The user emails support 6 hours later. How does your system give support the context to diagnose and retry the job?', dimension: 'reliability' },
+    { id: 'tfc-2', question: 'You\'re storing both original and converted files. Storage costs are growing 30% month-over-month. How do you reduce costs without degrading the paid user experience?', dimension: 'tradeoffs' },
+    { id: 'tfc-3', question: 'Two users upload the exact same 1GB file simultaneously. How do you detect the duplicate and avoid converting and storing it twice?', dimension: 'deep-dive' },
+  ],
+  'how-reddit-works': [
+    { id: 'rdt-1', question: 'Your Redis batch writer crashes after updating the Cache but before flushing to the DB. Vote counts in Redis are ahead of the DB by 30 seconds of votes. How do you reconcile on restart?', dimension: 'reliability' },
+    { id: 'rdt-2', question: 'A new subreddit launches and gets 10M posts in 1 hour. Your search index update queue has 10M pending items. Readers expect search to work immediately. How do you handle this?', dimension: 'scalability' },
+    { id: 'rdt-3', question: 'Reddit\'s hot algorithm favors recency, but a years-old post keeps getting upvoted and appearing on the front page. How do you prevent this while keeping the algorithm simple?', dimension: 'tradeoffs' },
+  ],
+  'how-amazon-s3-works': [
+    { id: 's3-1', question: 'An entire availability zone goes down. You have 3 replicas: one in the failed AZ, two in healthy AZs. A user requests an object whose primary replica was in the failed AZ. Walk me through what happens.', dimension: 'reliability' },
+    { id: 's3-2', question: 'Your consistent hash ring has 100 storage nodes. You add 10 more. Which objects need to be migrated and how do you migrate them without downtime?', dimension: 'deep-dive' },
+    { id: 's3-3', question: 'A multipart upload fails on part 47 of 1000. The user retries. How does the system resume from part 47 without re-uploading the first 46 parts?', dimension: 'edge-cases' },
+  ],
+  'change-data-capture': [
+    { id: 'cdc-1', question: 'Your CDC connector falls behind by 2 hours due to a burst of batch inserts. The data warehouse is 2 hours stale. How do you catch up without overwhelming the message queue or the warehouse?', dimension: 'scalability' },
+    { id: 'cdc-2', question: 'A developer drops a column from the production DB. The CDC event arrives at the warehouse consumer, which expects that column. What breaks and how do you design for safe schema evolution?', dimension: 'deep-dive' },
+    { id: 'cdc-3', question: 'Your CDC uses a logical replication slot in Postgres. The slot is not consumed for 48 hours (consumer outage). What happens to the Postgres WAL and how do you recover?', dimension: 'reliability' },
+  ],
+  'the-saga-pattern': [
+    { id: 'saga-1', question: 'The Payment service charged the customer but the PaymentCharged event was never published (network failure). The Orchestrator times out and sends a CompensatePayment command. Now the customer is refunded but was charged. How do you make payment charging idempotent?', dimension: 'edge-cases' },
+    { id: 'saga-2', question: 'Your saga has 6 steps. Step 5 (shipping) fails after step 4 (order confirmed) succeeds. The compensating transaction for order confirmation sends a cancellation email. The customer already received the order confirmation. How do you handle this UX problem?', dimension: 'tradeoffs' },
+    { id: 'saga-3', question: 'You have 1000 concurrent sagas in progress. The Event Bus goes down for 30 seconds. All 1000 sagas are frozen mid-execution. How do your services know to resume when the bus recovers?', dimension: 'reliability' },
+  ],
+  'service-mesh-microservices': [
+    { id: 'sm-1', question: 'You deploy a new version of the auth service with a canary at 10%. After 5 minutes, the error rate for the 10% is 0.8% — your auto-rollback threshold is 1%. Do you continue rollout? What additional signals do you check?', dimension: 'tradeoffs' },
+    { id: 'sm-2', question: 'Distributed tracing shows a 500ms latency spike every 60 seconds in service B, but only when called from service A. Service B is fine when called from other services. How do you investigate this?', dimension: 'deep-dive' },
+    { id: 'sm-3', question: 'Your service mesh adds 2ms of overhead per service hop. A user request touches 8 services in sequence. How does this 16ms overhead affect your architecture decisions?', dimension: 'edge-cases' },
+  ],
+  'cqrs-event-sourcing': [
+    { id: 'cqrs-1', question: 'An account has 10 million events over 10 years. Reconstructing the balance requires replaying all 10M events. Your read latency SLA is 50ms. How do you meet this SLA?', dimension: 'deep-dive' },
+    { id: 'cqrs-2', question: 'A bug in the projection code caused incorrect balances for 10,000 accounts. You fix the bug. How do you rebuild the correct read model without taking the system offline?', dimension: 'reliability' },
+    { id: 'cqrs-3', question: 'Regulators ask: "Show us every action taken on account #12345 between Jan 1 and Jan 31, 2023, including who approved each transaction." How does your Event Store make this query possible?', dimension: 'tradeoffs' },
   ],
 };

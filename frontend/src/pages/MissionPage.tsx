@@ -2,12 +2,12 @@
  * MissionPage — Mission flow orchestrator
  *
  * Phase 2 of the Results revamp (PROJ-SQ-001):
- *   - Replaces tiny progress-pin buttons with FloatingPillNav:
- *       glowing dot progress + current step label + chevron navigation
- *       + expandable step drawer on click.
+ *   - Replaces tiny progress-pin buttons with FloatingPillNav.
  *   - "Go Deeper → LLD" button moved to SimulationResults bottom CTA bar.
  *   - Results phase wrapper updated to flex-col/overflow-hidden so
  *     SimulationResults can own its internal scroll + sticky strips.
+ *
+ * Bugfix: onGoDeeper + lldUnlocked now correctly wired to SimulationResults.
  */
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -67,8 +67,6 @@ function useMissionContext(
 }
 
 // ─── Floating Pill Navigation ─────────────────────────────────────────────────
-// Elegant step navigator: glowing-dot progress + current label + chevrons.
-// Clicking the pill body expands a step drawer.
 
 interface FloatingPillNavProps {
   phases:       readonly Phase[];
@@ -85,7 +83,6 @@ const FloatingPillNav: React.FC<FloatingPillNavProps> = ({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Close drawer on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -97,18 +94,16 @@ const FloatingPillNav: React.FC<FloatingPillNavProps> = ({
   }, [drawerOpen]);
 
   const canNavigateTo = (i: number): boolean => {
-    if (i === phases.length - 1 && !lldUnlocked) return false; // LLD locked
-    if (isCompleted) return true; // All phases freely accessible for completed missions
+    if (i === phases.length - 1 && !lldUnlocked) return false;
+    if (isCompleted) return true;
     return i <= currentIdx + 1;
   };
 
   return (
     <div className="relative" ref={containerRef}>
-      {/* ── Main pill ── */}
       <div className="flex items-center gap-2 bg-gray-800/80 border border-gray-700/60
         rounded-full px-4 py-2.5 backdrop-blur-sm">
 
-        {/* Left chevron */}
         <button
           disabled={currentIdx === 0}
           onClick={() => currentIdx > 0 && onNavigate(currentIdx - 1)}
@@ -119,7 +114,6 @@ const FloatingPillNav: React.FC<FloatingPillNavProps> = ({
           ‹
         </button>
 
-        {/* Dots + current label — click to open drawer */}
         <button
           onClick={() => setDrawerOpen(p => !p)}
           className="flex items-center gap-1.5 px-1 py-0.5 rounded-full
@@ -127,11 +121,10 @@ const FloatingPillNav: React.FC<FloatingPillNavProps> = ({
           aria-label="Toggle step drawer"
         >
           {phases.map((_, i) => {
-            const isLLD      = i === phases.length - 1;
-            const locked     = isLLD && !lldUnlocked;
-            const completed  = i < currentIdx;
-            const current    = i === currentIdx;
-
+            const isLLD     = i === phases.length - 1;
+            const locked    = isLLD && !lldUnlocked;
+            const completed = i < currentIdx;
+            const current   = i === currentIdx;
             return (
               <span
                 key={i}
@@ -152,7 +145,6 @@ const FloatingPillNav: React.FC<FloatingPillNavProps> = ({
           </span>
         </button>
 
-        {/* Right chevron */}
         <button
           disabled={!canNavigateTo(currentIdx + 1)}
           onClick={() => canNavigateTo(currentIdx + 1) && onNavigate(currentIdx + 1)}
@@ -164,7 +156,6 @@ const FloatingPillNav: React.FC<FloatingPillNavProps> = ({
         </button>
       </div>
 
-      {/* ── Step drawer ── */}
       <AnimatePresence>
         {drawerOpen && (
           <motion.div
@@ -182,28 +173,20 @@ const FloatingPillNav: React.FC<FloatingPillNavProps> = ({
               const completed = i < currentIdx;
               const current   = i === currentIdx;
               const clickable = canNavigateTo(i);
-
               return (
                 <button
                   key={phase}
                   disabled={!clickable}
-                  onClick={() => {
-                    if (clickable) { onNavigate(i); setDrawerOpen(false); }
-                  }}
+                  onClick={() => { if (clickable) { onNavigate(i); setDrawerOpen(false); } }}
                   className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm
                     transition-colors ${
-                      current
-                        ? 'bg-brand-600/20 text-white'
-                        : completed
-                        ? 'text-green-400 hover:bg-gray-700/50'
-                        : locked
-                        ? 'text-gray-600 cursor-not-allowed'
-                        : clickable
-                        ? 'text-gray-400 hover:bg-gray-700/50 hover:text-gray-200'
-                        : 'text-gray-700 cursor-not-allowed'
+                      current   ? 'bg-brand-600/20 text-white' :
+                      completed ? 'text-green-400 hover:bg-gray-700/50' :
+                      locked    ? 'text-gray-600 cursor-not-allowed' :
+                      clickable ? 'text-gray-400 hover:bg-gray-700/50 hover:text-gray-200' :
+                                  'text-gray-700 cursor-not-allowed'
                     }`}
                 >
-                  {/* Step indicator circle */}
                   <span className={`w-5 h-5 rounded-full flex items-center justify-center
                     text-xs flex-shrink-0 ${
                       current   ? 'bg-white text-gray-900 font-bold' :
@@ -211,14 +194,10 @@ const FloatingPillNav: React.FC<FloatingPillNavProps> = ({
                                   'bg-gray-700 text-gray-500'
                     }`}
                   >
-                    {completed ? '✓' : locked ? '🔒' : i + 1}
+                    {completed ? '\u2713' : locked ? '\ud83d\udd12' : i + 1}
                   </span>
-
                   <span className="font-medium flex-1 text-left">{labels[i]}</span>
-
-                  {current && (
-                    <span className="text-[10px] text-brand-400 font-medium">Now</span>
-                  )}
+                  {current && <span className="text-[10px] text-brand-400 font-medium">Now</span>}
                 </button>
               );
             })}
@@ -251,7 +230,7 @@ export const MissionPage: React.FC = () => {
     return () => { resetMission(); clearChat(); };
   }, [slug]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // After mission loads, apply ?phase= URL param or default completed missions to Results
+  // Apply ?phase= URL param, or default completed missions to Results
   useEffect(() => {
     if (!activeMission || isLoading || initialPhaseApplied.current) return;
     initialPhaseApplied.current = true;
@@ -301,15 +280,13 @@ export const MissionPage: React.FC = () => {
           : 'min-h-[calc(100vh-56px)]'
       }`}
     >
-      {/* ── Top bar: Dashboard ← | FloatingPillNav | Actions ── */}
+      {/* ── Top bar ── */}
       <div className="bg-gray-900/80 border-b border-gray-800 px-6 py-5 flex-shrink-0">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
-          {/* Back to dashboard */}
           <button onClick={() => navigate('/dashboard')} className="btn-ghost text-sm font-medium">
             ← Dashboard
           </button>
 
-          {/* Floating pill navigator (replaces tiny progress pins) */}
           <FloatingPillNav
             phases={PHASE_ORDER}
             labels={PHASE_LABELS}
@@ -319,9 +296,7 @@ export const MissionPage: React.FC = () => {
             onNavigate={(i) => setPhase(PHASE_ORDER[i])}
           />
 
-          {/* Right-side actions */}
           <div className="flex items-center gap-2">
-            {/* Compare — only in results phase when reference available */}
             {isResultsPhase && hasReference && (
               <button
                 onClick={() => setShowCompare(true)}
@@ -332,8 +307,6 @@ export const MissionPage: React.FC = () => {
                 ⚖️ Compare
               </button>
             )}
-
-            {/* Chat assistant toggle */}
             {showChat && (
               <button
                 onClick={toggleChat}
@@ -343,12 +316,10 @@ export const MissionPage: React.FC = () => {
                       ? 'bg-brand-600/20 border-brand-600/50 text-brand-400'
                       : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-gray-200'
                   }`}
-                title={chatOpen ? 'Hide chat assistant' : 'Open chat assistant'}
               >
                 🤖 {chatOpen ? 'Hide Chat' : isResultsPhase ? 'Explain Design' : 'Ask AI'}
               </button>
             )}
-
             <div className="text-sm text-gray-400 font-medium">{activeMission.title}</div>
           </div>
         </div>
@@ -397,14 +368,19 @@ export const MissionPage: React.FC = () => {
           <>
             <div className="flex-1 min-w-0 overflow-hidden flex flex-col">
               {simulationMetrics ? (
+                // ── Fresh simulation results ──
+                // onGoDeeper + lldUnlocked are wired so the bottom CTA bar
+                // correctly shows the "Go Deeper → LLD" button when unlocked.
                 <SimulationResults
                   metrics={simulationMetrics}
                   mission={activeMission}
                   xpGranted={simulationXpGranted}
                   onRetry={() => setPhase('builder')}
+                  onGoDeeper={lldUnlocked ? () => setPhase('lld') : undefined}
+                  lldUnlocked={lldUnlocked}
                 />
               ) : (
-                /* Completed mission returning to Results — no fresh sim metrics yet */
+                // ── Completed mission returning to Results (no fresh metrics) ──
                 <div className="flex-1 overflow-auto flex items-center justify-center py-12">
                   <div className="max-w-md text-center space-y-6 px-6">
                     <div className="text-5xl">🏆</div>
@@ -412,7 +388,10 @@ export const MissionPage: React.FC = () => {
                       <h2 className="text-2xl font-bold text-white mb-2">Mission Complete!</h2>
                       <p className="text-gray-400 text-sm">
                         Your best score:{' '}
-                        <span className={`font-bold text-lg ${bestScore >= 80 ? 'text-green-400' : bestScore >= 60 ? 'text-yellow-400' : 'text-red-400'}`}>
+                        <span className={`font-bold text-lg ${
+                          bestScore >= 80 ? 'text-green-400' :
+                          bestScore >= 60 ? 'text-yellow-400' : 'text-red-400'
+                        }`}>
                           {bestScore}/100
                         </span>
                       </p>
@@ -424,7 +403,9 @@ export const MissionPage: React.FC = () => {
                       {lldUnlocked && (
                         <button
                           onClick={() => setPhase('lld')}
-                          className="flex items-center gap-2 text-sm px-6 py-2.5 rounded-lg font-medium border bg-yellow-800/20 border-yellow-600/50 text-yellow-400 hover:text-yellow-200 transition-all"
+                          className="flex items-center gap-2 text-sm px-6 py-2.5 rounded-lg font-medium
+                            border bg-yellow-800/20 border-yellow-600/50 text-yellow-400
+                            hover:text-yellow-200 transition-all"
                         >
                           🔧 Go Deeper → LLD
                         </button>
@@ -432,7 +413,9 @@ export const MissionPage: React.FC = () => {
                       {hasReference && (
                         <button
                           onClick={() => setShowCompare(true)}
-                          className="flex items-center gap-2 text-sm px-6 py-2.5 rounded-lg font-medium border bg-purple-800/20 border-purple-600/50 text-purple-400 hover:text-purple-200 transition-all"
+                          className="flex items-center gap-2 text-sm px-6 py-2.5 rounded-lg font-medium
+                            border bg-purple-800/20 border-purple-600/50 text-purple-400
+                            hover:text-purple-200 transition-all"
                         >
                           ⚖️ Compare Solution
                         </button>
@@ -452,12 +435,14 @@ export const MissionPage: React.FC = () => {
 
         {phase === 'lld' && (
           <div className="flex-1 overflow-auto">
-            <LLDPhase missionSlug={activeMission.slug} />
+            <LLDPhase
+              missionSlug={activeMission.slug}
+              onBack={() => setPhase('results')}
+            />
           </div>
         )}
       </div>
 
-      {/* ── Compare panel overlay ── */}
       <AnimatePresence>
         {showCompare && activeMission && (
           <ComparePanel

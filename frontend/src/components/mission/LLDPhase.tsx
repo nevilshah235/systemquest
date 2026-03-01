@@ -8,6 +8,11 @@
  *   → falls back to the original textarea-based LLD form.
  *
  * Both paths share the same HLD-unlock guard.
+ *
+ * Bugfix: no longer returns null when apiResponse is unavailable.
+ * Returning null left the content area blank, forcing users to hit
+ * browser-back, which remounted MissionPage and reset phase to 'briefing'.
+ * Now renders a proper fallback screen with an explicit Back button.
  */
 
 import React, { useEffect, useState } from 'react';
@@ -38,24 +43,52 @@ const FEEDBACK_COLORS = {
   warning: 'text-yellow-400 border-yellow-500/30 bg-yellow-900/20',
   error: 'text-red-400 border-red-500/30 bg-red-900/20',
 };
-const FEEDBACK_ICONS = { success: '✅', warning: '⚠️', error: '❌' };
+const FEEDBACK_ICONS = { success: '\u2705', warning: '\u26a0\ufe0f', error: '\u274c' };
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 interface LLDPhaseProps {
   missionSlug: string;
   onXpEarned?: (xp: number) => void;
+  /** Called when the user wants to go back to the Results phase */
+  onBack?: () => void;
 }
 
 // ── HLD Lock Screen ───────────────────────────────────────────────────────────
 
-const HLDLockScreen: React.FC = () => (
-  <div className="max-w-2xl mx-auto px-4 py-8 text-center">
+const HLDLockScreen: React.FC<{ onBack?: () => void }> = ({ onBack }) => (
+  <div className="max-w-2xl mx-auto px-4 py-12 text-center">
     <div className="text-4xl mb-4">🔒</div>
     <h2 className="text-xl font-bold text-white mb-2">Complete HLD First</h2>
-    <p className="text-gray-400">
+    <p className="text-gray-400 mb-6">
       Finish the architecture (HLD) phase with a passing score to unlock Low-Level Design.
     </p>
+    {onBack && (
+      <button onClick={onBack} className="btn-secondary">
+        ← Back to Results
+      </button>
+    )}
+  </div>
+);
+
+// ── LLD Not Available Screen ──────────────────────────────────────────────────
+// Shown when apiResponse is null (mission not configured for LLD yet).
+// Previously returned null, causing a blank page that forced browser-back
+// and reset the mission phase to 'briefing'.
+
+const LLDNotAvailableScreen: React.FC<{ onBack?: () => void }> = ({ onBack }) => (
+  <div className="max-w-2xl mx-auto px-4 py-12 text-center">
+    <div className="text-4xl mb-4">🛠️</div>
+    <h2 className="text-xl font-bold text-white mb-2">LLD Coming Soon</h2>
+    <p className="text-gray-400 mb-6">
+      Low-Level Design for this mission is being prepared. Check back soon,
+      or go back and explore the results.
+    </p>
+    {onBack && (
+      <button onClick={onBack} className="btn-secondary">
+        ← Back to Results
+      </button>
+    )}
   </div>
 );
 
@@ -86,7 +119,6 @@ const LLDLegacyForm: React.FC<{
 
   return (
     <div className="space-y-4">
-      {/* Hints */}
       {lldData.lldContent && (
         <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-4 space-y-2">
           <div className="text-sm font-medium text-blue-300">💡 Design Prompt</div>
@@ -102,7 +134,6 @@ const LLDLegacyForm: React.FC<{
         </div>
       )}
 
-      {/* Class Design */}
       <div>
         <label className="block text-sm font-medium text-gray-300 mb-2">
           🏗️ Class / Entity Design <span className="text-gray-500 font-normal">(40 pts)</span>
@@ -112,11 +143,12 @@ const LLDLegacyForm: React.FC<{
           onChange={e => setClassDesign(e.target.value)}
           rows={5}
           placeholder="User: id (UUID), email (string), username (string)&#10;Message: id (UUID), senderId (FK → User), content (text)..."
-          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-brand-500 resize-none font-mono"
+          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-sm
+            text-gray-200 placeholder-gray-600 focus:outline-none focus:border-brand-500
+            resize-none font-mono"
         />
       </div>
 
-      {/* API Contracts */}
       <div>
         <label className="block text-sm font-medium text-gray-300 mb-2">
           📡 API Contracts <span className="text-gray-500 font-normal">(35 pts)</span>
@@ -126,11 +158,12 @@ const LLDLegacyForm: React.FC<{
           onChange={e => setApiContracts(e.target.value)}
           rows={5}
           placeholder="POST /api/messages&#10;  Request: { chatId: string, content: string }&#10;  Response: { messageId: string, sentAt: string }"
-          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-brand-500 resize-none font-mono"
+          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-sm
+            text-gray-200 placeholder-gray-600 focus:outline-none focus:border-brand-500
+            resize-none font-mono"
         />
       </div>
 
-      {/* Data Schema */}
       <div>
         <label className="block text-sm font-medium text-gray-300 mb-2">
           🗄️ Data Schema <span className="text-gray-500 font-normal">(25 pts)</span>
@@ -140,11 +173,12 @@ const LLDLegacyForm: React.FC<{
           onChange={e => setDataSchema(e.target.value)}
           rows={5}
           placeholder="messages table:&#10;  id UUID PRIMARY KEY&#10;  chat_id UUID NOT NULL REFERENCES chats(id)&#10;  INDEX ON (chat_id, created_at DESC)"
-          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-brand-500 resize-none font-mono"
+          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-sm
+            text-gray-200 placeholder-gray-600 focus:outline-none focus:border-brand-500
+            resize-none font-mono"
         />
       </div>
 
-      {/* Submit */}
       <div className="flex justify-end">
         <button
           onClick={handleSubmit}
@@ -155,7 +189,6 @@ const LLDLegacyForm: React.FC<{
         </button>
       </div>
 
-      {/* Results */}
       {result && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -186,7 +219,8 @@ const LLDLegacyForm: React.FC<{
           </div>
           <div className="space-y-2">
             {result.feedback.map((fb, i) => (
-              <div key={i} className={`flex items-start gap-2 rounded-lg border p-3 text-sm ${FEEDBACK_COLORS[fb.type as keyof typeof FEEDBACK_COLORS]}`}>
+              <div key={i} className={`flex items-start gap-2 rounded-lg border p-3 text-sm
+                ${FEEDBACK_COLORS[fb.type as keyof typeof FEEDBACK_COLORS]}`}>
                 <span>{FEEDBACK_ICONS[fb.type as keyof typeof FEEDBACK_ICONS]}</span>
                 <span>{fb.message}</span>
               </div>
@@ -200,7 +234,7 @@ const LLDLegacyForm: React.FC<{
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 
-export const LLDPhase: React.FC<LLDPhaseProps> = ({ missionSlug, onXpEarned }) => {
+export const LLDPhase: React.FC<LLDPhaseProps> = ({ missionSlug, onXpEarned, onBack }) => {
   const { config, apiResponse, isLoading } = useLLDConfig(missionSlug);
 
   if (isLoading) {
@@ -211,11 +245,13 @@ export const LLDPhase: React.FC<LLDPhaseProps> = ({ missionSlug, onXpEarned }) =
     );
   }
 
-  // LLD not enabled for this mission
-  if (!apiResponse) return null;
+  // LLD not configured for this mission — show a fallback instead of null.
+  // Returning null previously left a blank screen, forcing browser-back
+  // which remounted MissionPage and reset phase to 'briefing'.
+  if (!apiResponse) return <LLDNotAvailableScreen onBack={onBack} />;
 
-  // HLD not completed — show lock screen
-  if (!apiResponse.hldCompleted) return <HLDLockScreen />;
+  // HLD not completed — show lock screen with back button
+  if (!apiResponse.hldCompleted) return <HLDLockScreen onBack={onBack} />;
 
   return (
     <motion.div
@@ -223,7 +259,6 @@ export const LLDPhase: React.FC<LLDPhaseProps> = ({ missionSlug, onXpEarned }) =
       animate={{ opacity: 1, y: 0 }}
       className="max-w-3xl mx-auto px-4 py-6 space-y-6"
     >
-      {/* Header */}
       <div>
         <h2 className="text-xl font-bold text-white flex items-center gap-2">
           <span>🔧</span> Low-Level Design
@@ -234,7 +269,6 @@ export const LLDPhase: React.FC<LLDPhaseProps> = ({ missionSlug, onXpEarned }) =
         </p>
       </div>
 
-      {/* Interactive builder (when lldConfig present) */}
       {config ? (
         <LLDBuilder
           missionSlug={missionSlug}
@@ -243,7 +277,6 @@ export const LLDPhase: React.FC<LLDPhaseProps> = ({ missionSlug, onXpEarned }) =
           onXpEarned={onXpEarned}
         />
       ) : (
-        /* Legacy textarea fallback */
         <LLDLegacyForm
           missionSlug={missionSlug}
           lldData={apiResponse}

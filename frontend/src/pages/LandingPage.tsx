@@ -69,7 +69,7 @@ const FlowNode: React.FC<{ emoji: string; label: string; sub: string; accent: st
 );
 
 // ─── Hero architecture diagram preview ───────────────────────────────────────
-const ArchPreview: React.FC = () => {
+const ArchPreview: React.FC<{ showToolbar?: boolean }> = ({ showToolbar = true }) => {
   // Unique IDs per instance — prevents SVG marker ID collision when rendered twice
   const uid        = React.useId().replace(/:/g, '');
   const markBlue   = `arw-bl-${uid}`;
@@ -109,16 +109,18 @@ const ArchPreview: React.FC = () => {
           backgroundSize: '40px 40px',
         }}
       >
-        {/* Canvas top bar — mimics ReactFlow toolbar */}
-        <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-700/60 bg-gray-900/80">
-          <div className="w-2 h-2 rounded-full bg-red-500/60" />
-          <div className="w-2 h-2 rounded-full bg-yellow-500/60" />
-          <div className="w-2 h-2 rounded-full bg-green-500/60" />
-          <span className="ml-2 text-gray-600 text-[10px] font-mono">url-shortener · builder</span>
-          <div className="ml-auto flex items-center gap-1.5">
-            <div className="text-[9px] text-gray-600 border border-gray-700 rounded px-1.5 py-0.5">Simulate ▶</div>
+        {/* Canvas top bar — only shown in Hero, suppressed inside LIVE PREVIEW panel */}
+        {showToolbar && (
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-700/60 bg-gray-900/80">
+            <div className="w-2 h-2 rounded-full bg-red-500/60" />
+            <div className="w-2 h-2 rounded-full bg-yellow-500/60" />
+            <div className="w-2 h-2 rounded-full bg-green-500/60" />
+            <span className="ml-2 text-gray-600 text-[10px] font-mono">url-shortener · builder</span>
+            <div className="ml-auto flex items-center gap-1.5">
+              <div className="text-[9px] text-gray-600 border border-gray-700 rounded px-1.5 py-0.5">Simulate ▶</div>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* SVG layer — connection lines + protocol labels */}
         <svg className="absolute inset-0 w-full h-full" style={{ pointerEvents: 'none', top: 32 }}>
@@ -287,7 +289,7 @@ export const LandingPage: React.FC = () => {
                 <span className="ml-3 text-gray-600 text-xs font-mono">mission: url-shortener</span>
               </div>
               <div className="p-4">
-                <ArchPreview />
+                <ArchPreview showToolbar={false} />
                 <div className="mt-4 grid grid-cols-4 gap-2">
                   {[
                     { label: 'Latency',    value: '42ms',    color: 'text-emerald-400' },

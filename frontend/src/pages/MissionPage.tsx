@@ -52,43 +52,6 @@ function useMissionContext(
   }, [mission, phase, simulationMetrics]);
 }
 
-/** Register enriched mission context globally so chatStore can read it without prop-drilling */
-function useMissionContext(
-  mission: Mission | null,
-  phase: string,
-  simulationMetrics: import('../data/types').SimulationMetrics | null,
-) {
-  useEffect(() => {
-    if (!mission) return;
-    const passed = simulationMetrics?.allMetricsMet ?? false;
-    (window as any).__missionContext = {
-      missionTitle:      mission.title,
-      problemStatement:  mission.scenario,
-      objectives:        mission.objectives,
-      phase:             phase === 'results' ? 'results' : 'builder',
-      requirements: {
-        latencyMs:    mission.requirements.performance.latencyMs,
-        availability: mission.requirements.performance.availability,
-        throughput:   mission.requirements.traffic.concurrent,
-        budget:       mission.requirements.budget,
-        growth:       mission.requirements.growth,
-      },
-      simulationMetrics: simulationMetrics
-        ? {
-            latencyMs:    simulationMetrics.latencyMs,
-            availability: simulationMetrics.availability,
-            throughput:   simulationMetrics.throughput,
-            monthlyCost:  simulationMetrics.monthlyCost,
-            score:        simulationMetrics.score,
-            allMetricsMet: simulationMetrics.allMetricsMet,
-          }
-        : undefined,
-      missionPassed: simulationMetrics ? passed : undefined,
-    };
-    return () => { delete (window as any).__missionContext; };
-  }, [mission, phase, simulationMetrics]);
-}
-
 export const MissionPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate  = useNavigate();

@@ -54,7 +54,8 @@ export const InterviewPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate  = useNavigate();
   const { startMission, activeMission, resetMission, isLoading } = useMissionStore();
-  const { components, connections } = useBuilderStore();
+  const architecture = useBuilderStore((s) => s.architecture);
+  const { components, connections } = architecture;
 
   const [phase, setPhase] = useState<'briefing' | 'active' | 'followup' | 'result'>('briefing');
   const [session, setSession]           = useState<SessionStart | null>(null);

@@ -4,7 +4,7 @@ import { missionsApi, simulationApi } from '../data/api';
 import { useBuilderStore } from './builderStore';
 import { useAuthStore } from './authStore';
 
-type MissionPhase = 'briefing' | 'requirements' | 'builder' | 'results';
+export type MissionPhase = 'briefing' | 'requirements' | 'builder' | 'results' | 'lld';
 
 interface MissionState {
   missions: Mission[];

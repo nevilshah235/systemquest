@@ -81,4 +81,17 @@ export const patternsApi = {
   refresh: () => api.post('/patterns/refresh').then((r) => r.data),
 };
 
+/** Typed API client that unwraps axios responses automatically */
+export const apiClient = {
+  get: <T>(url: string) => api.get<T>(url).then((r) => r.data),
+  post: <T>(url: string, data?: unknown) => api.post<T>(url, data).then((r) => r.data),
+};
+
+// ── Sprint 3: Concept Advisor (F-007) ─────────────────────────────────────────
+
+export const conceptsApi = {
+  /** Fetch personalised concept recommendations based on mistake patterns */
+  getRecommendations: () => api.get('/concepts/recommendations').then((r) => r.data),
+};
+
 export default api;

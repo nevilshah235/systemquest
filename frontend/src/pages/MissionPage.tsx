@@ -7,7 +7,14 @@
  *   - Results phase wrapper updated to flex-col/overflow-hidden so
  *     SimulationResults can own its internal scroll + sticky strips.
  *
- * Bugfix: onGoDeeper + lldUnlocked now correctly wired to SimulationResults.
+ * Phase init fix (BUG-LLD-002):
+ *   - startMission now resolves the initial phase atomically (requestedPhase
+ *     from ?phase= URL param, or 'results' for completed missions, or 'briefing').
+ *   - Removed the previous initialPhaseApplied ref + second useEffect that
+ *     tried to override phase after startMission set it to 'briefing'. That
+ *     approach had a React StrictMode race where the second startMission call
+ *     (from the double-invocation of Effect 1) resolved after setPhase('lld')
+ *     fired, resetting the phase back to 'briefing'.
  */
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -28,7 +35,7 @@ const PHASE_LABELS = ['Briefing', 'Requirements', 'Builder', 'Results', 'LLD'] a
 const PHASE_ORDER  = ['briefing', 'requirements', 'builder', 'results', 'lld'] as const;
 type Phase = typeof PHASE_ORDER[number];
 
-// ─── Mission context registration ────────────────────────────────────────────
+// ─── Mission context registration ──────────────────────────────────────────────
 
 function useMissionContext(
   mission: Mission | null,
@@ -66,7 +73,7 @@ function useMissionContext(
   }, [mission, phase, simulationMetrics]);
 }
 
-// ─── Floating Pill Navigation ─────────────────────────────────────────────────
+// ─── Floating Pill Navigation ──────────────────────────────────────────────────
 
 interface FloatingPillNavProps {
   phases:       readonly Phase[];
@@ -208,7 +215,7 @@ const FloatingPillNav: React.FC<FloatingPillNavProps> = ({
   );
 };
 
-// ─── MissionPage ──────────────────────────────────────────────────────────────
+// ─── MissionPage ────────────────────────────────────────────────────────────────
 
 export const MissionPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -220,27 +227,34 @@ export const MissionPage: React.FC = () => {
   } = useMissionStore();
   const { isOpen: chatOpen, toggleOpen: toggleChat, clearChat } = useChatStore();
   const [showCompare, setShowCompare] = useState(false);
-  const initialPhaseApplied = useRef(false);
 
+  // ─ Load mission on slug change ──────────────────────────────────────────────────
+  //
+  // Phase initialisation is handled entirely inside startMission:
+  //   ?phase=<x>  →  use that phase directly (e.g. ?phase=lld from MissionCard)
+  //   completed   →  default to 'results' (skip Briefing for returning users)
+  //   otherwise   →  'briefing'
+  //
+  // This avoids the previous two-step approach (startMission always set
+  // 'briefing', then a second useEffect tried to override it) which had a
+  // React StrictMode race: the double-invoked Effect 1 fired two concurrent
+  // startMission calls; the second resolved after setPhase('lld') fired and
+  // forcibly reset phase back to 'briefing', while the guard prevented
+  // Effect 2 from correcting it.
   useEffect(() => {
     if (slug) {
-      initialPhaseApplied.current = false;
-      startMission(slug);
+      // Read the requested phase from the URL param once, at mount time.
+      // searchParams is intentionally NOT in the dep array — we only want
+      // to apply the phase param on fresh navigation (slug change), not on
+      // every query-string mutation while the user is mid-mission.
+      const rawPhase = searchParams.get('phase');
+      const requestedPhase = rawPhase && (PHASE_ORDER as readonly string[]).includes(rawPhase)
+        ? rawPhase as Phase
+        : undefined;
+      startMission(slug, requestedPhase);
     }
     return () => { resetMission(); clearChat(); };
   }, [slug]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Apply ?phase= URL param, or default completed missions to Results
-  useEffect(() => {
-    if (!activeMission || isLoading || initialPhaseApplied.current) return;
-    initialPhaseApplied.current = true;
-    const requestedPhase = searchParams.get('phase') as Phase | null;
-    if (requestedPhase && (PHASE_ORDER as readonly string[]).includes(requestedPhase)) {
-      setPhase(requestedPhase);
-    } else if (activeMission.userProgress?.completed) {
-      setPhase('results');
-    }
-  }, [activeMission, isLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useMissionContext(activeMission, phase, simulationMetrics);
 

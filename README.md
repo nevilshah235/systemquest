@@ -57,50 +57,46 @@ No passive reading. No multiple-choice quizzes. You build the system, the system
 - Rubric items are evaluated individually and surfaced with pass/fail reasoning
 - Updated dynamically as you modify the canvas — not just at submission time
 
-### 🗺️ 50 Missions Across 6 Learning Paths
+### 🗺️ 13 Missions Built Across 6 Learning Paths (50-Mission Roadmap)
 
-| Path | Missions | Level | Status |
+| Path | Total Planned | Level | Built |
 |---|---|---|---|
-| 1. Foundations | 10 | Beginner | 3 built ✅ |
-| 2. Async & Queues | 8 | Beginner–Intermediate | 2 built ✅ |
-| 3. High-Read Systems | 8 | Intermediate | 2 built ✅ |
-| 4. Real-Time & Messaging | 8 | Intermediate | 3 built ✅ |
-| 5. Consistency & Transactions | 8 | Advanced | 3 built ✅ |
-| 6. Scale & Streaming | 8 | Advanced | 4 built ✅ |
-| **Total** | **50** | | **17+ built** |
+| 1. Foundations | 10 | Beginner | 3 ✅ |
+| 2. Async & Queues | 8 | Beginner–Intermediate | 2 ✅ |
+| 3. High-Read Systems | 8 | Intermediate | 2 ✅ |
+| 4. Real-Time & Messaging | 8 | Intermediate | 2 ✅ |
+| 5. Consistency & Transactions | 8 | Advanced | 2 ✅ |
+| 6. Scale & Streaming | 8 | Advanced | 2 ✅ |
+| **Total** | **50 planned** | | **13 built** |
 
-**Total XP available across all missions: 19,550 XP**
+**XP available in current build: 7,500 XP · Full 50-mission roadmap: 19,550 XP**
 
 #### Currently Built Missions
-| ID | Mission | Path | XP |
-|---|---|---|---|
-| F-01 | MVP Launch | Foundations | 100 |
-| F-02 | Scaling Up | Foundations | 150 |
-| F-04 | The URL Shortener | Foundations | 200 |
-| A-01 | The Queue Master | Async & Queues | 275 |
-| A-02 | Email at Scale | Async & Queues | 300 |
-| H-01 | The Read-Heavy API | High-Read Systems | 325 |
-| H-02 | Cache Everything | High-Read Systems | 350 |
-| R-01 | WebSockets 101 | Real-Time & Messaging | 350 |
-| R-02 | Rate Limit the World | Real-Time & Messaging | 375 |
-| R-03 | How WhatsApp Works | Real-Time & Messaging | 450 |
-| C-01 | ACID or Bust | Consistency & Transactions | 425 |
-| C-02 | CAP Theorem in Practice | Consistency & Transactions | 450 |
-| C-03 | How Payment System Works | Consistency & Transactions | 500 |
-| SC-01 | CDN at the Edge | Scale & Streaming | 475 |
-| SC-02 | Shard the Planet | Scale & Streaming | 500 |
-| SC-03 | Consistent Hashing Deep Dive | Scale & Streaming | 475 |
-| SC-08 | Observability at Scale *(partial)* | Scale & Streaming | 600 |
+| Slug | Mission | Path | Difficulty | XP |
+|---|---|---|---|---|
+| `mvp-launch` | MVP Launch | Foundations | ⭐ | 150 |
+| `scaling-up` | Scaling Up | Foundations | ⭐⭐ | 300 |
+| `global-expansion` | Global Expansion | Foundations | ⭐⭐⭐ | 500 |
+| `file-converter` | File Converter | Async & Queues | ⭐⭐ | 400 |
+| `code-judge` | Code Judge | Async & Queues | ⭐⭐⭐⭐ | 450 |
+| `url-shortener` | URL Shortener | High-Read Systems | ⭐⭐⭐ | 500 |
+| `search-engine` | Search Engine | High-Read Systems | ⭐⭐⭐⭐ | 650 |
+| `live-scoreboard` | Live Scoreboard | Real-Time & Messaging | ⭐⭐⭐ | 600 |
+| `ride-hailing` | Ride Hailing | Real-Time & Messaging | ⭐⭐⭐⭐⭐ | 700 |
+| `booking-system` | Booking System | Consistency & Transactions | ⭐⭐⭐⭐ | 550 |
+| `payment-processing` | Payment Processing | Consistency & Transactions | ⭐⭐⭐⭐⭐ | 800 |
+| `social-feed` | Social Feed | Scale & Streaming | ⭐⭐⭐⭐⭐ | 900 |
+| `video-streaming` | Video Streaming | Scale & Streaming | ⭐⭐⭐⭐⭐ | 1,000 |
 
 #### FAANG Case Studies Covered
-URL Shortener · Zamzar · ChatGPT · Apache Kafka · Spotify · Reddit · Google Search · Amazon S3 · YouTube · WhatsApp · Slack · Bluesky · Stripe · Uber ETA · Twitter Timeline · NYSE Stock Exchange · Netflix · Datadog
+URL Shortener · Zamzar · Apache Kafka · Google Search · YouTube · Uber ETA · Twitter Timeline · Netflix · Stripe · CricBuzz · Codeforces · Airbnb · Bitly
 
 #### 40 System Design Concepts Taught
 APIs · API Gateways · JWTs · Webhooks · REST vs GraphQL · Load Balancing · Proxy vs Reverse Proxy · Scalability · Availability · SPOF · CAP Theorem · SQL vs NoSQL · ACID Transactions · Database Indexes · Database Sharding · Consistent Hashing · CDC · Caching · Caching Strategies · Cache Eviction Policies · CDN · Rate Limiting · Message Queues · Bloom Filters · Idempotency · Concurrency vs Parallelism · Long Polling vs WebSockets · Stateful vs Stateless · Batch vs Stream Processing · Geohashing · Service Mesh · Circuit Breaker · Saga Pattern · Event Sourcing · CQRS · Distributed Locks · Consensus Algorithms · Replication · Two-Phase Commit · Observability
 
 ### 🏆 XP & Progression System
-- **XP rewards** scale with difficulty: 100 XP (beginner) → 600 XP (advanced)
-- **Bonus XP** for optional challenge objectives (e.g., +30 XP for adding MFA, +45 XP for semantic caching)
+- **XP rewards** scale with difficulty: 150 XP (beginner) → 1,000 XP (advanced)
+- **Bonus XP** for optional challenge objectives (e.g., +25–50 XP per bonus component)
 - **Level progression** tied to cumulative XP
 - **Skill tree** unlocks as you advance through paths
 - **Achievement badges** for milestones and special completions
@@ -108,7 +104,7 @@ APIs · API Gateways · JWTs · Webhooks · REST vs GraphQL · Load Balancing ·
 
 ### 🎯 Gamification Layer
 - XP progress bar with visual level indicator
-- Achievement badge collection
+- Achievement badge collection (9 achievements including "System Design Master")
 - Global leaderboard with rankings
 - Mission unlock gates (complete prerequisites to advance)
 - Per-mission bonus challenge objectives
@@ -414,17 +410,17 @@ flowchart TD
 flowchart TD
     A[User visits SystemQuest] --> B[Register account\nPOST /auth/register]
     B --> C[JWT issued\nSession started]
-    C --> D[Tutorial mission F-01 assigned\nMVP Launch]
+    C --> D[mvp-launch assigned\nMission 1: MVP Launch]
     D --> E[Intro concept cards shown\nAPIs · Load Balancing · SQL vs NoSQL]
     E --> F[User builds first architecture]
     F --> G[First simulation run]
     G --> H{Passed?}
-    H -- Yes --> I[First XP earned\n100 XP]
+    H -- Yes --> I[First XP earned\n150 XP]
     H -- No --> J[Guided hints shown\nEncouragement message]
     J --> F
     I --> K[Dashboard unlocked]
     K --> L[Learning path selection\nChoose your starting storyline]
-    L --> M[F-02 Scaling Up unlocked]
+    L --> M[scaling-up unlocked]
 ```
 
 ---
@@ -454,7 +450,7 @@ Each mission defines a `success_criteria` JSON object with five weighted dimensi
 | 50–74 | Pass | XP awarded, improvement suggestions shown |
 | < 50 | Fail | No XP; hints unlocked; retry encouraged |
 
-**Example `success_criteria` JSON (Mission F-02 — Scaling Up):**
+**Example `success_criteria` JSON (scaling-up):**
 
 ```json
 {
@@ -465,7 +461,7 @@ Each mission defines a `success_criteria` JSON object with five weighted dimensi
     },
     "performance": {
       "weight": 0.25,
-      "criteria": ["throughput_above_10000", "latency_under_200ms"]
+      "criteria": ["throughput_above_10000", "latency_under_150ms"]
     },
     "resilience": {
       "weight": 0.20,
@@ -473,7 +469,7 @@ Each mission defines a `success_criteria` JSON object with five weighted dimensi
     },
     "cost_efficiency": {
       "weight": 0.15,
-      "criteria": ["monthly_cost_under_500"]
+      "criteria": ["monthly_cost_under_2000"]
     },
     "scalability": {
       "weight": 0.10,
@@ -591,7 +587,7 @@ systemquest/
 │   └── src/
 │       ├── index.ts            # Express app entry point
 │       ├── middleware/         # Auth, rate limiting, error handling
-│       ├── prisma/             # Prisma client singleton
+│       ├── prisma/             # Prisma client singleton + seed.ts (13 missions)
 │       ├── routes/
 │       │   ├── auth.ts         # Register, login, refresh, logout
 │       │   ├── missions.ts     # Mission CRUD and attempt submission
@@ -807,9 +803,11 @@ id, email (unique), username (unique), password_hash, created_at, updated_at
 id, user_id → User, current_level, total_xp, unlocked_storylines[], completed_missions[]
 ```
 
-**Mission** — scenario, requirements, and rewards (seeded)
+**Mission** — scenario, requirements, and rewards (seeded — 13 missions)
 ```
-id (e.g. "F-01"), storyline, level, title, description, requirements (JSON), success_criteria (JSON), xp_reward, unlocks[]
+slug (unique), title, difficulty (1-5), estimatedTime, xpReward, order
+learningPath, skillLevel, description, scenario
+objectives (JSON), requirements (JSON), components (JSON), feedbackData (JSON)
 ```
 
 **MissionAttempt** — each architecture submission per user
@@ -817,9 +815,9 @@ id (e.g. "F-01"), storyline, level, title, description, requirements (JSON), suc
 id, user_id → User, mission_id → Mission, architecture (JSON), score, completed, feedback (JSON), attempt_number, created_at
 ```
 
-**Achievement** — badge definitions
+**Achievement** — badge definitions (9 achievements)
 ```
-id, slug, title, description, icon, xp_bonus
+slug, title, description, icon, xp_bonus
 ```
 
 **MissionRubric** — AI-evaluated rubric results per mission
@@ -862,7 +860,7 @@ interface ArchitectureMetrics {
 | `npm run start` | Run compiled production build |
 | `npx prisma migrate dev` | Run pending migrations |
 | `npx prisma studio` | Open Prisma visual DB browser |
-| `npx prisma db seed` | Seed mission data |
+| `npx prisma db seed` | Seed 13 missions + 9 achievements |
 | `npx prisma generate` | Regenerate Prisma client |
 
 ### Frontend (`/frontend`)
@@ -882,7 +880,6 @@ interface ArchitectureMetrics {
 |---|---|
 | `main` | Stable production-ready code |
 | `feature/systemquest-mvp` | Active MVP development |
-| `docs/readme-final` | Documentation updates (current) |
 
 ---
 
@@ -899,24 +896,25 @@ interface ArchitectureMetrics {
 
 ### Adding a New Mission
 
-1. Add the mission definition to `backend/prisma/seed.ts`
-2. Define `requirements` and `success_criteria` as JSON matching the simulation engine's schema
-3. Add any new component types to `frontend/src/components/mission/Builder.tsx`
-4. Update the mission roadmap table in this README
+1. Add the mission definition to `backend/src/prisma/seed.ts`
+2. Define `objectives`, `requirements`, `components`, and `feedbackData` as JSON matching the seed schema
+3. Set the correct `learningPath`, `skillLevel`, `difficulty` (1–5), and `xpReward`
+4. Run `npx prisma db seed` to load it locally
+5. Update the built missions table in this README
 
 ---
 
-## 📊 XP Economy
+## 📊 XP Summary
 
-| Path | Total XP Available |
-|---|---|
-| Foundations | 2,025 |
-| Async & Queues | 2,725 |
-| High-Read Systems | 3,275 |
-| Real-Time & Messaging | 3,350 |
-| Consistency & Transactions | 3,950 |
-| Scale & Streaming | 4,225 |
-| **Grand Total** | **19,550 XP** |
+| Path | Missions Built | XP Available Now | Full Path XP (planned) |
+|---|---|---|---|
+| Foundations | 3 | 950 | ~3,500 |
+| Async & Queues | 2 | 850 | ~2,800 |
+| High-Read Systems | 2 | 1,150 | ~3,200 |
+| Real-Time & Messaging | 2 | 1,300 | ~3,400 |
+| Consistency & Transactions | 2 | 1,350 | ~4,000 |
+| Scale & Streaming | 2 | 1,900 | ~4,200 |
+| **Total** | **13** | **7,500** | **~21,100** |
 
 ---
 

@@ -57,54 +57,119 @@ No passive reading. No multiple-choice quizzes. You build the system, the system
 - Rubric items are evaluated individually and surfaced with pass/fail reasoning
 - Updated dynamically as you modify the canvas — not just at submission time
 
-### 🗺️ 23 Missions Across 6 Learning Paths — Sprint 1 Complete
+### 🗺️ 48 Missions Across 6 Learning Paths
 
-| Path | Built | Level | Missions |
-|---|---|---|---|
-| 1. Foundations | 4 ✅ | Beginner → Intermediate | mvp-launch, scaling-up, global-expansion, design-chatgpt |
-| 2. Async & Queues | 4 ✅ | Intermediate | file-converter, code-judge, design-kafka, design-spotify |
-| 3. High-Read Systems | 3 ✅ | Intermediate → Advanced | url-shortener, search-engine, design-google-search |
-| 4. Real-Time & Messaging | 4 ✅ | Intermediate → Advanced | live-scoreboard, ride-hailing, design-whatsapp, design-slack |
-| 5. Consistency & Transactions | 3 ✅ | Advanced | booking-system, payment-processing, design-uber-eta |
-| 6. Scale & Streaming | 5 ✅ | Advanced | social-feed, video-streaming, design-instagram, design-youtube, design-twitter-timeline |
-| **Total** | **23 built** | | **13,875 XP available** |
+Missions are seeded across 3 sprints (`seed.ts`, `seed-sprint2.ts`, `seed-sprint3.ts`) plus `seed-lld.ts` which enriches 25 missions with full LLD content.
 
-#### Built Missions — Full List
-| # | Slug | Mission | Path | Difficulty | XP |
-|---|---|---|---|---|---|
-| 1 | `mvp-launch` | MVP Launch | Foundations | ⭐ | 150 |
-| 2 | `scaling-up` | Scaling Up | Foundations | ⭐⭐ | 300 |
-| 3 | `global-expansion` | Global Expansion | Foundations | ⭐⭐⭐ | 500 |
-| 4 | `file-converter` | File Converter | Async & Queues | ⭐⭐ | 400 |
-| 5 | `url-shortener` | URL Shortener | High-Read Systems | ⭐⭐⭐ | 500 |
-| 6 | `live-scoreboard` | Live Scoreboard | Real-Time | ⭐⭐⭐ | 600 |
-| 7 | `code-judge` | Code Judge | Async & Queues | ⭐⭐⭐⭐ | 450 |
-| 8 | `search-engine` | Search Engine | High-Read Systems | ⭐⭐⭐⭐ | 650 |
-| 9 | `booking-system` | Booking System | Consistency | ⭐⭐⭐⭐ | 550 |
-| 10 | `social-feed` | Social Feed | Scale & Streaming | ⭐⭐⭐⭐⭐ | 900 |
-| 11 | `ride-hailing` | Ride Hailing | Real-Time | ⭐⭐⭐⭐⭐ | 700 |
-| 12 | `video-streaming` | Video Streaming | Scale & Streaming | ⭐⭐⭐⭐⭐ | 1,000 |
-| 13 | `payment-processing` | Payment Processing | Consistency | ⭐⭐⭐⭐⭐ | 800 |
-| 14 | `design-whatsapp` | Design WhatsApp | Real-Time | ⭐⭐⭐⭐⭐ | 1,100 |
-| 15 | `design-instagram` | Design Instagram | Scale & Streaming | ⭐⭐⭐⭐⭐ | 1,100 |
-| 18 | `design-slack` | How Slack Works | Real-Time | ⭐⭐⭐⭐⭐ | 450 |
-| 19 | `design-youtube` | Design YouTube | Scale & Streaming | ⭐⭐⭐⭐⭐ | 1,200 |
-| 20 | `design-twitter-timeline` | How Twitter Timeline Works | Scale & Streaming | ⭐⭐⭐⭐⭐ | 550 |
-| 21 | `design-uber-eta` | How Uber Computes ETA | Consistency | ⭐⭐⭐⭐⭐ | 500 |
-| 22 | `design-chatgpt` | Build ChatGPT | Foundations | ⭐⭐⭐⭐ | 300 |
-| 23 | `design-kafka` | How Kafka Works | Async & Queues | ⭐⭐⭐⭐ | 350 |
-| 24 | `design-spotify` | How Spotify Works | Async & Queues | ⭐⭐⭐⭐ | 375 |
-| 25 | `design-google-search` | How Google Search Works | High-Read Systems | ⭐⭐⭐⭐⭐ | 450 |
+| Path | Missions | Level |
+|---|---|---|
+| 🏗️ Foundations | 8 | Beginner → Intermediate |
+| ⚡ Async & Queues | 7 | Intermediate |
+| 🚀 High-Read Systems | 9 | Intermediate → Advanced |
+| 📡 Real-Time & Messaging | 8 | Intermediate → Advanced |
+| 🔒 Consistency & Transactions | 6 | Advanced |
+| 🌍 Scale & Streaming | 10 | Advanced |
+| **Total** | **48** | **27,050 XP available** |
 
-#### FAANG Case Studies Covered
-MVP Launch · URL Shortener · File Converter (Zamzar) · Code Judge (Codeforces) · Search Engine · Live Scoreboard (CricBuzz) · Booking System (Airbnb) · Social Feed (Twitter) · Ride Hailing (Uber) · Video Streaming (Netflix) · Payment Processing (Stripe) · WhatsApp · Instagram · Slack · YouTube · Twitter Timeline · Uber ETA · ChatGPT · Apache Kafka · Spotify · Google Search
+#### Full Mission List
+
+**🏗️ Foundations (8)**
+
+| Slug | Mission | Sprint | Diff | XP |
+|---|---|---|---|---|
+| `mvp-launch` | MVP Launch | 1 | ⭐ | 150 |
+| `scaling-up` | Scaling Up | 1 | ⭐⭐ | 300 |
+| `global-expansion` | Global Expansion | 1 | ⭐⭐⭐ | 500 |
+| `design-chatgpt` | Build ChatGPT | 1 | ⭐⭐⭐⭐ | 300 |
+| `secure-the-gates` | Secure the Gates | 2 | ⭐⭐ | 350 |
+| `the-file-converter` | The File Converter | 2 | ⭐⭐ | 350 |
+| `notification-engine` | The Notification Engine | 3 | ⭐⭐ | 250 |
+| `rest-vs-graphql` | REST vs GraphQL Showdown | 3 | ⭐⭐ | 225 |
+
+**⚡ Async & Queues (7)**
+
+| Slug | Mission | Sprint | Diff | XP |
+|---|---|---|---|---|
+| `file-converter` | File Converter | 1 | ⭐⭐ | 400 |
+| `code-judge` | Code Judge | 1 | ⭐⭐⭐⭐ | 450 |
+| `design-kafka` | How Kafka Works | 1 | ⭐⭐⭐⭐ | 350 |
+| `design-spotify` | How Spotify Works | 1 | ⭐⭐⭐⭐ | 375 |
+| `how-reddit-works` | How Reddit Works | 2 | ⭐⭐⭐ | 500 |
+| `event-driven-microservice` | Event-Driven Microservice | 3 | ⭐⭐⭐ | 400 |
+| `concurrency-vs-parallelism` | Concurrency vs Parallelism | 3 | ⭐⭐⭐ | 400 |
+
+**🚀 High-Read Systems (9)**
+
+| Slug | Mission | Sprint | Diff | XP |
+|---|---|---|---|---|
+| `url-shortener` | URL Shortener | 1 | ⭐⭐⭐ | 500 |
+| `search-engine` | Search Engine | 1 | ⭐⭐⭐⭐ | 650 |
+| `design-google-search` | How Google Search Works | 1 | ⭐⭐⭐⭐⭐ | 450 |
+| `how-amazon-s3-works` | How Amazon S3 Works | 2 | ⭐⭐⭐⭐⭐ | 800 |
+| `bloom-filter-guardian` | Bloom Filter Guardian | 2 | ⭐⭐⭐ | 550 |
+| `db-replication-deep-dive` | Database Replication Deep Dive | 2 | ⭐⭐⭐⭐ | 650 |
+| `shard-or-die` | Shard or Die | 3 | ⭐⭐⭐⭐ | 425 |
+| `youtube-deep-read` | How YouTube Works (Deep Read) | 3 | ⭐⭐⭐⭐⭐ | 500 |
+| `two-phase-commit-practice` | Two-Phase Commit in Practice | 3 | ⭐⭐⭐⭐⭐ | 450 |
+
+**📡 Real-Time & Messaging (8)**
+
+| Slug | Mission | Sprint | Diff | XP |
+|---|---|---|---|---|
+| `live-scoreboard` | Live Scoreboard | 1 | ⭐⭐⭐ | 600 |
+| `ride-hailing` | Ride Hailing | 1 | ⭐⭐⭐⭐⭐ | 700 |
+| `design-whatsapp` | Design WhatsApp | 1 | ⭐⭐⭐⭐⭐ | 1,100 |
+| `design-slack` | How Slack Works | 1 | ⭐⭐⭐⭐⭐ | 450 |
+| `how-bluesky-works` | How Bluesky Works | 3 | ⭐⭐⭐⭐⭐ | 475 |
+| `sports-leaderboard` | The Live Scoreboard (Remake) | 3 | ⭐⭐⭐ | 400 |
+| `presence-at-scale` | Presence at Scale | 3 | ⭐⭐⭐ | 400 |
+| `multiplayer-game-server` | Multiplayer Game Server | 3 | ⭐⭐⭐⭐ | 450 |
+
+**🔒 Consistency & Transactions (6)**
+
+| Slug | Mission | Sprint | Diff | XP |
+|---|---|---|---|---|
+| `booking-system` | Booking System | 1 | ⭐⭐⭐⭐ | 550 |
+| `payment-processing` | Payment Processing | 1 | ⭐⭐⭐⭐⭐ | 800 |
+| `design-uber-eta` | How Uber Computes ETA | 1 | ⭐⭐⭐⭐⭐ | 500 |
+| `change-data-capture` | Change Data Capture | 2 | ⭐⭐⭐⭐ | 700 |
+| `the-saga-pattern` | The Saga Pattern | 2 | ⭐⭐⭐⭐⭐ | 750 |
+| `distributed-locks-deep-dive` | Distributed Locks Deep Dive | 3 | ⭐⭐⭐⭐⭐ | 500 |
+
+**🌍 Scale & Streaming (10)**
+
+| Slug | Mission | Sprint | Diff | XP |
+|---|---|---|---|---|
+| `social-feed` | Social Feed | 1 | ⭐⭐⭐⭐⭐ | 900 |
+| `video-streaming` | Video Streaming | 1 | ⭐⭐⭐⭐⭐ | 1,000 |
+| `design-instagram` | Design Instagram | 1 | ⭐⭐⭐⭐⭐ | 1,100 |
+| `design-youtube` | Design YouTube | 1 | ⭐⭐⭐⭐⭐ | 1,200 |
+| `design-twitter-timeline` | How Twitter Timeline Works | 1 | ⭐⭐⭐⭐⭐ | 550 |
+| `service-mesh-microservices` | Service Mesh & Microservices | 2 | ⭐⭐⭐⭐⭐ | 900 |
+| `cqrs-event-sourcing` | CQRS + Event Sourcing | 2 | ⭐⭐⭐⭐⭐ | 950 |
+| `circuit-breaker` | Circuit Breaker Pattern | 3 | ⭐⭐⭐⭐ | 500 |
+| `observability-at-scale` | Observability at Scale | 3 | ⭐⭐⭐⭐⭐ | 600 |
+| `full-stack-observability-capstone` | Full-Stack Observability Capstone | 3 | ⭐⭐⭐⭐⭐ | 700 |
+
+#### Seed File Breakdown
+
+| File | Missions | Notes |
+|---|---|---|
+| `seed.ts` | 23 | Sprint 1 — core FAANG case studies |
+| `seed-sprint2.ts` | 10 | Sprint 2 — deep dives & patterns |
+| `seed-sprint3.ts` | 15 | Sprint 3 — advanced systems & capstone |
+| `seed-lld.ts` | 0 new | Enriches 25 existing missions with LLD content |
+| **Total** | **48** | |
+
+#### FAANG & Real-World Systems Covered
+MVP · URL Shortener · Zamzar · Codeforces · Google Search · CricBuzz · Airbnb · Twitter Feed · Uber · Netflix · Stripe · WhatsApp · Instagram · Slack · YouTube · Twitter Timeline · Uber ETA · ChatGPT · Apache Kafka · Spotify · Amazon S3 · Reddit · Bluesky
 
 #### 40 System Design Concepts Taught
 APIs · API Gateways · JWTs · Webhooks · REST vs GraphQL · Load Balancing · Proxy vs Reverse Proxy · Scalability · Availability · SPOF · CAP Theorem · SQL vs NoSQL · ACID Transactions · Database Indexes · Database Sharding · Consistent Hashing · CDC · Caching · Caching Strategies · Cache Eviction Policies · CDN · Rate Limiting · Message Queues · Bloom Filters · Idempotency · Concurrency vs Parallelism · Long Polling vs WebSockets · Stateful vs Stateless · Batch vs Stream Processing · Geohashing · Service Mesh · Circuit Breaker · Saga Pattern · Event Sourcing · CQRS · Distributed Locks · Consensus Algorithms · Replication · Two-Phase Commit · Observability
 
 ### 🏆 XP & Progression System
 - **XP rewards** scale with difficulty: 150 XP (beginner) → 1,200 XP (advanced)
-- **Bonus XP** for optional challenge objectives (e.g., +25–50 XP per bonus component)
+- **Bonus XP** for optional challenge objectives (+25–50 XP per bonus component)
 - **Level progression** tied to cumulative XP
 - **Skill tree** unlocks as you advance through paths
 - **Achievement badges** for milestones and special completions
@@ -121,7 +186,8 @@ APIs · API Gateways · JWTs · Webhooks · REST vs GraphQL · Load Balancing ·
 ### 🔐 Authentication & User Management
 - JWT authentication with refresh token rotation
 - User registration and login
-- Profile management with skill level tracking
+- Profile management with skill level tracking (beginner / intermediate / advanced)
+- Performance-derived skill level auto-upgrade after milestone completions
 - Full progress persistence across sessions
 
 ---
@@ -167,8 +233,6 @@ APIs · API Gateways · JWTs · Webhooks · REST vs GraphQL · Load Balancing ·
 ---
 
 ## 🏛️ System Architecture
-
-The core architecture separates the React SPA (served via Vercel + Cloudflare) from the Express.js API (hosted on Railway), with Prisma managing all database access and AWS S3 handling architecture file storage.
 
 ```mermaid
 graph TB
@@ -227,8 +291,6 @@ graph TB
 ---
 
 ## 🔍 High-Level Design (HLD)
-
-The HLD shows the full production deployment topology — how traffic flows from a user's browser through Cloudflare's CDN, into the Vercel-hosted frontend, across to the Railway-hosted API, and down into the data layer. GitHub Actions drives all deployments; Sentry captures errors across both frontend and backend.
 
 ```mermaid
 graph TB
@@ -290,8 +352,6 @@ graph TB
 
 ## 🔧 Low-Level Design (LLD)
 
-The LLD details the internal component structure of the Simulation Engine and Evaluation Pipeline — the two most complex subsystems. The `ArchitectureParser` normalises the raw canvas JSON into a typed graph; each downstream module operates on that graph independently before the `FeedbackCompiler` assembles the final response.
-
 ```mermaid
 graph TD
     subgraph "Input"
@@ -335,17 +395,15 @@ graph TD
 
 | Metric | Base | Modifiers |
 |---|---|---|
-| Latency | 50ms | +20ms per DB hop · x0.7 with cache · +5ms per LB · -60% with CDN (static) |
-| Throughput | 200 req/s per server | x server count behind LB · x cache hit multiplier |
-| Availability | 99.5% (single server) | +0.4% with LB + 2 servers · +0.1% per DB replica |
-| Scalability | 200 concurrent/server | +500 per additional server behind LB · x1.5 with cache · x2 with CDN (read-heavy) |
-| Cost | $50/server/month | Additive per component type; CDN and S3 usage-based |
+| Latency | 50ms | +20ms per DB hop · ×0.7 with cache · +5ms per LB · −60% with CDN |
+| Throughput | 200 req/s per server | ×server count behind LB · ×cache hit multiplier |
+| Availability | 99.5% (single server) | +0.4% with LB+2 servers · +0.1% per DB replica |
+| Scalability | 200 concurrent/server | +500/server behind LB · ×1.5 cache · ×2 CDN (read-heavy) |
+| Cost | $50/server/month | Additive per component; CDN/S3 usage-based |
 
 ---
 
 ## 🔄 Design Flows
-
-Key user journeys through the platform, from first login to mission completion.
 
 ### Flow 1 — Mission Attempt
 
@@ -375,19 +433,19 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A[Architecture JSON submitted\nvia POST /simulate/architecture] --> B[ArchitectureParser\nNormalise nodes + edges]
-    B --> C[MetricsCalculator\nCompute latency, throughput,\navailability, cost, scalability]
-    C --> D[RubricScorer\nApply weighted dimensions\nReturn score 0-100]
-    B --> E[AIEvaluator via NVIDIA NIM\nDetect anti-patterns\nGenerate natural language feedback]
-    B --> L[LivingRubricService\nPer-item evaluation\nReal-time rubric updates]
-    D --> F[MistakeTracker\nPersist attempt\nUpdate pattern history]
-    E --> G[WhatToLearnEngine\nSelect concept cards\nFilter already-mastered concepts]
+    A[Architecture JSON submitted] --> B[ArchitectureParser\nNormalise nodes + edges]
+    B --> C[MetricsCalculator\nLatency · Throughput · Availability · Cost · Scalability]
+    C --> D[RubricScorer\nWeighted dimensions · Score 0-100]
+    B --> E[AIEvaluator via NVIDIA NIM\nAnti-patterns · Natural language feedback]
+    B --> L[LivingRubricService\nPer-item evaluation · Real-time updates]
+    D --> F[MistakeTracker\nPersist attempt · Update pattern history]
+    E --> G[WhatToLearnEngine\nConcept cards · Adaptive filtering]
     D --> H[FeedbackCompiler]
     E --> H
     F --> H
     G --> H
     L --> H
-    H --> I[Structured Response returned\nscore · rubric · feedback · hints · concepts]
+    H --> I[Structured Response\nscore · rubric · feedback · hints · concepts]
 ```
 
 ### Flow 3 — Progression
@@ -397,11 +455,11 @@ flowchart TD
     A[Mission Passed] --> B[Calculate XP\nBase reward + bonus objectives]
     B --> C[Update total_xp in UserProgress]
     C --> D{Level threshold crossed?}
-    D -- Yes --> E[Level Up\nNotify user]
+    D -- Yes --> E[Level Up · Notify user]
     D -- No --> F[Check Achievements]
     E --> F
     F --> G{New achievement unlocked?}
-    G -- Yes --> H[Award Badge\nShow notification]
+    G -- Yes --> H[Award Badge · Show notification]
     G -- No --> I[Check Storyline Unlocks]
     H --> I
     I --> J{Unlock criteria met?}
@@ -416,155 +474,63 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A[User visits SystemQuest] --> B[Register account\nPOST /auth/register]
-    B --> C[JWT issued\nSession started]
-    C --> D[mvp-launch assigned\nMission 1: MVP Launch]
+    A[User visits SystemQuest] --> B[Register · POST /auth/register]
+    B --> C[JWT issued · Session started]
+    C --> D[mvp-launch assigned]
     D --> E[Intro concept cards shown\nAPIs · Load Balancing · SQL vs NoSQL]
     E --> F[User builds first architecture]
     F --> G[First simulation run]
     G --> H{Passed?}
-    H -- Yes --> I[First XP earned\n150 XP]
-    H -- No --> J[Guided hints shown\nEncouragement message]
+    H -- Yes --> I[150 XP earned]
+    H -- No --> J[Guided hints shown]
     J --> F
     I --> K[Dashboard unlocked]
-    K --> L[Complete Foundations to unlock other paths]
-    L --> M[scaling-up unlocked next]
+    K --> L[Complete all 8 Foundations to unlock other paths]
+    L --> M[27,050 XP available across 48 missions]
 ```
 
 ---
 
 ## 🧠 Evaluation System
 
-SystemQuest evaluates every architecture submission across four layers: a deterministic rubric, simulation-derived metrics, an AI pattern analysis via NVIDIA NIM, and a longitudinal mistake tracker. Together they produce feedback that is specific, actionable, and personalised to each user's history.
-
 ### Rubric-Based Scoring
-
-Each mission defines a `success_criteria` JSON object with five weighted dimensions. The final score is a weighted average across all dimensions, scored 0–100.
 
 | Dimension | What It Checks | Typical Weight |
 |---|---|---|
 | Correctness | Required components present and correctly connected | 30% |
-| Performance | Latency, throughput, and availability hit mission targets | 25% |
-| Resilience | No single points of failure; redundancy where required | 20% |
-| Cost Efficiency | Design stays within the mission's budget constraint | 15% |
-| Scalability | Architecture can reach the target concurrent user count | 10% |
-
-**Score thresholds:**
+| Performance | Latency, throughput, availability hit targets | 25% |
+| Resilience | No SPOFs; redundancy where required | 20% |
+| Cost Efficiency | Design within budget | 15% |
+| Scalability | Reaches target concurrent users | 10% |
 
 | Score | Grade | Outcome |
 |---|---|---|
 | 90–100 | Excellent | Full XP + bonus eligible |
 | 75–89 | Good | Full XP awarded |
-| 50–74 | Pass | XP awarded, improvement suggestions shown |
-| < 50 | Fail | No XP; hints unlocked; retry encouraged |
+| 50–74 | Pass | XP awarded, suggestions shown |
+| < 50 | Fail | No XP; hints unlocked |
 
-**Example `success_criteria` JSON (scaling-up):**
-
-```json
-{
-  "rubric": {
-    "correctness": {
-      "weight": 0.30,
-      "criteria": ["load_balancer_present", "multiple_app_servers", "database_connected"]
-    },
-    "performance": {
-      "weight": 0.25,
-      "criteria": ["throughput_above_10000", "latency_under_150ms"]
-    },
-    "resilience": {
-      "weight": 0.20,
-      "criteria": ["no_spof", "min_two_app_servers_behind_lb"]
-    },
-    "cost_efficiency": {
-      "weight": 0.15,
-      "criteria": ["monthly_cost_under_2000"]
-    },
-    "scalability": {
-      "weight": 0.10,
-      "criteria": ["supports_10000_concurrent_users"]
-    }
-  }
-}
-```
-
----
-
-### AI Evaluation Engine
-
-After the rubric scorer runs, the AI Evaluator (powered by NVIDIA NIM) analyses the architecture graph for structural patterns and anti-patterns. It produces natural language feedback framed from the perspective of a senior engineer or FAANG interviewer.
-
-**Anti-patterns detected:**
+### AI Evaluation Engine (NVIDIA NIM)
 
 | Anti-Pattern | Example Feedback |
 |---|---|
-| Single Point of Failure | "Your load balancer routes all traffic to one database — this is a SPOF. Add a read replica." |
-| Missing cache on read-heavy path | "You're hitting the database on every request. A cache layer here would cut latency by ~60%." |
-| No rate limiting on public endpoint | "Your API Gateway has no rate limiter. A single bad actor could take down the service." |
-| Synchronous-only chain | "Every step in your pipeline is synchronous. A message queue between the server and file processor would prevent timeouts on large uploads." |
-| Over-engineered for budget | "You've added 4 app servers for a 1,000-user target. This exceeds the $500/month budget by 3x." |
-
-**What the interviewer would say** — each piece of AI feedback includes a framing line that mirrors how a FAANG interviewer would raise the same concern, helping users build interview fluency alongside technical skill.
-
-**Next concept suggestion** — the AI Evaluator maps each identified gap to one of the 40 system design concepts and surfaces it as a targeted learning recommendation: *"Based on this attempt, we recommend reviewing: Database Replication."*
-
----
+| Single Point of Failure | "Your database has no replica — this is a SPOF. Add a read replica." |
+| Missing cache on read-heavy path | "You're hitting the database on every request. A cache would cut latency by ~60%." |
+| No rate limiting | "Your API Gateway has no rate limiter. A bad actor could take down the service." |
+| Synchronous-only chain | "A message queue between server and file processor would prevent timeouts." |
+| Over-engineered for budget | "4 app servers for 1,000 users exceeds the $500/month budget by 3x." |
 
 ### Living Rubrics
-
-The Living Rubric system evaluates topology quality per rubric item in real time using NVIDIA NIM — not just at submission, but as you modify the canvas.
-
-- Each rubric item is evaluated independently with pass/fail reasoning surfaced inline
-- Rubric items update dynamically as components are added or connections are changed
-- Results are persisted in the `MissionRubric` model and retrievable via `GET /rubric/:slug`
-
----
-
-### What to Learn
-
-Every mission surfaces curated concept cards before and after the attempt, adapted to what the user already knows.
-
-**Pre-mission cards** (shown in the Mission Briefing):
-- 3–5 concept cards covering the key ideas needed to solve the mission
-- Each card includes: definition, real-world analogy, when to use it, and the most common mistake
-
-**Post-mission cards** (shown after evaluation):
-- Reinforces concepts the user got wrong
-- Skips concepts the user demonstrated mastery of
-- Links directly to the next mission where the concept appears again
-
-**Adaptive filtering:** if a user scores 90+ on the Performance dimension across 3 consecutive missions, performance-related concept cards are suppressed and replaced with content targeting their current weakest dimension.
-
----
+- Per-item AI evaluation with pass/fail reasoning surfaced inline
+- Updates dynamically as you modify the canvas
+- Persisted in `MissionRubric` and retrievable via `GET /rubric/:slug`
 
 ### Progress-Based Mistake Tracking
-
-Every mission attempt is stored in full — architecture snapshot, rubric scores per dimension, AI feedback, and hint usage. The Mistake Tracker analyses this history to surface patterns the user may not notice themselves.
-
-**Pattern detection examples:**
-
-> "You've missed adding a cache layer in 4 of your last 6 missions."
-
-> "Rate limiting on public endpoints has been absent in every attempt this week."
-
-> "You consistently place the load balancer after the database rather than before the app servers."
-
-**Mistake heatmap (Profile page):**
-- Visual grid of all 40 system design concepts
-- Colour-coded by failure frequency: green (strong) → yellow (occasional gap) → red (recurring weakness)
-- Click any concept to see which missions triggered that failure and what the correct approach was
-
-**Adaptive hint system:**
-- If a user has failed the Resilience dimension 3+ times, Hint 1 for their next mission proactively mentions redundancy — before they ask
-- Hint tier thresholds adjust per user: users with a strong track record get fewer unsolicited hints
-
-**Weekly mistake digest:**
-- Delivered on the Dashboard each Monday
-- Shows top 3 recurring gaps from the past 7 days
-- Recommends 1–2 specific missions to address each gap
-
-**Streak tracking:**
-- Tracks consecutive missions completed without triggering a specific mistake type
-- Streaks are displayed on the Profile page and contribute to achievement badges
+- Full attempt snapshots stored (architecture, rubric scores, AI feedback, hints used)
+- Pattern detection: *"You've missed a cache layer in 4 of your last 6 missions"*
+- Mistake heatmap on Profile — colour-coded by failure frequency across all 40 concepts
+- Adaptive hint system — proactively surfaces hints based on your recurring weak spots
+- Weekly digest of top 3 recurring gaps with recommended missions
 
 ---
 
@@ -580,12 +546,17 @@ systemquest/
 │   ├── package.json
 │   ├── tsconfig.json
 │   ├── prisma/
-│   │   ├── schema.prisma       # User, Mission, MissionAttempt, Achievement, MissionRubric
+│   │   ├── schema.prisma
 │   │   └── migrations/
 │   └── src/
 │       ├── index.ts
 │       ├── middleware/
-│       ├── prisma/             # Prisma client + seed.ts (23 missions — Sprint 1)
+│       ├── prisma/
+│       │   ├── seed.ts           # Sprint 1 — 23 missions
+│       │   ├── seed-sprint2.ts   # Sprint 2 — 10 missions
+│       │   ├── seed-sprint3.ts   # Sprint 3 — 15 missions
+│       │   ├── seed-lld.ts       # LLD content enrichment — 25 missions updated
+│       │   └── seed-concepts.ts  # Concept card data
 │       ├── routes/
 │       │   ├── auth.ts
 │       │   ├── missions.ts
@@ -640,7 +611,11 @@ docker compose up --build
 ```bash
 # Backend
 cd backend && npm install && cp .env.example .env
-npx prisma db push && npx prisma db seed
+npx prisma db push
+npx prisma db seed                          # Sprint 1 — 23 missions
+npx ts-node src/prisma/seed-sprint2.ts      # Sprint 2 — 10 missions
+npx ts-node src/prisma/seed-sprint3.ts      # Sprint 3 — 15 missions
+npx ts-node src/prisma/seed-lld.ts          # LLD enrichment
 npm run dev
 
 # Frontend (new terminal)
@@ -697,7 +672,7 @@ Base URL: `/api` · Protected routes require `Authorization: Bearer <token>`
 ## 🗄️ Database Schema
 
 ```
-Mission
+Mission — 48 missions across 3 sprints
   slug (unique), title, difficulty (1-5), xpReward, order
   learningPath, skillLevel, estimatedTime
   objectives · requirements · components · feedbackData (all JSON)
@@ -737,7 +712,10 @@ MissionRubric
 |---|---|---|
 | backend | `npm run dev` | Hot-reload dev server |
 | backend | `npm run build` | Compile TypeScript |
-| backend | `npx prisma db seed` | Load 23 missions + 9 achievements |
+| backend | `npx prisma db seed` | Seed Sprint 1 (23 missions) |
+| backend | `npx ts-node src/prisma/seed-sprint2.ts` | Seed Sprint 2 (+10 missions) |
+| backend | `npx ts-node src/prisma/seed-sprint3.ts` | Seed Sprint 3 (+15 missions) |
+| backend | `npx ts-node src/prisma/seed-lld.ts` | Enrich 25 missions with LLD content |
 | backend | `npx prisma studio` | Visual DB browser |
 | frontend | `npm run dev` | Vite dev server |
 | frontend | `npm run build` | Production build |
@@ -749,13 +727,13 @@ MissionRubric
 
 | Path | Missions | XP Available |
 |---|---|---|
-| Foundations | 4 | 1,250 |
-| Async & Queues | 4 | 1,575 |
-| High-Read Systems | 3 | 1,600 |
-| Real-Time & Messaging | 4 | 2,850 |
-| Consistency & Transactions | 3 | 1,850 |
-| Scale & Streaming | 5 | 4,750 |
-| **Total** | **23** | **13,875 XP** |
+| 🏗️ Foundations | 8 | 2,425 |
+| ⚡ Async & Queues | 7 | 2,875 |
+| 🚀 High-Read Systems | 9 | 4,975 |
+| 📡 Real-Time & Messaging | 8 | 4,575 |
+| 🔒 Consistency & Transactions | 6 | 3,800 |
+| 🌍 Scale & Streaming | 10 | 8,400 |
+| **Total** | **48** | **27,050 XP** |
 
 ---
 
@@ -765,6 +743,10 @@ MissionRubric
 |---|---|
 | `main` | Stable production-ready code |
 | `feature/systemquest-mvp` | Active MVP development |
+| `feature/sprint1-missions` | Sprint 1 mission development |
+| `feature/sprint2-f003-f005-missions` | Sprint 2 mission development |
+| `feature/sprint3-missions` | Sprint 3 mission development |
+| `feature/lld-phase` | LLD content enrichment |
 
 ---
 
@@ -772,9 +754,10 @@ MissionRubric
 
 ### Adding a New Mission
 
-1. Add the mission to `backend/src/prisma/seed.ts` with `slug`, `title`, `learningPath`, `skillLevel`, `difficulty` (1–5), `xpReward`, `order`, `objectives`, `requirements`, `components`, and `feedbackData`
-2. Run `npx prisma db seed` to load locally
-3. Update the mission table in this README
+1. Add the mission to the appropriate sprint seed file in `backend/src/prisma/`
+2. Set `slug`, `title`, `learningPath`, `skillLevel`, `difficulty` (1–5), `xpReward`, `order`, `objectives`, `requirements`, `components`, and `feedbackData`
+3. Run `npx ts-node src/prisma/seed-<sprint>.ts` locally
+4. Update the mission table in this README
 
 ---
 

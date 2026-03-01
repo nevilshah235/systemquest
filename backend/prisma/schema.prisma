@@ -49,8 +49,10 @@ model Mission {
   skillLevel    String  @default("beginner")
   /// Whether the LLD phase is enabled for this mission
   lldEnabled    Boolean @default(false)
-  /// JSON: LLDContent — classes, apiEndpoints, dataSchema, keyEntities
+  /// JSON: LLDContent — classes, apiEndpoints, dataSchema, keyEntities (legacy textarea hints)
   lldContent    String?
+  /// JSON: LLDMissionConfig — drives the interactive LLD builder (allowedDecisions, seedEntities, scoringWeights, penaltyRules)
+  lldConfig     String?
   /// JSON: ReferenceSolution — components, connections, keyInsights, tradeoffs, antiPatterns
   referenceSolution String?
 
@@ -87,9 +89,12 @@ model LLDAttempt {
   id           String   @id @default(cuid())
   userId       String
   missionId    String
+  /// Legacy textarea fields — kept for backward compatibility
   classDesign  String   @default("")
   apiContracts String   @default("")
   dataSchema   String   @default("")
+  /// JSON: full LLDBuilderState — used by the new interactive builder
+  lldState     String?
   score        Int      @default(0)
   feedback     String   @default("[]")
   xpEarned     Int      @default(0)

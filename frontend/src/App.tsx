@@ -8,6 +8,8 @@ import { ProgressPage } from './pages/ProgressPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { Navbar } from './components/dashboard/Navbar';
 import { ConceptAdvisorButton } from './components/concept/ConceptAdvisorButton';
+import { LandingPage } from './pages/LandingPage';
+import { InterviewPage } from './pages/InterviewPage';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, _hasHydrated } = useAuthStore();
@@ -39,7 +41,8 @@ export const App: React.FC = () => {
             <Route path="/progress" element={<ProtectedRoute><ProgressPage /></ProtectedRoute>} />
             {/* Sprint 2: Profile page with Mistake Patterns report */}
             <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-            <Route path="/" element={<Navigate to={user ? '/dashboard' : '/auth'} />} />
+            <Route path="/interview/:slug" element={<ProtectedRoute><InterviewPage /></ProtectedRoute>} />
+            <Route path="/" element={user ? <Navigate to="/dashboard" /> : <LandingPage />} />
           </Routes>
         </main>
         {user && <ConceptAdvisorButton />}

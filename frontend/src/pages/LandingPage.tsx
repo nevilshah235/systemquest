@@ -43,117 +43,119 @@ const Navbar: React.FC<{ onCTA: () => void }> = ({ onCTA }) => (
   </nav>
 );
 
-// ─── Node icons by type ───────────────────────────────────────────────────────
-const NodeIcon: React.FC<{ type: string }> = ({ type }) => {
-  const icons: Record<string, React.ReactNode> = {
-    client: (
-      // Monitor / browser
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-white">
-        <rect x="2" y="3" width="20" height="14" rx="2" />
-        <path d="M8 21h8M12 17v4" />
-      </svg>
-    ),
-    lb: (
-      // Shuffle / balancer
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-white">
-        <path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5" />
-      </svg>
-    ),
-    api: (
-      // Server rack
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-white">
-        <rect x="2" y="2" width="20" height="8" rx="2" />
-        <rect x="2" y="14" width="20" height="8" rx="2" />
-        <path d="M6 6h.01M6 18h.01" />
-      </svg>
-    ),
-    cache: (
-      // Lightning bolt / cache
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-white">
-        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-      </svg>
-    ),
-    db: (
-      // Cylinder database
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-white">
-        <ellipse cx="12" cy="5" rx="9" ry="3" />
-        <path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5" />
-        <path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3" />
-      </svg>
-    ),
-    queue: (
-      // Queue / list
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-white">
-        <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
-      </svg>
-    ),
-  };
-  return <>{icons[type] ?? icons.api}</>;
-};
+// ─── ReactFlow-style node card — mirrors the actual mission builder canvas ────
+const FlowNode: React.FC<{ emoji: string; label: string; sub: string; accent: string; x: string; y: string }> = ({ emoji, label, sub, accent, x, y }) => (
+  <div
+    className="absolute flex flex-col items-center"
+    style={{ left: x, top: y, transform: 'translate(-50%, -50%)', width: 90 }}
+  >
+    {/* Card — matches canvas: bg-gray-800/80 border-2 border-gray-600 rounded-xl */}
+    <div
+      className="w-full rounded-xl border-2 bg-gray-800/90 flex flex-col items-center justify-center gap-1 py-2 px-1 shadow-lg"
+      style={{ borderColor: accent, boxShadow: `0 0 0 1px ${accent}30, 0 4px 16px rgba(0,0,0,0.4)` }}
+    >
+      {/* Coloured top stripe — mimics node type indicator */}
+      <div className="w-full h-0.5 rounded-t-lg mb-1" style={{ background: accent, opacity: 0.7 }} />
+      <span className="text-2xl leading-none select-none">{emoji}</span>
+      <span className="text-[10px] text-gray-200 font-semibold text-center leading-tight whitespace-nowrap">{label}</span>
+      <span className="text-[8px] text-gray-500 text-center leading-tight whitespace-nowrap">{sub}</span>
+    </div>
+    {/* Right-side connection handle — matches canvas green handle dots */}
+    <div
+      className="absolute rounded-full border-2 border-white shadow-md"
+      style={{ width: 10, height: 10, background: '#22c55e', right: -5, top: '50%', transform: 'translateY(-50%)' }}
+    />
+  </div>
+);
 
 // ─── Hero architecture diagram preview ───────────────────────────────────────
 const ArchPreview: React.FC = () => {
   // Unique IDs per instance — prevents SVG marker ID collision when rendered twice
-  const uid          = React.useId().replace(/:/g, '');
-  const markViolet   = `arw-v-${uid}`;
-  const markAmber    = `arw-a-${uid}`;
-  const markEmerald  = `arw-e-${uid}`;
-  const markBlue     = `arw-b-${uid}`;
+  const uid        = React.useId().replace(/:/g, '');
+  const markBlue   = `arw-bl-${uid}`;
+  const markAmber  = `arw-am-${uid}`;
+  const markGreen  = `arw-gr-${uid}`;
 
-  // Nodes: { id, label, sublabel, x, y, iconType, ring color, bg gradient }
+  // Node definitions — emoji + accent match COMPONENT_META in types.ts exactly
   const nodes = [
-    { id: 'client', label: 'Client',        sub: 'Browser / App',  x: '7%',  y: '50%', type: 'client', ring: '#3b82f6', grad: 'from-blue-600 to-cyan-500' },
-    { id: 'lb',     label: 'Load Balancer', sub: 'Round-robin',    x: '30%', y: '25%', type: 'lb',     ring: '#7c3aed', grad: 'from-violet-600 to-purple-500' },
-    { id: 'api',    label: 'API Server',    sub: 'Node.js × 3',    x: '55%', y: '50%', type: 'api',    ring: '#6366f1', grad: 'from-indigo-600 to-violet-500' },
-    { id: 'cache',  label: 'Redis Cache',   sub: 'TTL: 300s',      x: '78%', y: '22%', type: 'cache',  ring: '#f59e0b', grad: 'from-amber-500 to-yellow-400' },
-    { id: 'db',     label: 'PostgreSQL',    sub: 'Primary + Read', x: '78%', y: '75%', type: 'db',     ring: '#10b981', grad: 'from-emerald-600 to-teal-500' },
+    { emoji: '👤', label: 'Client',       sub: 'Browser / App',   x: '8%',  y: '50%', accent: '#3b82f6' },
+    { emoji: '⚖️', label: 'Load Balancer', sub: 'Round-robin',     x: '32%', y: '22%', accent: '#a855f7' },
+    { emoji: '🖥️', label: 'App Server',    sub: 'Node.js × 3',     x: '57%', y: '50%', accent: '#6366f1' },
+    { emoji: '⚡', label: 'Cache',         sub: 'Redis · TTL 300s', x: '80%', y: '20%', accent: '#eab308' },
+    { emoji: '🗄️', label: 'Database',      sub: 'PostgreSQL',       x: '80%', y: '78%', accent: '#22c55e' },
   ];
 
-  // Edges: { x1,y1 → x2,y2, label, color, marker, dash }
+  // Edges — blue dashed, matching canvas default line style (#3b82f6, strokeDasharray "7 3")
   const edges = [
-    { x1: '11%', y1: '48%', x2: '27%', y2: '30%', label: 'HTTPS',  color: '#7c3aed', marker: markViolet,  lx: '17%', ly: '33%' },
-    { x1: '33%', y1: '30%', x2: '51%', y2: '46%', label: 'HTTP',   color: '#6366f1', marker: markBlue,    lx: '40%', ly: '33%' },
-    { x1: '59%', y1: '43%', x2: '75%', y2: '28%', label: 'Redis',  color: '#f59e0b', marker: markAmber,   lx: '65%', ly: '28%' },
-    { x1: '59%', y1: '55%', x2: '75%', y2: '68%', label: 'SQL',    color: '#10b981', marker: markEmerald, lx: '65%', ly: '68%' },
+    { x1: '13%', y1: '48%', x2: '29%', y2: '28%', label: 'HTTPS', color: '#3b82f6', marker: markBlue,  lx: '19%', ly: '32%' },
+    { x1: '36%', y1: '28%', x2: '53%', y2: '46%', label: 'HTTP',  color: '#3b82f6', marker: markBlue,  lx: '43%', ly: '32%' },
+    { x1: '61%', y1: '43%', x2: '77%', y2: '27%', label: 'Redis', color: '#eab308', marker: markAmber, lx: '67%', ly: '28%' },
+    { x1: '61%', y1: '56%', x2: '77%', y2: '70%', label: 'SQL',   color: '#22c55e', marker: markGreen, lx: '67%', ly: '70%' },
   ];
 
   return (
-    <div className="relative w-full h-72 md:h-88" style={{ height: '22rem' }}>
-      <div className="absolute inset-0 rounded-2xl bg-violet-500/10 blur-2xl" />
-      <div className="relative rounded-2xl border border-violet-500/20 bg-gray-900/70 backdrop-blur h-full overflow-hidden">
+    <div className="relative w-full" style={{ height: '22rem' }}>
+      <div className="absolute inset-0 rounded-2xl bg-blue-500/5 blur-2xl" />
 
-        {/* SVG layer — edges + labels */}
-        <svg className="absolute inset-0 w-full h-full" style={{ pointerEvents: 'none' }}>
+      {/* Canvas shell — matches ReactFlow canvas bg + grid */}
+      <div
+        className="relative rounded-2xl border border-gray-700 h-full overflow-hidden"
+        style={{
+          background: '#111827',
+          backgroundImage: `
+            linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)
+          `,
+          backgroundSize: '40px 40px',
+        }}
+      >
+        {/* Canvas top bar — mimics ReactFlow toolbar */}
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-700/60 bg-gray-900/80">
+          <div className="w-2 h-2 rounded-full bg-red-500/60" />
+          <div className="w-2 h-2 rounded-full bg-yellow-500/60" />
+          <div className="w-2 h-2 rounded-full bg-green-500/60" />
+          <span className="ml-2 text-gray-600 text-[10px] font-mono">url-shortener · builder</span>
+          <div className="ml-auto flex items-center gap-1.5">
+            <div className="text-[9px] text-gray-600 border border-gray-700 rounded px-1.5 py-0.5">Simulate ▶</div>
+          </div>
+        </div>
+
+        {/* SVG layer — connection lines + protocol labels */}
+        <svg className="absolute inset-0 w-full h-full" style={{ pointerEvents: 'none', top: 32 }}>
           <defs>
             {[
-              { id: markViolet,  fill: '#7c3aed' },
-              { id: markBlue,    fill: '#6366f1' },
-              { id: markAmber,   fill: '#f59e0b' },
-              { id: markEmerald, fill: '#10b981' },
+              { id: markBlue,  fill: '#3b82f6' },
+              { id: markAmber, fill: '#eab308' },
+              { id: markGreen, fill: '#22c55e' },
             ].map(({ id, fill }) => (
               <marker key={id} id={id} markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
-                <path d="M0,0 L0,7 L7,3.5 z" fill={fill} opacity="0.85" />
+                <path d="M0,0 L0,7 L7,3.5 z" fill={fill} opacity="0.9" />
               </marker>
             ))}
           </defs>
 
           {edges.map((e, i) => (
             <g key={i}>
+              {/* Wider transparent hit area (matching canvas hover style) */}
+              <line x1={e.x1} y1={e.y1} x2={e.x2} y2={e.y2} stroke="transparent" strokeWidth="8" />
+              {/* Visible dashed line — matches canvas default: #3b82f6 dash "7 3" */}
               <line
                 x1={e.x1} y1={e.y1} x2={e.x2} y2={e.y2}
-                stroke={e.color} strokeWidth="1.5" strokeOpacity="0.55"
-                strokeDasharray="5 3"
+                stroke={e.color} strokeWidth="1.8" strokeOpacity="0.65"
+                strokeDasharray="7 3"
                 markerEnd={`url(#${e.marker})`}
               />
-              {/* Edge protocol label */}
+              {/* Protocol chip — styled like canvas edge label */}
+              <rect
+                x={`calc(${e.lx} - 14px)`} y={`calc(${e.ly} - 7px)`}
+                width="28" height="13" rx="3"
+                fill="#1f2937" stroke={e.color} strokeOpacity="0.4" strokeWidth="0.8"
+              />
               <text
                 x={e.lx} y={e.ly}
-                textAnchor="middle"
-                fontSize="8"
-                fill={e.color}
-                opacity="0.9"
-                fontFamily="monospace"
-                fontWeight="600"
+                textAnchor="middle" dominantBaseline="middle"
+                fontSize="7" fill={e.color} opacity="0.95"
+                fontFamily="monospace" fontWeight="700"
               >
                 {e.label}
               </text>
@@ -163,33 +165,20 @@ const ArchPreview: React.FC = () => {
 
         {/* Node layer */}
         {nodes.map((n) => (
-          <div
-            key={n.id}
-            className="absolute flex flex-col items-center gap-1"
-            style={{ left: n.x, top: n.y, transform: 'translate(-50%, -50%)' }}
-          >
-            {/* Icon box with colored ring */}
-            <div
-              className={`w-11 h-11 rounded-xl bg-gradient-to-br ${n.grad} flex items-center justify-center shadow-lg`}
-              style={{ boxShadow: `0 0 0 2px ${n.ring}55, 0 4px 12px ${n.ring}33` }}
-            >
-              <NodeIcon type={n.type} />
-            </div>
-            <span className="text-[10px] text-white font-semibold whitespace-nowrap leading-tight">{n.label}</span>
-            <span className="text-[9px] text-gray-500 whitespace-nowrap leading-tight">{n.sub}</span>
-          </div>
+          <FlowNode key={n.label} {...n} />
         ))}
 
         {/* Score badge */}
-        <div className="absolute bottom-3 right-3 flex items-center gap-2 bg-violet-600/20 border border-violet-500/30 rounded-lg px-3 py-1.5">
-          <span className="text-violet-300 text-[10px] font-semibold">Score</span>
-          <span className="text-white text-sm font-bold">94/100</span>
+        <div className="absolute bottom-3 right-3 flex items-center gap-1.5 bg-gray-900/90 border border-gray-700 rounded-lg px-2.5 py-1.5">
+          <span className="text-[9px] text-gray-500 font-mono">score</span>
+          <span className="text-white text-xs font-bold">94/100</span>
+          <span className="w-2 h-2 rounded-full bg-emerald-400" />
         </div>
 
-        {/* Latency badge */}
-        <div className="absolute bottom-3 left-3 flex items-center gap-1.5 bg-emerald-600/20 border border-emerald-500/30 rounded-lg px-3 py-1.5">
+        {/* p99 latency badge */}
+        <div className="absolute bottom-3 left-3 flex items-center gap-1.5 bg-gray-900/90 border border-gray-700 rounded-lg px-2.5 py-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-emerald-300 text-[10px] font-semibold">p99: 38ms</span>
+          <span className="text-emerald-400 text-[9px] font-mono">p99: 38ms</span>
         </div>
       </div>
     </div>

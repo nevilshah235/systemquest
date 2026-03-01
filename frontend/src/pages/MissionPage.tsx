@@ -105,8 +105,8 @@ const FloatingPillNav: React.FC<FloatingPillNavProps> = ({
   return (
     <div className="relative" ref={containerRef}>
       {/* ── Main pill ── */}
-      <div className="flex items-center gap-1.5 bg-gray-800/80 border border-gray-700/60
-        rounded-full px-2.5 py-1.5 backdrop-blur-sm">
+      <div className="flex items-center gap-2 bg-gray-800/80 border border-gray-700/60
+        rounded-full px-4 py-2.5 backdrop-blur-sm">
 
         {/* Left chevron */}
         <button
@@ -147,7 +147,7 @@ const FloatingPillNav: React.FC<FloatingPillNavProps> = ({
               />
             );
           })}
-          <span className="text-xs font-medium text-gray-200 ml-1 select-none">
+          <span className="text-sm font-semibold text-gray-200 ml-1.5 select-none">
             {labels[currentIdx]}
           </span>
         </button>
@@ -302,10 +302,10 @@ export const MissionPage: React.FC = () => {
       }`}
     >
       {/* ── Top bar: Dashboard ← | FloatingPillNav | Actions ── */}
-      <div className="bg-gray-900/80 border-b border-gray-800 px-4 py-3 flex-shrink-0">
-        <div className="max-w-3xl mx-auto flex items-center justify-between">
+      <div className="bg-gray-900/80 border-b border-gray-800 px-6 py-5 flex-shrink-0">
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
           {/* Back to dashboard */}
-          <button onClick={() => navigate('/dashboard')} className="btn-ghost text-xs">
+          <button onClick={() => navigate('/dashboard')} className="btn-ghost text-sm font-medium">
             ← Dashboard
           </button>
 
@@ -349,7 +349,7 @@ export const MissionPage: React.FC = () => {
               </button>
             )}
 
-            <div className="text-xs text-gray-500">{activeMission.title}</div>
+            <div className="text-sm text-gray-400 font-medium">{activeMission.title}</div>
           </div>
         </div>
       </div>

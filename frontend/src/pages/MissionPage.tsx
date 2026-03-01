@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { useMissionStore } from '../stores/missionStore';
 import { useChatStore } from '../stores/chatStore';
@@ -55,17 +55,37 @@ function useMissionContext(
 export const MissionPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate  = useNavigate();
+  const [searchParams] = useSearchParams();
   const {
     activeMission, phase, setPhase, startMission, runSimulation,
     simulationMetrics, simulationXpGranted, isLoading, isSimulating, resetMission,
   } = useMissionStore();
   const { isOpen: chatOpen, toggleOpen: toggleChat, clearChat } = useChatStore();
   const [showCompare, setShowCompare] = useState(false);
+  // Track whether the initial phase from URL param has been applied yet
+  const initialPhaseApplied = useRef(false);
 
   useEffect(() => {
-    if (slug) startMission(slug);
+    if (slug) {
+      initialPhaseApplied.current = false;
+      startMission(slug);
+    }
     return () => { resetMission(); clearChat(); };
   }, [slug]);
+
+  // After mission loads, apply the ?phase= URL param (e.g. ?phase=results from dashboard)
+  useEffect(() => {
+    if (!activeMission || isLoading || initialPhaseApplied.current) return;
+    initialPhaseApplied.current = true;
+
+    const requestedPhase = searchParams.get('phase') as typeof PHASE_ORDER[number] | null;
+    if (requestedPhase && PHASE_ORDER.includes(requestedPhase)) {
+      setPhase(requestedPhase);
+    } else if (activeMission.userProgress?.completed) {
+      // Default completed missions to results tab
+      setPhase('results');
+    }
+  }, [activeMission, isLoading]);
 
   // Register enriched mission context (including simulation results) for the chat store
   useMissionContext(activeMission, phase, simulationMetrics);
@@ -92,9 +112,11 @@ export const MissionPage: React.FC = () => {
   const isResultsPhase  = phase === 'results';
   const isLLDPhase      = phase === 'lld';
   const showChat        = isBuilderPhase || isResultsPhase;
+  const isCompleted     = !!activeMission.userProgress?.completed;
+  const bestScore       = activeMission.userProgress?.bestScore ?? 0;
   const hldPassed       = simulationMetrics ? simulationMetrics.score >= 60 : false;
-  // LLD tab only unlocks if HLD passed
-  const lldUnlocked     = hldPassed;
+  // LLD unlocks from current sim OR from a previously-passed attempt (bestScore)
+  const lldUnlocked     = hldPassed || bestScore >= 60;
   const hasReference    = !!activeMission.referenceSolution;
 
   return (
@@ -106,15 +128,22 @@ export const MissionPage: React.FC = () => {
           <div className="flex items-center gap-1">
             {PHASE_LABELS.map((label, i) => {
               const isLLDTab = i === 4;
-              const disabled = i > phaseIdx + 1 || (isLLDTab && !lldUnlocked);
+              // Completed missions: all tabs freely clickable except LLD without unlock
+              const disabled = isLLDTab
+                ? !lldUnlocked
+                : isCompleted
+                ? false
+                : i > phaseIdx + 1;
               return (
                 <React.Fragment key={label}>
                   <button
                     disabled={disabled}
-                    onClick={() => !disabled && i <= phaseIdx + 1 && setPhase(PHASE_ORDER[i])}
+                    onClick={() => !disabled && setPhase(PHASE_ORDER[i])}
                     className={`text-xs px-3 py-1 rounded-full font-medium transition-all ${
                       i === phaseIdx
                         ? 'bg-brand-600 text-white'
+                        : isCompleted && !disabled
+                        ? 'text-green-400 hover:bg-gray-800'
                         : i < phaseIdx
                         ? 'text-green-400 hover:bg-gray-800'
                         : disabled
@@ -122,7 +151,7 @@ export const MissionPage: React.FC = () => {
                         : 'text-gray-500 hover:bg-gray-800'
                     }`}
                   >
-                    {i < phaseIdx ? '✓ ' : ''}{label}{isLLDTab && !lldUnlocked ? ' 🔒' : ''}
+                    {(isCompleted || i < phaseIdx) && !isLLDTab ? '✓ ' : ''}{label}{isLLDTab && !lldUnlocked ? ' 🔒' : ''}
                   </button>
                   {i < PHASE_LABELS.length - 1 && <span className="text-gray-700">›</span>}
                 </React.Fragment>
@@ -200,19 +229,56 @@ export const MissionPage: React.FC = () => {
             )}
           </>
         )}
-        {phase === 'results' && simulationMetrics && (
+        {phase === 'results' && (
           <>
-            {/* Results takes remaining width */}
             <div className="flex-1 min-w-0 overflow-auto">
-              <SimulationResults
-                metrics={simulationMetrics}
-                mission={activeMission}
-                xpGranted={simulationXpGranted}
-                onRetry={() => setPhase('builder')}
-              />
+              {simulationMetrics ? (
+                <SimulationResults
+                  metrics={simulationMetrics}
+                  mission={activeMission}
+                  xpGranted={simulationXpGranted}
+                  onRetry={() => setPhase('builder')}
+                />
+              ) : (
+                /* Completed mission returning to Results — no fresh sim metrics yet */
+                <div className="max-w-2xl mx-auto px-6 py-12 text-center space-y-6">
+                  <div className="text-5xl">🏆</div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-white mb-2">Mission Complete!</h2>
+                    <p className="text-gray-400">
+                      Your best score:{' '}
+                      <span className={`font-bold text-xl ${bestScore >= 80 ? 'text-green-400' : bestScore >= 60 ? 'text-yellow-400' : 'text-red-400'}`}>
+                        {bestScore}/100
+                      </span>
+                    </p>
+                  </div>
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                    <button
+                      onClick={() => setPhase('builder')}
+                      className="btn-primary px-6 py-2.5"
+                    >
+                      🔄 Re-run Simulation
+                    </button>
+                    {lldUnlocked && (
+                      <button
+                        onClick={() => setPhase('lld')}
+                        className="flex items-center gap-2 text-sm px-6 py-2.5 rounded-lg font-medium border bg-yellow-800/20 border-yellow-600/50 text-yellow-400 hover:text-yellow-200 transition-all"
+                      >
+                        🔧 Go Deeper → LLD
+                      </button>
+                    )}
+                    {hasReference && (
+                      <button
+                        onClick={() => setShowCompare(true)}
+                        className="flex items-center gap-2 text-sm px-6 py-2.5 rounded-lg font-medium border bg-purple-800/20 border-purple-600/50 text-purple-400 hover:text-purple-200 transition-all"
+                      >
+                        ⚖️ Compare Solution
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
-
-            {/* Chat panel — slides in from right */}
             {chatOpen && (
               <div className="w-80 flex-shrink-0 border-l border-gray-800 overflow-hidden">
                 <ChatAssistant missionSlug={activeMission.slug} />

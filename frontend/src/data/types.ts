@@ -30,6 +30,7 @@ export interface Mission {
   lockReason?: string | null;
   userProgress?: UserMissionProgress;
   savedArchitecture?: Architecture | null;
+  referenceSolution?: Architecture | null;
 }
 
 export interface MissionRequirements {
@@ -108,6 +109,7 @@ export interface SimulationMetrics {
   bonusXp: number;
   feedback: FeedbackItem[];
   achievements: string[];
+  allMetricsMet?: boolean;
 }
 
 export interface SimulationResult {
@@ -257,6 +259,20 @@ export const LEARNING_PATHS: Record<string, LearningPathMeta> = {
   },
 };
 
+/** Monthly cost in USD per component instance */
+export const COMPONENT_COSTS: Record<ComponentType, number> = {
+  client:       0,
+  loadbalancer: 100,
+  server:       200,
+  database:     300,
+  cache:        150,
+  cdn:          100,
+  queue:        80,
+  storage:      50,
+  monitoring:   80,
+  apigateway:   120,
+};
+
 export const COMPONENT_META: Record<ComponentType, { label: string; icon: string; color: string; description: string }> = {
   client:       { label: 'Client',        icon: '👤', color: 'bg-blue-500',    description: 'User-facing web or mobile app' },
   loadbalancer: { label: 'Load Balancer', icon: '⚖️',  color: 'bg-purple-500',  description: 'Distributes incoming traffic evenly' },
@@ -269,3 +285,17 @@ export const COMPONENT_META: Record<ComponentType, { label: string; icon: string
   monitoring:   { label: 'Monitoring',    icon: '📊',  color: 'bg-pink-500',    description: 'Tracks system health and alerts' },
   apigateway:   { label: 'API Gateway',   icon: '🔀',  color: 'bg-rose-500',    description: 'Routes and manages API traffic' },
 };
+
+// ── Compare Panel (reference solution diff) ───────────────────────────────────
+
+export interface ComparisonResult {
+  attemptScore: number;
+  components: {
+    matched: string[];
+    missing: string[];
+    extra: string[];
+  };
+  keyInsights: string[];
+  tradeoffs: { decision: string; reason: string }[];
+  antiPatterns: string[];
+}

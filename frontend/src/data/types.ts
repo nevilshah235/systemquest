@@ -6,14 +6,7 @@ export interface User {
   username: string;
   xp: number;
   level: number;
-  /** Stored / self-declared level. Default 'beginner'. Auto-upgraded by the server after promotion. */
   skillLevel: string;
-  /**
-   * Performance-derived level computed from mission attempt history.
-   * Always >= skillLevel after a promotion event.
-   * Use this (or the higher of the two) for badge display and path recommendations.
-   * Absent on legacy/cached auth tokens — fall back to skillLevel.
-   */
   derivedSkillLevel?: string;
 }
 
@@ -31,19 +24,13 @@ export interface Mission {
   requirements: MissionRequirements;
   components: MissionComponents;
   feedbackData: FeedbackData;
-  /** foundations | async-queues | high-read | real-time | consistency | scale-streaming */
   learningPath: string;
-  /** beginner | intermediate | advanced */
   skillLevel: string;
-  /**
-   * Server-computed: true when the path-unlock rules prevent this mission from being played.
-   * Populated by GET /api/missions. Treat as false when absent (e.g. on single-mission fetch).
-   */
   isLocked?: boolean;
-  /** Human-readable explanation of why the mission is locked, or null when unlocked. */
   lockReason?: string | null;
   userProgress?: UserMissionProgress;
   savedArchitecture?: Architecture | null;
+  referenceSolution?: Architecture | null;
 }
 
 export interface MissionRequirements {
@@ -122,12 +109,12 @@ export interface SimulationMetrics {
   bonusXp: number;
   feedback: FeedbackItem[];
   achievements: string[];
+  allMetricsMet?: boolean;
 }
 
 export interface SimulationResult {
   metrics: SimulationMetrics;
   missionTitle: string;
-  /** Present only when a completed run triggered a skill level upgrade */
   skillPromotion: {
     promoted: boolean;
     newLevel: string;
@@ -166,18 +153,52 @@ export interface UserAchievement {
   unlockedAt: string;
 }
 
-// ── Learning Path metadata ───────────────────────────────────────────────────────────
+// ── Sprint 2: Spaced Repetition (F-005) ──────────────────────────────────────────
+
+export interface ReviewQueueItem {
+  id: string;
+  missionSlug: string;
+  missionTitle: string;
+  missionPath: string;
+  lastScore: number;
+  interval: number;
+  dueAt: string;
+  snoozeCount: number;
+  isDue?: boolean;
+}
+
+// ── Sprint 2: Mistake Patterns (F-003) ────────────────────────────────────────
+
+export type PatternDimension =
+  | 'scalability'
+  | 'consistency'
+  | 'reliability'
+  | 'api-design'
+  | 'data-modelling';
+
+export interface MistakePattern {
+  id: string;
+  dimension: PatternDimension;
+  patternSlug: string;
+  patternName: string;
+  frequency: number;
+  /** Mission slugs where this pattern was detected */
+  affectedMissions: string[];
+  conceptSlug: string | null;
+  isResolved: boolean;
+  lastSeenAt: string;
+  createdAt: string;
+}
+
+// ── Learning Path metadata ────────────────────────────────────────────────────────
 
 export interface LearningPathMeta {
   slug: string;
   title: string;
   icon: string;
   description: string;
-  /** Tailwind border+bg colour classes for the path card */
   colorClass: string;
-  /** Display order on dashboard */
   order: number;
-  /** Minimum skill level label shown */
   skillLabel: string;
 }
 
@@ -238,7 +259,20 @@ export const LEARNING_PATHS: Record<string, LearningPathMeta> = {
   },
 };
 
-// Component display metadata
+/** Monthly cost in USD per component instance */
+export const COMPONENT_COSTS: Record<ComponentType, number> = {
+  client:       0,
+  loadbalancer: 100,
+  server:       200,
+  database:     300,
+  cache:        150,
+  cdn:          100,
+  queue:        80,
+  storage:      50,
+  monitoring:   80,
+  apigateway:   120,
+};
+
 export const COMPONENT_META: Record<ComponentType, { label: string; icon: string; color: string; description: string }> = {
   client:       { label: 'Client',        icon: '👤', color: 'bg-blue-500',    description: 'User-facing web or mobile app' },
   loadbalancer: { label: 'Load Balancer', icon: '⚖️',  color: 'bg-purple-500',  description: 'Distributes incoming traffic evenly' },
@@ -251,3 +285,17 @@ export const COMPONENT_META: Record<ComponentType, { label: string; icon: string
   monitoring:   { label: 'Monitoring',    icon: '📊',  color: 'bg-pink-500',    description: 'Tracks system health and alerts' },
   apigateway:   { label: 'API Gateway',   icon: '🔀',  color: 'bg-rose-500',    description: 'Routes and manages API traffic' },
 };
+
+// ── Compare Panel (reference solution diff) ───────────────────────────────────
+
+export interface ComparisonResult {
+  attemptScore: number;
+  components: {
+    matched: string[];
+    missing: string[];
+    extra: string[];
+  };
+  keyInsights: string[];
+  tradeoffs: { decision: string; reason: string }[];
+  antiPatterns: string[];
+}

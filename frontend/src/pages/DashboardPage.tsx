@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useMissionStore } from '../stores/missionStore';
 import { useAuthStore } from '../stores/authStore';
 import { MissionCard } from '../components/dashboard/MissionCard';
+import { DueForReviewWidget } from '../components/dashboard/DueForReviewWidget';
 import { XPBar } from '../components/ui/XPBar';
 import { Mission, LEARNING_PATHS, LearningPathMeta } from '../data/types';
 import { AdventureRoadmap } from '../components/progress/AdventureRoadmap';
@@ -26,7 +27,6 @@ function resolveDisplaySkill(skillLevel?: string, derivedSkillLevel?: string): s
   return order[Math.max(stored, derived)] ?? 'beginner';
 }
 
-// ── Group missions by learning path and sort within each group ───────────────
 function groupByPath(missions: Mission[]): Record<string, Mission[]> {
   const groups: Record<string, Mission[]> = {};
   for (const m of missions) {
@@ -40,7 +40,7 @@ function groupByPath(missions: Mission[]): Record<string, Mission[]> {
   return groups;
 }
 
-// ── Learning Path Detail Section (shown below roadmap) ──────────────────────
+// ── Path Detail Section (shown below roadmap for selected path) ──────────────
 interface PathDetailProps {
   meta: LearningPathMeta;
   missions: Mission[];
@@ -106,10 +106,10 @@ export const DashboardPage: React.FC = () => {
   const { missions, fetchMissions, isLoading } = useMissionStore();
   const { user } = useAuthStore();
 
-  // Which roadmap node is selected (null = default to recommended path)
+  // Which roadmap node is selected (null = auto-resolve to recommended path)
   const [selectedPathSlug, setSelectedPathSlug] = useState<string | null>(null);
 
-  // Ref for scrolling to the detail section when a node is clicked
+  // Ref for smooth-scrolling to the detail panel when a node is clicked
   const detailRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { fetchMissions(); }, [fetchMissions]);
@@ -129,14 +129,13 @@ export const DashboardPage: React.FC = () => {
     foundationMissions.every((m) => m.userProgress?.completed);
 
   // Determine which path's detail panel to show
-  const defaultPath    = getRecommendedPath(displaySkill, missionsByPath);
-  const activePathSlug = selectedPathSlug ?? defaultPath;
-  const activePathMeta = LEARNING_PATHS[activePathSlug];
+  const defaultPath        = getRecommendedPath(displaySkill, missionsByPath);
+  const activePathSlug     = selectedPathSlug ?? defaultPath;
+  const activePathMeta     = LEARNING_PATHS[activePathSlug];
   const activePathMissions = missionsByPath[activePathSlug] ?? [];
 
   const handleNodeSelect = (slug: string) => {
     setSelectedPathSlug(slug);
-    // Smooth-scroll to the mission detail section
     setTimeout(() => {
       detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 80);
@@ -167,11 +166,7 @@ export const DashboardPage: React.FC = () => {
       </motion.div>
 
       {/* XP bar */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1, transition: { delay: 0.1 } }}
-        className="card p-5 mb-6"
-      >
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 0.1 } }} className="card p-5 mb-6">
         <XPBar
           xp={totalXP}
           level={userLevel}
@@ -181,7 +176,7 @@ export const DashboardPage: React.FC = () => {
       </motion.div>
 
       {/* Stats overview */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-3 gap-4 mb-6">
         {([
           { icon: '✅', label: 'Completed', value: completedCount },
           { icon: '⭐', label: 'Total XP',  value: totalXP        },
@@ -199,6 +194,14 @@ export const DashboardPage: React.FC = () => {
           </motion.div>
         ))}
       </div>
+
+      {/* ── F-005: Due for Review widget ───────────────────────────────── */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1, transition: { delay: 0.2 } }}
+      >
+        <DueForReviewWidget />
+      </motion.div>
 
       {/* Foundations progress notice */}
       {!foundationsComplete && foundationMissions.length > 0 && (
@@ -277,8 +280,8 @@ function levelThreshold(level: number): number {
 }
 
 /**
- * Returns the slug of the first non-foundations path that has incomplete missions
- * matching the user's resolved skill level. Used to auto-select the detail panel path.
+ * Returns the slug of the recommended path to show in the detail panel by default.
+ * Prefers foundations if incomplete, then matches user's skill level.
  */
 function getRecommendedPath(
   displaySkill: string,
@@ -288,12 +291,12 @@ function getRecommendedPath(
     .sort(([, a], [, b]) => a.order - b.order)
     .map(([slug]) => slug);
 
-  // Prefer the foundations path if it has incomplete missions (user just started)
+  // Show foundations first if it has incomplete missions
   if ((missionsByPath['foundations'] ?? []).some((m) => !m.userProgress?.completed)) {
     return 'foundations';
   }
 
-  // Then prefer paths with missions matching the user's effective skill level that are incomplete
+  // Then prefer paths matching the user's skill level with incomplete missions
   for (const slug of pathOrder.filter((s) => s !== 'foundations')) {
     const pathMissions = missionsByPath[slug] ?? [];
     const hasMatchingSkill = pathMissions.some((m) => m.skillLevel === displaySkill);

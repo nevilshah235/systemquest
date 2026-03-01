@@ -1,22 +1,12 @@
 /**
  * solutions.ts
  * Optimal "reference" architectures for each mission used by SolutionViewer.
- * Components are pre-positioned for a clean canvas layout.
- *
- * Simulation targets (verified against simulationEngine.ts):
- *   Mission 4  file-converter    : 5k users | 280ms | 99%    | $800
- *   Mission 5  url-shortener     : 50k users | 170ms | 99.9%  | $1,500
- *   Mission 6  live-scoreboard   : 80k users | 150ms | 99.9%  | $3,000
- *   Mission 7  code-judge        : 2k users  | 280ms | 99.5%  | $2,500
- *   Mission 8  search-engine     : 75k users | 160ms | 99.9%  | $5,000
- *   Mission 9  booking-system    : 10k users | 200ms | 99.9%  | $3,500
- *   Mission 10 social-feed       : 500k users| 160ms | 99.99% | $15,000
- *   Mission 11 ride-hailing      : 25k users | 155ms | 99.9%  | $8,000
- *   Mission 12 video-streaming   : 500k users| 160ms | 99.99% | $50,000
- *   Mission 13 payment-processing: 5k users  | 280ms | 99%    | $5,000
+ * Sprint 3 missions (26-40) and concept-depth missions (41-48) are merged at module load.
  */
 
 import { Architecture, COMPONENT_META, ComponentType } from './types';
+import { SPRINT3_SOLUTIONS } from './solutions-sprint3';
+import { SPRINT3_CONCEPT_SOLUTIONS } from './solutions-sprint3-concepts';
 
 export interface MissionSolution {
   architecture: Architecture;
@@ -28,7 +18,7 @@ export interface MissionSolution {
 
 export const MISSION_SOLUTIONS: Record<string, MissionSolution> = {
 
-  // ── Mission 1: MVP Launch ───────────────────────────────────────────────────────
+  // ── Mission 1: MVP Launch ────────────────────────────────────────────────────────
   'mvp-launch': {
     architecture: {
       components: [
@@ -63,7 +53,7 @@ export const MISSION_SOLUTIONS: Record<string, MissionSolution> = {
       'Two App Servers behind a Load Balancer handle 1,000 concurrent users and remove the single point of failure. A Cache between the servers and the Database cuts latency to sub-200ms. CDN offloads static assets, and Monitoring provides the observability needed for 99% uptime.',
   },
 
-  // ── Mission 2: Scaling Up ───────────────────────────────────────────────────────
+  // ── Mission 2: Scaling Up ────────────────────────────────────────────────────────
   'scaling-up': {
     architecture: {
       components: [
@@ -105,7 +95,7 @@ export const MISSION_SOLUTIONS: Record<string, MissionSolution> = {
       'Scaling to 10k users requires three App Servers behind a Load Balancer plus an API Gateway for traffic management. A Cache slashes DB round-trips to hit 150ms latency. A Queue decouples heavy background tasks. CDN and Monitoring together push availability to 99.9%.',
   },
 
-  // ── Mission 3: Global Expansion ────────────────────────────────────────────────
+  // ── Mission 3: Global Expansion ───────────────────────────────────────────────────
   'global-expansion': {
     architecture: {
       components: [
@@ -152,8 +142,7 @@ export const MISSION_SOLUTIONS: Record<string, MissionSolution> = {
       'Global scale demands CDN for edge delivery, API Gateway for geo-routing, 3 App Servers behind a Load Balancer for throughput, two Cache layers for sub-100ms latency everywhere, a Queue + Storage tier for async media workloads, and full Monitoring for five-nines availability.',
   },
 
-  // ── Mission 4: File Converter (like Zamzar) ───────────────────────────────────
-  // Cost: $0+35+20+50+50+25+20+40+10 = $250  | Latency: 270ms | Throughput: 6,006 | Avail: 99.1%
+  // ── Mission 4: File Converter (like Zamzar) ───────────────────────────────────────
   'file-converter': {
     architecture: {
       components: [
@@ -191,8 +180,7 @@ export const MISSION_SOLUTIONS: Record<string, MissionSolution> = {
       'The API Gateway handles upload rate-limiting, while two App Servers behind a Load Balancer ingest 5,000 concurrent uploads. A Queue decouples ingestion from CPU-intensive conversion workers, keeping API latency under 280ms. Storage holds the binary files, the Database only tracks metadata, and Monitoring fires alerts when conversion jobs stall.',
   },
 
-  // ── Mission 5: URL Shortener (like Bitly) ─────────────────────────────────────
-  // Cost: $0+30+35+20+150+15+40+10 = $300 | Latency: 160ms | Throughput: 68,040 | Avail: 99.9%
+  // ── Mission 5: URL Shortener (like Bitly) ─────────────────────────────────────────
   'url-shortener': {
     architecture: {
       components: [
@@ -233,8 +221,7 @@ export const MISSION_SOLUTIONS: Record<string, MissionSolution> = {
       'URL shorteners are read-dominated — 99% of traffic is redirect lookups, not link creation. Three App Servers behind a Load Balancer handle 50k concurrent requests. A shared Cache layer serves 99% of redirects without touching the Database, keeping latency at 160ms. CDN serves preview pages at the edge, and API Gateway prevents link-spam abuse.',
   },
 
-  // ── Mission 6: Live Scoreboard (like CricBuzz) ─────────────────────────────
-  // Cost: $0+30+35+20+200+25+15+40+10 = $375 | Latency: 140ms | Throughput: 530k | Avail: 99.9%+
+  // ── Mission 6: Live Scoreboard (like CricBuzz) ──────────────────────────────────
   'live-scoreboard': {
     architecture: {
       components: [
@@ -282,8 +269,7 @@ export const MISSION_SOLUTIONS: Record<string, MissionSolution> = {
       'A live scoreboard with 80,000 concurrent viewers cannot afford database reads per request. Four App Servers behind a Load Balancer absorb the traffic spike. Score updates publish to a Queue for fan-out; viewers read the latest score from Cache in memory, keeping latency at 140ms. CDN offloads static match assets, and Monitoring fires alerts if a server falls behind event consumption.',
   },
 
-  // ── Mission 7: Code Judge (like Codeforces) ───────────────────────────────
-  // Cost: $0+35+20+150+25+20+40+10 = $300 | Latency: 270ms | Throughput: 36k | Avail: 99.6%
+  // ── Mission 7: Code Judge (like Codeforces) ──────────────────────────────────────
   'code-judge': {
     architecture: {
       components: [
@@ -322,11 +308,10 @@ export const MISSION_SOLUTIONS: Record<string, MissionSolution> = {
       'Monitoring watches queue depth and kills runaway execution jobs',
     ],
     explanation:
-      'Code execution is CPU-intensive and unpredictable in duration. Three App Servers behind a Load Balancer accept 2,000 concurrent submissions. The Queue decouples ingestion from execution workers, so the API returns 202 Accepted immediately — keeping API latency under 280ms. Storage holds source files and test outputs safely. Monitoring is critical for detecting malicious infinite loops or memory exhaustion.',
+      'Code execution is CPU-intensive and unpredictable in duration. Three App Servers behind a Load Balancer accept 2,000 concurrent submissions. The Queue decouples ingestion from execution workers, so the API returns 202 Accepted immediately. Storage holds source files and test outputs safely. Monitoring is critical for detecting malicious infinite loops or memory exhaustion.',
   },
 
-  // ── Mission 8: Search Engine ─────────────────────────────────────────────────────
-  // Cost: $0+30+35+20+150+15+25+20+40+10 = $345 | Latency: 135ms | Throughput: 97k | Avail: 99.99%
+  // ── Mission 8: Search Engine ───────────────────────────────────────────────────────────
   'search-engine': {
     architecture: {
       components: [
@@ -369,11 +354,10 @@ export const MISSION_SOLUTIONS: Record<string, MissionSolution> = {
       'Storage → Database: persist indexed document metadata and ranking signals',
     ],
     explanation:
-      'Search is split into a read path and a write path. Query servers read results from Cache (hot queries) or the Database (index). Indexing workers consume document events from the Queue and write updated index shards to Storage asynchronously. Three App Servers behind a Load Balancer handle 75k concurrent queries at 135ms. CDN accelerates autocomplete, and Monitoring tracks query latency and index freshness.',
+      'Search is split into a read path and a write path. Query servers read results from Cache (hot queries) or the Database (index). Indexing workers consume document events from the Queue and write updated index shards to Storage asynchronously. Three App Servers handle 75k concurrent queries at 135ms. CDN accelerates autocomplete, and Monitoring tracks query latency and index freshness.',
   },
 
-  // ── Mission 9: Booking System (like Airbnb) ───────────────────────────────
-  // Cost: $0+35+20+150+15+25+20+40+10 = $315 | Latency: 200ms | Throughput: 64k | Avail: 99.9%
+  // ── Mission 9: Booking System (like Airbnb) ─────────────────────────────────────
   'booking-system': {
     architecture: {
       components: [
@@ -417,8 +401,7 @@ export const MISSION_SOLUTIONS: Record<string, MissionSolution> = {
       'Double-booking prevention requires two things: a Cache lock (optimistic concurrency) acquired before any booking attempt, and a Queue that serializes requests for the same property. Three App Servers handle 10k concurrent requests. The API Gateway rate-limits bots. Monitoring fires alerts when lock contention spikes, indicating a flash-sale event.',
   },
 
-  // ── Mission 10: Social Feed (like Twitter) ────────────────────────────────
-  // Cost: $0+30+35+20+200+15+25+20+40+10 = $395 | Latency: 135ms | Throughput: 583k | Avail: 99.99%
+  // ── Mission 10: Social Feed (like Twitter) ────────────────────────────────────────
   'social-feed': {
     architecture: {
       components: [
@@ -465,11 +448,10 @@ export const MISSION_SOLUTIONS: Record<string, MissionSolution> = {
       'Database is the source of truth; Cache is the primary read path for all feed queries',
     ],
     explanation:
-      'Fan-out on write is the key pattern: when a user posts, the Queue broadcasts the event to workers that pre-write the post into each follower\'s cached timeline. Feed readers get sub-160ms responses because they only read from Cache. Four App Servers handle 500k concurrent readers. CDN + Storage deliver media without touching app servers, and Monitoring watches fan-out lag for viral posts.',
+      "Fan-out on write is the key pattern: when a user posts, the Queue broadcasts the event to workers that pre-write the post into each follower's cached timeline. Feed readers get sub-160ms responses because they only read from Cache. Four App Servers handle 500k concurrent readers. CDN + Storage deliver media without touching app servers, and Monitoring watches fan-out lag for viral posts.",
   },
 
-  // ── Mission 11: Ride Hailing (like Uber) ──────────────────────────────────
-  // Cost: $0+30+35+20+150+15+25+40+10 = $325 | Latency: 140ms | Throughput: 88k | Avail: 99.99%
+  // ── Mission 11: Ride Hailing (like Uber) ─────────────────────────────────────────
   'ride-hailing': {
     architecture: {
       components: [
@@ -513,8 +495,7 @@ export const MISSION_SOLUTIONS: Record<string, MissionSolution> = {
       'Real-time driver matching requires Cache as the primary geo-index — database reads would add 40ms of unnecessary latency per query. Three App Servers handle location updates and ride requests: location servers write driver coordinates to Cache every 3s, and matching servers query the nearest driver from Cache. A Queue buffers burst demand during rush hour. CDN serves map tiles at the edge, and API Gateway manages WebSocket connections for live location streaming.',
   },
 
-  // ── Mission 12: Video Streaming (like Netflix) ────────────────────────────
-  // Cost: $0+30+35+20+200+15+25+20+40+10 = $395 | Latency: 135ms | Throughput: 583k | Avail: 99.99%
+  // ── Mission 12: Video Streaming (like Netflix) ────────────────────────────────────
   'video-streaming': {
     architecture: {
       components: [
@@ -561,11 +542,10 @@ export const MISSION_SOLUTIONS: Record<string, MissionSolution> = {
       'Storage holds all encoded video chunks; CDN pulls from Storage for edge caching',
     ],
     explanation:
-      'Video streaming at 500k concurrent viewers is only possible because CDN edge nodes serve video bytes — origin servers handle only metadata and session management. Four App Servers process 500k session requests. Cache serves metadata (titles, thumbnails, watch history) in memory. A Queue drives async transcoding so uploads are non-blocking. Storage holds the full video corpus, which CDN pre-warms at the edge for popular titles.',
+      'Video streaming at 500k concurrent viewers is only possible because CDN edge nodes serve video bytes — origin servers handle only metadata and session management. Four App Servers process 500k session requests. Cache serves metadata in memory. A Queue drives async transcoding so uploads are non-blocking. Storage holds the full video corpus, which CDN pre-warms at the edge for popular titles.',
   },
 
-  // ── Mission 13: Payment Processing (like Stripe) ──────────────────────────
-  // Cost: $0+35+20+150+25+40+10 = $280 | Latency: 275ms | Throughput: 32k | Avail: 99.5%
+  // ── Mission 13: Payment Processing (like Stripe) ──────────────────────────────────
   'payment-processing': {
     architecture: {
       components: [
@@ -602,11 +582,15 @@ export const MISSION_SOLUTIONS: Record<string, MissionSolution> = {
       'Monitoring is mandatory: every payment failure triggers an immediate on-call alert',
     ],
     explanation:
-      'Payment systems have zero tolerance for double charges or lost transactions. The API Gateway enforces TLS and signature verification. Three App Servers handle 5k concurrent requests. Idempotency keys are attached to Queue messages, so retries never double-charge — the Queue consumer checks the key against the Database before committing. Monitoring is not optional in fintech: every anomaly must page on-call within seconds. No Cache is used to avoid stale reads on financial state.',
+      'Payment systems have zero tolerance for double charges or lost transactions. The API Gateway enforces TLS and signature verification. Three App Servers handle 5k concurrent requests. Idempotency keys are attached to Queue messages, so retries never double-charge. Monitoring is not optional in fintech: every anomaly must page on-call within seconds.',
   },
+
 };
 
-// ── Gap analysis helpers ─────────────────────────────────────────────────────────────
+// ── Merge Sprint 3 solutions (missions 26–40 and concept-depth missions 41–48) ─────────────
+Object.assign(MISSION_SOLUTIONS, SPRINT3_SOLUTIONS, SPRINT3_CONCEPT_SOLUTIONS);
+
+// ── Gap analysis helpers ──────────────────────────────────────────────────────────────────
 
 export interface GapItem {
   type: string;
@@ -645,7 +629,7 @@ export function computeOptimality(current: Architecture, missionSlug: string): n
   return Math.round(((total - gap) / total) * 100);
 }
 
-// ── Connection topology gap analysis ────────────────────────────────────────────
+// ── Connection topology gap analysis ──────────────────────────────────────────────
 
 export interface ConnectionGapItem {
   from: string;

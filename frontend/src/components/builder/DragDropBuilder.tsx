@@ -15,10 +15,12 @@ import { useBuilderStore } from '../../stores/builderStore';
 import { Mission, ComponentType, COMPONENT_META, COMPONENT_COSTS, Architecture } from '../../data/types';
 import { missionsApi } from '../../data/api';
 
-interface DragDropBuilderProps {
+export interface DragDropBuilderProps {
   mission: Mission;
   onSimulate: () => void;
   isSimulating: boolean;
+  /** When true, suppresses the simulate button (used in interview simulation mode) */
+  interviewMode?: boolean;
 }
 
 const GRID_SIZE = 40;

@@ -5,12 +5,14 @@ import { AuthPage } from './pages/AuthPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { MissionPage } from './pages/MissionPage';
 import { ProgressPage } from './pages/ProgressPage';
-import { Navbar } from './components/ui/Navbar';
+import { ProfilePage } from './pages/ProfilePage';
+import { Navbar } from './components/dashboard/Navbar';
 import { ConceptAdvisorButton } from './components/concept/ConceptAdvisorButton';
+import { LandingPage } from './pages/LandingPage';
+import { InterviewPage } from './pages/InterviewPage';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, _hasHydrated } = useAuthStore();
-  // Wait for persisted auth state to rehydrate before deciding to redirect
   if (!_hasHydrated) {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center">
@@ -37,12 +39,16 @@ export const App: React.FC = () => {
             <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
             <Route path="/mission/:slug" element={<ProtectedRoute><MissionPage /></ProtectedRoute>} />
             <Route path="/progress" element={<ProtectedRoute><ProgressPage /></ProtectedRoute>} />
-            <Route path="/" element={<Navigate to={user ? '/dashboard' : '/auth'} />} />
+            {/* Sprint 2: Profile page with Mistake Patterns report */}
+            <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+            <Route path="/interview/:slug" element={<ProtectedRoute><InterviewPage /></ProtectedRoute>} />
+            <Route path="/" element={user ? <Navigate to="/dashboard" /> : <LandingPage />} />
           </Routes>
         </main>
-        {/* Persistent concept advisor button — available on all authenticated pages */}
         {user && <ConceptAdvisorButton />}
       </div>
     </BrowserRouter>
   );
 };
+
+export default App;

@@ -19,10 +19,11 @@ export const Navbar: React.FC = () => {
 
         {/* Nav links */}
         <div className="flex items-center gap-1 text-sm">
-          {[
+          {([
             { path: '/dashboard', label: 'Missions' },
-            { path: '/progress', label: 'Progress' },
-          ].map(({ path, label }) => (
+            { path: '/progress',  label: 'Progress' },
+            { path: '/profile',   label: 'Profile 🧠' },
+          ] as const).map(({ path, label }) => (
             <button
               key={path}
               onClick={() => navigate(path)}

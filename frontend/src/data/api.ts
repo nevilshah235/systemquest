@@ -29,7 +29,6 @@ api.interceptors.response.use(
         original.headers.Authorization = `Bearer ${data.accessToken}`;
         return api(original);
       } catch {
-        // Clear both localStorage AND Zustand store, then go to the real login route '/'
         useAuthStore.getState().logout();
         window.location.href = '/';
       }
@@ -60,6 +59,39 @@ export const simulationApi = {
 
 export const progressApi = {
   get: () => api.get('/progress').then((r) => r.data),
+};
+
+// ── Sprint 2: Spaced Repetition (F-005) ──────────────────────────────────────────
+
+export const reviewApi = {
+  /** Items due right now (nextReviewAt <= now) */
+  getQueue: () => api.get('/review/queue').then((r) => r.data),
+  /** All active items including future ones (for queue count) */
+  getFullQueue: () => api.get('/review/queue/all').then((r) => r.data),
+  /** Snooze a review item by 3 days */
+  snooze: (missionSlug: string) => api.post(`/review/${missionSlug}/snooze`).then((r) => r.data),
+};
+
+// ── Sprint 2: Mistake Patterns (F-003) ────────────────────────────────────────
+
+export const patternsApi = {
+  /** Fetch pattern report (auto-refreshes on server side) */
+  get: () => api.get('/patterns').then((r) => r.data),
+  /** Force a full pattern recompute */
+  refresh: () => api.post('/patterns/refresh').then((r) => r.data),
+};
+
+/** Typed API client that unwraps axios responses automatically */
+export const apiClient = {
+  get: <T>(url: string) => api.get<T>(url).then((r) => r.data),
+  post: <T>(url: string, data?: unknown) => api.post<T>(url, data).then((r) => r.data),
+};
+
+// ── Sprint 3: Concept Advisor (F-007) ─────────────────────────────────────────
+
+export const conceptsApi = {
+  /** Fetch personalised concept recommendations based on mistake patterns */
+  getRecommendations: () => api.get('/concepts/recommendations').then((r) => r.data),
 };
 
 export default api;

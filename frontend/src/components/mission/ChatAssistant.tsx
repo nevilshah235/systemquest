@@ -21,7 +21,7 @@ function renderMarkdown(text: string): React.ReactNode {
 }
 
 // Action badge shown under an assistant message
-function ActionBadge({ action }: { action: { type: string; componentType?: string } }) {
+function ActionBadge({ action }: { action: { type: string; componentType?: string; fromType?: string; toType?: string } }) {
   if (action.type === 'add_component' && action.componentType) {
     const meta = COMPONENT_META[action.componentType as ComponentType];
     if (!meta) return null;

@@ -43,62 +43,153 @@ const Navbar: React.FC<{ onCTA: () => void }> = ({ onCTA }) => (
   </nav>
 );
 
+// ─── Node icons by type ───────────────────────────────────────────────────────
+const NodeIcon: React.FC<{ type: string }> = ({ type }) => {
+  const icons: Record<string, React.ReactNode> = {
+    client: (
+      // Monitor / browser
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-white">
+        <rect x="2" y="3" width="20" height="14" rx="2" />
+        <path d="M8 21h8M12 17v4" />
+      </svg>
+    ),
+    lb: (
+      // Shuffle / balancer
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-white">
+        <path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5" />
+      </svg>
+    ),
+    api: (
+      // Server rack
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-white">
+        <rect x="2" y="2" width="20" height="8" rx="2" />
+        <rect x="2" y="14" width="20" height="8" rx="2" />
+        <path d="M6 6h.01M6 18h.01" />
+      </svg>
+    ),
+    cache: (
+      // Lightning bolt / cache
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-white">
+        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+      </svg>
+    ),
+    db: (
+      // Cylinder database
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-white">
+        <ellipse cx="12" cy="5" rx="9" ry="3" />
+        <path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5" />
+        <path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3" />
+      </svg>
+    ),
+    queue: (
+      // Queue / list
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-white">
+        <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+      </svg>
+    ),
+  };
+  return <>{icons[type] ?? icons.api}</>;
+};
+
 // ─── Hero architecture diagram preview ───────────────────────────────────────
 const ArchPreview: React.FC = () => {
-  // Generate unique IDs per instance to avoid duplicate SVG marker IDs
-  // when this component is rendered more than once on the same page.
-  const uid = React.useId().replace(/:/g, '');
-  const markViolet  = `arrow-violet-${uid}`;
-  const markAmber   = `arrow-amber-${uid}`;
-  const markEmerald = `arrow-emerald-${uid}`;
+  // Unique IDs per instance — prevents SVG marker ID collision when rendered twice
+  const uid          = React.useId().replace(/:/g, '');
+  const markViolet   = `arw-v-${uid}`;
+  const markAmber    = `arw-a-${uid}`;
+  const markEmerald  = `arw-e-${uid}`;
+  const markBlue     = `arw-b-${uid}`;
+
+  // Nodes: { id, label, sublabel, x, y, iconType, ring color, bg gradient }
+  const nodes = [
+    { id: 'client', label: 'Client',        sub: 'Browser / App',  x: '7%',  y: '50%', type: 'client', ring: '#3b82f6', grad: 'from-blue-600 to-cyan-500' },
+    { id: 'lb',     label: 'Load Balancer', sub: 'Round-robin',    x: '30%', y: '25%', type: 'lb',     ring: '#7c3aed', grad: 'from-violet-600 to-purple-500' },
+    { id: 'api',    label: 'API Server',    sub: 'Node.js × 3',    x: '55%', y: '50%', type: 'api',    ring: '#6366f1', grad: 'from-indigo-600 to-violet-500' },
+    { id: 'cache',  label: 'Redis Cache',   sub: 'TTL: 300s',      x: '78%', y: '22%', type: 'cache',  ring: '#f59e0b', grad: 'from-amber-500 to-yellow-400' },
+    { id: 'db',     label: 'PostgreSQL',    sub: 'Primary + Read', x: '78%', y: '75%', type: 'db',     ring: '#10b981', grad: 'from-emerald-600 to-teal-500' },
+  ];
+
+  // Edges: { x1,y1 → x2,y2, label, color, marker, dash }
+  const edges = [
+    { x1: '11%', y1: '48%', x2: '27%', y2: '30%', label: 'HTTPS',  color: '#7c3aed', marker: markViolet,  lx: '17%', ly: '33%' },
+    { x1: '33%', y1: '30%', x2: '51%', y2: '46%', label: 'HTTP',   color: '#6366f1', marker: markBlue,    lx: '40%', ly: '33%' },
+    { x1: '59%', y1: '43%', x2: '75%', y2: '28%', label: 'Redis',  color: '#f59e0b', marker: markAmber,   lx: '65%', ly: '28%' },
+    { x1: '59%', y1: '55%', x2: '75%', y2: '68%', label: 'SQL',    color: '#10b981', marker: markEmerald, lx: '65%', ly: '68%' },
+  ];
 
   return (
-    <div className="relative w-full h-64 md:h-80">
+    <div className="relative w-full h-72 md:h-88" style={{ height: '22rem' }}>
       <div className="absolute inset-0 rounded-2xl bg-violet-500/10 blur-2xl" />
-      <div className="relative rounded-2xl border border-violet-500/20 bg-gray-900/60 backdrop-blur h-full p-4 overflow-hidden">
-        {[
-          { label: 'Client',        x: '8%',  y: '40%', color: 'from-blue-500 to-cyan-400' },
-          { label: 'Load Balancer', x: '32%', y: '20%', color: 'from-violet-500 to-purple-400' },
-          { label: 'API Server',    x: '56%', y: '40%', color: 'from-violet-600 to-blue-500' },
-          { label: 'Cache',         x: '76%', y: '20%', color: 'from-amber-500 to-yellow-400' },
-          { label: 'Database',      x: '76%', y: '60%', color: 'from-emerald-500 to-teal-400' },
-        ].map((n) => (
-          <div
-            key={n.label}
-            className="absolute flex flex-col items-center gap-1"
-            style={{ left: n.x, top: n.y, transform: 'translate(-50%,-50%)' }}
-          >
-            <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${n.color} flex items-center justify-center shadow-lg`}>
-              <div className="w-4 h-4 bg-white/30 rounded" />
-            </div>
-            <span className="text-[10px] text-gray-400 whitespace-nowrap">{n.label}</span>
-          </div>
-        ))}
+      <div className="relative rounded-2xl border border-violet-500/20 bg-gray-900/70 backdrop-blur h-full overflow-hidden">
+
+        {/* SVG layer — edges + labels */}
         <svg className="absolute inset-0 w-full h-full" style={{ pointerEvents: 'none' }}>
           <defs>
-            {/* Unique per-instance markers — prevents ID collision when rendered twice */}
-            <marker id={markViolet}  markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-              <path d="M0,0 L0,6 L6,3 z" fill="#7c3aed" opacity="0.8" />
-            </marker>
-            <marker id={markAmber}   markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-              <path d="M0,0 L0,6 L6,3 z" fill="#f59e0b" opacity="0.8" />
-            </marker>
-            <marker id={markEmerald} markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-              <path d="M0,0 L0,6 L6,3 z" fill="#10b981" opacity="0.8" />
-            </marker>
+            {[
+              { id: markViolet,  fill: '#7c3aed' },
+              { id: markBlue,    fill: '#6366f1' },
+              { id: markAmber,   fill: '#f59e0b' },
+              { id: markEmerald, fill: '#10b981' },
+            ].map(({ id, fill }) => (
+              <marker key={id} id={id} markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+                <path d="M0,0 L0,7 L7,3.5 z" fill={fill} opacity="0.85" />
+              </marker>
+            ))}
           </defs>
-          {/* Client → Load Balancer */}
-          <line x1="10%" y1="40%" x2="30%" y2="22%" stroke="#7c3aed" strokeWidth="1.5" strokeOpacity="0.6" markerEnd={`url(#${markViolet})`}  strokeDasharray="4 2" />
-          {/* Load Balancer → API Server */}
-          <line x1="34%" y1="22%" x2="54%" y2="38%" stroke="#7c3aed" strokeWidth="1.5" strokeOpacity="0.6" markerEnd={`url(#${markViolet})`}  strokeDasharray="4 2" />
-          {/* API Server → Cache */}
-          <line x1="58%" y1="37%" x2="74%" y2="22%" stroke="#f59e0b" strokeWidth="1.5" strokeOpacity="0.6" markerEnd={`url(#${markAmber})`}   strokeDasharray="4 2" />
-          {/* API Server → Database */}
-          <line x1="58%" y1="43%" x2="74%" y2="58%" stroke="#10b981" strokeWidth="1.5" strokeOpacity="0.6" markerEnd={`url(#${markEmerald})`} strokeDasharray="4 2" />
+
+          {edges.map((e, i) => (
+            <g key={i}>
+              <line
+                x1={e.x1} y1={e.y1} x2={e.x2} y2={e.y2}
+                stroke={e.color} strokeWidth="1.5" strokeOpacity="0.55"
+                strokeDasharray="5 3"
+                markerEnd={`url(#${e.marker})`}
+              />
+              {/* Edge protocol label */}
+              <text
+                x={e.lx} y={e.ly}
+                textAnchor="middle"
+                fontSize="8"
+                fill={e.color}
+                opacity="0.9"
+                fontFamily="monospace"
+                fontWeight="600"
+              >
+                {e.label}
+              </text>
+            </g>
+          ))}
         </svg>
-        <div className="absolute bottom-4 right-4 flex items-center gap-2 bg-violet-600/20 border border-violet-500/30 rounded-lg px-3 py-1.5">
-          <span className="text-violet-300 text-xs font-semibold">Score</span>
-          <span className="text-white font-bold">94/100</span>
+
+        {/* Node layer */}
+        {nodes.map((n) => (
+          <div
+            key={n.id}
+            className="absolute flex flex-col items-center gap-1"
+            style={{ left: n.x, top: n.y, transform: 'translate(-50%, -50%)' }}
+          >
+            {/* Icon box with colored ring */}
+            <div
+              className={`w-11 h-11 rounded-xl bg-gradient-to-br ${n.grad} flex items-center justify-center shadow-lg`}
+              style={{ boxShadow: `0 0 0 2px ${n.ring}55, 0 4px 12px ${n.ring}33` }}
+            >
+              <NodeIcon type={n.type} />
+            </div>
+            <span className="text-[10px] text-white font-semibold whitespace-nowrap leading-tight">{n.label}</span>
+            <span className="text-[9px] text-gray-500 whitespace-nowrap leading-tight">{n.sub}</span>
+          </div>
+        ))}
+
+        {/* Score badge */}
+        <div className="absolute bottom-3 right-3 flex items-center gap-2 bg-violet-600/20 border border-violet-500/30 rounded-lg px-3 py-1.5">
+          <span className="text-violet-300 text-[10px] font-semibold">Score</span>
+          <span className="text-white text-sm font-bold">94/100</span>
+        </div>
+
+        {/* Latency badge */}
+        <div className="absolute bottom-3 left-3 flex items-center gap-1.5 bg-emerald-600/20 border border-emerald-500/30 rounded-lg px-3 py-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="text-emerald-300 text-[10px] font-semibold">p99: 38ms</span>
         </div>
       </div>
     </div>

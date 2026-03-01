@@ -1,9 +1,12 @@
 /**
  * SimulationResults — Revamped Results Dashboard (PROJ-SQ-001)
  *
- * Phase 1: Tabbed layout (Results / AI Analysis / Rubric) with sticky HeroStrip
+ * Phase 1: Tabbed layout (Results / AI Analysis / Scorecard) with sticky HeroStrip
  *          and persistent BottomCTABar instead of linear scroll dump.
  * Phase 3: 2×2 metric grid, portal-based Why? popover, collapsible Gap Analysis.
+ *
+ * Fix: root div uses flex-1 min-h-0 (not h-full) so HeroStrip/TabSwitcher
+ *      are always visible inside the flex-col MissionPage wrapper.
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -87,7 +90,7 @@ const HeroStrip: React.FC<{
   ];
 
   return (
-    <div className="flex-shrink-0 bg-gray-900/95 backdrop-blur-sm border-b border-gray-800 px-4 py-3">
+    <div className="flex-shrink-0 bg-gray-850 border-b-2 border-gray-700 px-4 py-3">
       <div className="flex items-center gap-3 max-w-2xl mx-auto">
         {/* Mini score ring */}
         <div className="w-11 h-11 flex-shrink-0 relative">
@@ -109,18 +112,18 @@ const HeroStrip: React.FC<{
         {/* Score label + XP */}
         <div className="flex-shrink-0">
           <div className="text-sm font-bold text-white leading-none">
-            {metrics.score}<span className="text-xs text-gray-500">/100</span>
+            {metrics.score}<span className="text-xs text-gray-400">/100</span>
           </div>
           {xpGranted > 0
             ? <div className="text-xs text-amber-400 mt-0.5">+{xpGranted} XP 🎉</div>
             : passed
-            ? <div className="text-xs text-gray-500 mt-0.5">Completed</div>
-            : <div className="text-xs text-gray-500 mt-0.5">In progress</div>
+            ? <div className="text-xs text-green-500 mt-0.5">✓ Completed</div>
+            : <div className="text-xs text-gray-400 mt-0.5">Keep going!</div>
           }
         </div>
 
         {/* Divider */}
-        <div className="w-px h-8 bg-gray-700 flex-shrink-0" />
+        <div className="w-px h-8 bg-gray-600 flex-shrink-0" />
 
         {/* Metric chips */}
         <div className="flex items-center gap-1.5 flex-wrap">
@@ -129,8 +132,8 @@ const HeroStrip: React.FC<{
               key={chip.id}
               className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full font-medium border ${
                 chip.met
-                  ? 'bg-green-900/30 text-green-400 border-green-700/30'
-                  : 'bg-red-900/30 text-red-400 border-red-700/30'
+                  ? 'bg-green-900/40 text-green-300 border-green-600/40'
+                  : 'bg-red-900/40 text-red-300 border-red-600/40'
               }`}
             >
               {chip.icon} {chip.label} {chip.met ? '✓' : '✗'}
@@ -153,11 +156,12 @@ const TabSwitcher: React.FC<{
   const tabs: { id: ResultTab; label: string; icon: string }[] = [
     { id: 'results', label: 'Results',     icon: '📊' },
     { id: 'ai',      label: 'AI Analysis', icon: '🤖' },
-    ...(hasRubric ? [{ id: 'rubric' as ResultTab, label: 'Rubric', icon: '📋' }] : []),
+    // "Scorecard" is intentionally friendlier than "Rubric" for new users
+    ...(hasRubric ? [{ id: 'rubric' as ResultTab, label: 'Scorecard', icon: '🏆' }] : []),
   ];
 
   return (
-    <div className="flex-shrink-0 flex gap-0 border-b border-gray-800 bg-gray-900/60 px-4">
+    <div className="flex-shrink-0 flex gap-0 border-b-2 border-gray-700 bg-gray-900 px-4">
       {tabs.map(tab => (
         <button
           key={tab.id}
@@ -195,7 +199,7 @@ interface WhyPopoverProps {
 }
 
 const WhyPopover: React.FC<WhyPopoverProps> = ({ diagnosis, anchorRect, onClose }) => {
-  const [hintLevel, setHintLevel]     = useState(0);
+  const [hintLevel, setHintLevel]       = useState(0);
   const [showSolution, setShowSolution] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
 
@@ -404,7 +408,7 @@ const AIAnalysisPanel: React.FC<{ analysis: SimulationAnalysisResult }> = ({ ana
   const [gapsExpanded, setGapsExpanded] = useState(false);
 
   const renderBold = (text: string) =>
-    text.split(/(\.\*\*[^*]+\*\*)/).map((chunk, i) =>
+    text.split(/(\*\*[^*]+\*\*)/).map((chunk, i) =>
       chunk.startsWith('**') && chunk.endsWith('**')
         ? <strong key={i} className="text-white font-semibold">{chunk.slice(2, -2)}</strong>
         : chunk,
@@ -490,7 +494,7 @@ const BottomCTABar: React.FC<{
   onNext?: () => void;
   onDashboard: () => void;
 }> = ({ passed, lldUnlocked, nextMission, onRetry, onGoDeeper, onNext, onDashboard }) => (
-  <div className="flex-shrink-0 bg-gray-900/95 backdrop-blur-sm border-t border-gray-800 px-4 py-3">
+  <div className="flex-shrink-0 bg-gray-900 border-t-2 border-gray-700 px-4 py-3">
     <div className="max-w-2xl mx-auto flex items-center gap-2">
       <button onClick={onRetry} className="btn-secondary flex-shrink-0">
         ↺ Retry
@@ -498,7 +502,7 @@ const BottomCTABar: React.FC<{
 
       <div className="flex-1" />
 
-      {/* Go Deeper — always rendered if unlocked, enabling the CTA from any tab */}
+      {/* Go Deeper — always rendered if unlocked, accessible from any tab */}
       {lldUnlocked && onGoDeeper && (
         <button
           onClick={onGoDeeper}
@@ -641,10 +645,15 @@ export const SimulationResults: React.FC<SimulationResultsProps> = ({
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Render ────────────────────────────────────────────────────────────────
+  //
+  // IMPORTANT: root div uses `flex-1 min-h-0` (NOT `h-full`) so this component
+  // grows correctly inside MissionPage's flex-col wrapper and the HeroStrip /
+  // TabSwitcher are always visible at the top.
+  //
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col flex-1 min-h-0">
 
-      {/* ── Sticky hero strip ── */}
+      {/* ── Always-visible hero strip ── */}
       <HeroStrip metrics={metrics} mission={mission} xpGranted={xpGranted} passed={passed} />
 
       {/* ── Tab switcher ── */}
@@ -655,7 +664,7 @@ export const SimulationResults: React.FC<SimulationResultsProps> = ({
         aiLoading={aiLoading}
       />
 
-      {/* ── Tab content (scrollable) ── */}
+      {/* ── Tab content (scrollable middle area) ── */}
       <div className="flex-1 overflow-auto min-h-0">
         <AnimatePresence mode="wait">
 
@@ -855,7 +864,7 @@ export const SimulationResults: React.FC<SimulationResultsProps> = ({
             </motion.div>
           )}
 
-          {/* ─── RUBRIC TAB ───────────────────────────────────────────────── */}
+          {/* ─── SCORECARD TAB ────────────────────────────────────────────── */}
           {activeTab === 'rubric' && (
             <motion.div
               key="rubric"
@@ -865,11 +874,27 @@ export const SimulationResults: React.FC<SimulationResultsProps> = ({
               transition={{ duration: 0.18 }}
               className="max-w-2xl mx-auto px-4 py-5"
             >
+              {/* Context blurb — helps new users immediately understand this tab */}
+              <div className="mb-4 p-3 rounded-xl bg-gray-800/50 border border-gray-700/40
+                flex items-start gap-2.5">
+                <span className="text-lg flex-shrink-0 mt-0.5">🏆</span>
+                <div>
+                  <div className="text-xs font-semibold text-gray-200 mb-0.5">
+                    How your design was graded
+                  </div>
+                  <p className="text-xs text-gray-400 leading-relaxed">
+                    Each criterion below shows how well your architecture handles a key
+                    dimension — scalability, reliability, cost, and more. Use this to
+                    understand exactly where points were earned or lost.
+                  </p>
+                </div>
+              </div>
+
               {rubricLoading && <RubricSkeleton />}
               {!rubricLoading && rubricScore && <RubricCard rubric={rubricScore} />}
               {!rubricLoading && !rubricScore && (
                 <div className="card p-4 text-sm text-gray-400">
-                  Rubric evaluation unavailable for this mission.
+                  Scorecard evaluation unavailable for this mission.
                 </div>
               )}
             </motion.div>

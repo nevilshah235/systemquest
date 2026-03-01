@@ -552,7 +552,7 @@ export const SimulationResults: React.FC<SimulationResultsProps> = ({
   const hasRubric   = !!MISSION_SOLUTIONS[mission.slug];
 
   const architecture = useBuilderStore((s) => s.architecture);
-  const passed       = metrics.score >= 60 && metrics.allMetricsMet;
+  const passed       = metrics.score >= 60 && !!metrics.allMetricsMet;
   const req          = mission.requirements;
   const diagnosis    = diagnoseAll(metrics, req, architecture);
 

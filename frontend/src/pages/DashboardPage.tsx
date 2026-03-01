@@ -228,7 +228,7 @@ export const DashboardPage: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0, transition: { delay: 0.3 } }}
-          className="card p-6 mb-8"
+          className="card p-4 mb-6"
         >
           <AdventureRoadmap
             missionsByPath={missionsByPath}

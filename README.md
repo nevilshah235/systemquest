@@ -1,6 +1,6 @@
 # 🎮 SystemQuest
 
-> **Learn system design by building it.** Drag, connect, simulate, and level up through 50 real-world engineering challenges — from startup MVPs to FAANG-scale architectures.
+> **Learn system design by building it.** Drag, connect, simulate, and level up through real-world engineering challenges — from startup MVPs to FAANG-scale architectures.
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue?logo=typescript)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react)
@@ -57,45 +57,53 @@ No passive reading. No multiple-choice quizzes. You build the system, the system
 - Rubric items are evaluated individually and surfaced with pass/fail reasoning
 - Updated dynamically as you modify the canvas — not just at submission time
 
-### 🗺️ 13 Missions Built Across 6 Learning Paths (50-Mission Roadmap)
+### 🗺️ 23 Missions Across 6 Learning Paths — Sprint 1 Complete
 
-| Path | Total Planned | Level | Built |
+| Path | Built | Level | Missions |
 |---|---|---|---|
-| 1. Foundations | 10 | Beginner | 3 ✅ |
-| 2. Async & Queues | 8 | Beginner–Intermediate | 2 ✅ |
-| 3. High-Read Systems | 8 | Intermediate | 2 ✅ |
-| 4. Real-Time & Messaging | 8 | Intermediate | 2 ✅ |
-| 5. Consistency & Transactions | 8 | Advanced | 2 ✅ |
-| 6. Scale & Streaming | 8 | Advanced | 2 ✅ |
-| **Total** | **50 planned** | | **13 built** |
+| 1. Foundations | 4 ✅ | Beginner → Intermediate | mvp-launch, scaling-up, global-expansion, design-chatgpt |
+| 2. Async & Queues | 4 ✅ | Intermediate | file-converter, code-judge, design-kafka, design-spotify |
+| 3. High-Read Systems | 3 ✅ | Intermediate → Advanced | url-shortener, search-engine, design-google-search |
+| 4. Real-Time & Messaging | 4 ✅ | Intermediate → Advanced | live-scoreboard, ride-hailing, design-whatsapp, design-slack |
+| 5. Consistency & Transactions | 3 ✅ | Advanced | booking-system, payment-processing, design-uber-eta |
+| 6. Scale & Streaming | 5 ✅ | Advanced | social-feed, video-streaming, design-instagram, design-youtube, design-twitter-timeline |
+| **Total** | **23 built** | | **13,875 XP available** |
 
-**XP available in current build: 7,500 XP · Full 50-mission roadmap: 19,550 XP**
-
-#### Currently Built Missions
-| Slug | Mission | Path | Difficulty | XP |
-|---|---|---|---|---|
-| `mvp-launch` | MVP Launch | Foundations | ⭐ | 150 |
-| `scaling-up` | Scaling Up | Foundations | ⭐⭐ | 300 |
-| `global-expansion` | Global Expansion | Foundations | ⭐⭐⭐ | 500 |
-| `file-converter` | File Converter | Async & Queues | ⭐⭐ | 400 |
-| `code-judge` | Code Judge | Async & Queues | ⭐⭐⭐⭐ | 450 |
-| `url-shortener` | URL Shortener | High-Read Systems | ⭐⭐⭐ | 500 |
-| `search-engine` | Search Engine | High-Read Systems | ⭐⭐⭐⭐ | 650 |
-| `live-scoreboard` | Live Scoreboard | Real-Time & Messaging | ⭐⭐⭐ | 600 |
-| `ride-hailing` | Ride Hailing | Real-Time & Messaging | ⭐⭐⭐⭐⭐ | 700 |
-| `booking-system` | Booking System | Consistency & Transactions | ⭐⭐⭐⭐ | 550 |
-| `payment-processing` | Payment Processing | Consistency & Transactions | ⭐⭐⭐⭐⭐ | 800 |
-| `social-feed` | Social Feed | Scale & Streaming | ⭐⭐⭐⭐⭐ | 900 |
-| `video-streaming` | Video Streaming | Scale & Streaming | ⭐⭐⭐⭐⭐ | 1,000 |
+#### Built Missions — Full List
+| # | Slug | Mission | Path | Difficulty | XP |
+|---|---|---|---|---|---|
+| 1 | `mvp-launch` | MVP Launch | Foundations | ⭐ | 150 |
+| 2 | `scaling-up` | Scaling Up | Foundations | ⭐⭐ | 300 |
+| 3 | `global-expansion` | Global Expansion | Foundations | ⭐⭐⭐ | 500 |
+| 4 | `file-converter` | File Converter | Async & Queues | ⭐⭐ | 400 |
+| 5 | `url-shortener` | URL Shortener | High-Read Systems | ⭐⭐⭐ | 500 |
+| 6 | `live-scoreboard` | Live Scoreboard | Real-Time | ⭐⭐⭐ | 600 |
+| 7 | `code-judge` | Code Judge | Async & Queues | ⭐⭐⭐⭐ | 450 |
+| 8 | `search-engine` | Search Engine | High-Read Systems | ⭐⭐⭐⭐ | 650 |
+| 9 | `booking-system` | Booking System | Consistency | ⭐⭐⭐⭐ | 550 |
+| 10 | `social-feed` | Social Feed | Scale & Streaming | ⭐⭐⭐⭐⭐ | 900 |
+| 11 | `ride-hailing` | Ride Hailing | Real-Time | ⭐⭐⭐⭐⭐ | 700 |
+| 12 | `video-streaming` | Video Streaming | Scale & Streaming | ⭐⭐⭐⭐⭐ | 1,000 |
+| 13 | `payment-processing` | Payment Processing | Consistency | ⭐⭐⭐⭐⭐ | 800 |
+| 14 | `design-whatsapp` | Design WhatsApp | Real-Time | ⭐⭐⭐⭐⭐ | 1,100 |
+| 15 | `design-instagram` | Design Instagram | Scale & Streaming | ⭐⭐⭐⭐⭐ | 1,100 |
+| 18 | `design-slack` | How Slack Works | Real-Time | ⭐⭐⭐⭐⭐ | 450 |
+| 19 | `design-youtube` | Design YouTube | Scale & Streaming | ⭐⭐⭐⭐⭐ | 1,200 |
+| 20 | `design-twitter-timeline` | How Twitter Timeline Works | Scale & Streaming | ⭐⭐⭐⭐⭐ | 550 |
+| 21 | `design-uber-eta` | How Uber Computes ETA | Consistency | ⭐⭐⭐⭐⭐ | 500 |
+| 22 | `design-chatgpt` | Build ChatGPT | Foundations | ⭐⭐⭐⭐ | 300 |
+| 23 | `design-kafka` | How Kafka Works | Async & Queues | ⭐⭐⭐⭐ | 350 |
+| 24 | `design-spotify` | How Spotify Works | Async & Queues | ⭐⭐⭐⭐ | 375 |
+| 25 | `design-google-search` | How Google Search Works | High-Read Systems | ⭐⭐⭐⭐⭐ | 450 |
 
 #### FAANG Case Studies Covered
-URL Shortener · Zamzar · Apache Kafka · Google Search · YouTube · Uber ETA · Twitter Timeline · Netflix · Stripe · CricBuzz · Codeforces · Airbnb · Bitly
+MVP Launch · URL Shortener · File Converter (Zamzar) · Code Judge (Codeforces) · Search Engine · Live Scoreboard (CricBuzz) · Booking System (Airbnb) · Social Feed (Twitter) · Ride Hailing (Uber) · Video Streaming (Netflix) · Payment Processing (Stripe) · WhatsApp · Instagram · Slack · YouTube · Twitter Timeline · Uber ETA · ChatGPT · Apache Kafka · Spotify · Google Search
 
 #### 40 System Design Concepts Taught
 APIs · API Gateways · JWTs · Webhooks · REST vs GraphQL · Load Balancing · Proxy vs Reverse Proxy · Scalability · Availability · SPOF · CAP Theorem · SQL vs NoSQL · ACID Transactions · Database Indexes · Database Sharding · Consistent Hashing · CDC · Caching · Caching Strategies · Cache Eviction Policies · CDN · Rate Limiting · Message Queues · Bloom Filters · Idempotency · Concurrency vs Parallelism · Long Polling vs WebSockets · Stateful vs Stateless · Batch vs Stream Processing · Geohashing · Service Mesh · Circuit Breaker · Saga Pattern · Event Sourcing · CQRS · Distributed Locks · Consensus Algorithms · Replication · Two-Phase Commit · Observability
 
 ### 🏆 XP & Progression System
-- **XP rewards** scale with difficulty: 150 XP (beginner) → 1,000 XP (advanced)
+- **XP rewards** scale with difficulty: 150 XP (beginner) → 1,200 XP (advanced)
 - **Bonus XP** for optional challenge objectives (e.g., +25–50 XP per bonus component)
 - **Level progression** tied to cumulative XP
 - **Skill tree** unlocks as you advance through paths
@@ -106,14 +114,14 @@ APIs · API Gateways · JWTs · Webhooks · REST vs GraphQL · Load Balancing ·
 - XP progress bar with visual level indicator
 - Achievement badge collection (9 achievements including "System Design Master")
 - Global leaderboard with rankings
-- Mission unlock gates (complete prerequisites to advance)
+- Mission unlock gates (complete Foundations to access other paths)
 - Per-mission bonus challenge objectives
 - Visual skill tree showing mastery across all 6 paths
 
 ### 🔐 Authentication & User Management
 - JWT authentication with refresh token rotation
 - User registration and login
-- Profile management
+- Profile management with skill level tracking
 - Full progress persistence across sessions
 
 ---
@@ -419,8 +427,8 @@ flowchart TD
     H -- No --> J[Guided hints shown\nEncouragement message]
     J --> F
     I --> K[Dashboard unlocked]
-    K --> L[Learning path selection\nChoose your starting storyline]
-    L --> M[scaling-up unlocked]
+    K --> L[Complete Foundations to unlock other paths]
+    L --> M[scaling-up unlocked next]
 ```
 
 ---
@@ -524,15 +532,6 @@ Every mission surfaces curated concept cards before and after the attempt, adapt
 - Skips concepts the user demonstrated mastery of
 - Links directly to the next mission where the concept appears again
 
-**Example concept card — Load Balancing:**
-
-| Field | Content |
-|---|---|
-| **Definition** | Distributes incoming traffic across multiple servers to prevent any single server from becoming a bottleneck |
-| **Real-world analogy** | A supermarket with 10 checkout lanes — a greeter directs customers to the shortest queue |
-| **When to use it** | Any time you have more than one server handling the same type of request |
-| **Common mistake** | Adding a load balancer but only placing one server behind it — the LB adds latency with no throughput benefit |
-
 **Adaptive filtering:** if a user scores 90+ on the Performance dimension across 3 consecutive missions, performance-related concept cards are suppressed and replaced with content targeting their current weakest dimension.
 
 ---
@@ -565,7 +564,6 @@ Every mission attempt is stored in full — architecture snapshot, rubric scores
 
 **Streak tracking:**
 - Tracks consecutive missions completed without triggering a specific mistake type
-- Example: "5-mission streak: no SPOF in any submission"
 - Streaks are displayed on the Profile page and contribute to achievement badges
 
 ---
@@ -574,7 +572,7 @@ Every mission attempt is stored in full — architecture snapshot, rubric scores
 
 ```
 systemquest/
-├── docker-compose.yml          # Orchestrates frontend + backend containers
+├── docker-compose.yml
 ├── README.md
 │
 ├── backend/
@@ -585,54 +583,34 @@ systemquest/
 │   │   ├── schema.prisma       # User, Mission, MissionAttempt, Achievement, MissionRubric
 │   │   └── migrations/
 │   └── src/
-│       ├── index.ts            # Express app entry point
-│       ├── middleware/         # Auth, rate limiting, error handling
-│       ├── prisma/             # Prisma client singleton + seed.ts (13 missions)
+│       ├── index.ts
+│       ├── middleware/
+│       ├── prisma/             # Prisma client + seed.ts (23 missions — Sprint 1)
 │       ├── routes/
-│       │   ├── auth.ts         # Register, login, refresh, logout
-│       │   ├── missions.ts     # Mission CRUD and attempt submission
-│       │   ├── simulation.ts   # Architecture evaluation engine
-│       │   ├── progress.ts     # XP, leaderboard, storyline unlocks
-│       │   ├── chat.ts         # AI chat assistant endpoints
-│       │   └── rubric.ts       # Living rubric evaluation endpoints
+│       │   ├── auth.ts
+│       │   ├── missions.ts
+│       │   ├── simulation.ts
+│       │   ├── progress.ts
+│       │   ├── chat.ts
+│       │   └── rubric.ts
 │       └── services/
 │           ├── simulationEngine.ts
-│           ├── chatService.ts   # NVIDIA NIM integration
-│           ├── rubricService.ts # Living rubric AI evaluation
+│           ├── chatService.ts
+│           ├── rubricService.ts
 │           └── logger.ts
 │
 └── frontend/
     ├── Dockerfile
-    ├── index.html
     ├── nginx.conf
     ├── package.json
-    ├── tailwind.config.js
     ├── vite.config.ts
     └── src/
         ├── components/
-        │   ├── dashboard/
-        │   │   ├── Navbar.tsx
-        │   │   └── MissionCard.tsx
-        │   └── mission/
-        │       ├── Builder.tsx             # Drag-drop canvas
-        │       ├── ChatAssistant.tsx       # AI chat panel
-        │       ├── SimulationResults.tsx   # Metrics display
-        │       ├── SolutionViewer.tsx      # Solution architecture reveal
-        │       └── RubricCard.tsx          # Living rubric display
-        ├── pages/
-        │   ├── LandingPage.tsx
-        │   ├── AuthPage.tsx
-        │   ├── DashboardPage.tsx
-        │   ├── MissionPage.tsx
-        │   └── ProgressPage.tsx
-        ├── data/
-        │   ├── types.ts
-        │   ├── solutions.ts
-        │   └── api.ts
-        └── stores/
-            ├── authStore.ts
-            ├── builderStore.ts
-            └── chatStore.ts
+        │   ├── dashboard/  (Navbar, MissionCard)
+        │   └── mission/    (Builder, ChatAssistant, SimulationResults, SolutionViewer, RubricCard)
+        ├── pages/          (LandingPage, AuthPage, DashboardPage, MissionPage, ProgressPage)
+        ├── data/           (types.ts, solutions.ts, api.ts, diagnostics.ts)
+        └── stores/         (authStore, builderStore, chatStore)
 ```
 
 ---
@@ -643,19 +621,12 @@ systemquest/
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) (recommended)
 - Or: Node.js 20+, npm 9+
 
----
-
 ### Option 1: Docker Compose (Recommended)
 
 ```bash
-# Clone the repo
 git clone https://github.com/nevilshah235/systemquest.git
 cd systemquest
-
-# Copy environment variables
 cp .env.example .env
-
-# Start both services
 docker compose up --build
 ```
 
@@ -664,213 +635,127 @@ docker compose up --build
 | Frontend | http://localhost:3000 |
 | Backend API | http://localhost:4000 |
 
-To stop:
-```bash
-docker compose down
-```
-
----
-
 ### Option 2: Manual Local Development
 
-#### Backend
-
 ```bash
-cd backend
-npm install
-cp .env.example .env
-npx prisma db push
-npx prisma db seed
+# Backend
+cd backend && npm install && cp .env.example .env
+npx prisma db push && npx prisma db seed
 npm run dev
+
+# Frontend (new terminal)
+cd frontend && npm install && npm run dev
 ```
-
-Backend runs at `http://localhost:4000`
-
-#### Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Frontend runs at `http://localhost:3000`
 
 ---
 
 ## 🔧 Environment Variables
 
-Create a `.env` file in the `backend/` directory:
-
 ```env
-# Database
-DATABASE_URL="file:./dev.db"          # SQLite for local dev
-# DATABASE_URL="postgresql://..."     # PostgreSQL for production
-
-# Authentication
-JWT_SECRET="your-secret-key-here"
-JWT_REFRESH_SECRET="your-refresh-secret-here"
+# backend/.env
+DATABASE_URL="file:./dev.db"
+JWT_SECRET="your-secret-key"
+JWT_REFRESH_SECRET="your-refresh-secret"
 JWT_EXPIRES_IN="15m"
 JWT_REFRESH_EXPIRES_IN="7d"
-
-# Server
 PORT=4000
 NODE_ENV=development
 CORS_ORIGIN=http://localhost:3000
-
-# AI (optional — enables AI chat assistant + living rubrics)
-NVIDIA_API_KEY="your-nvidia-nim-api-key"
-
-# Storage (production)
-AWS_ACCESS_KEY_ID=""
-AWS_SECRET_ACCESS_KEY=""
+NVIDIA_API_KEY=""        # optional — enables AI chat + living rubrics
+AWS_ACCESS_KEY_ID=""     # production only
+AWS_SECRET_ACCESS_KEY="" # production only
 AWS_S3_BUCKET=""
 AWS_REGION="us-east-1"
-
-# Monitoring (production)
-SENTRY_DSN=""
+SENTRY_DSN=""            # production only
 ```
-
-> ⚠️ **Never commit real secrets.** Rotate all secrets before deploying to production. The `NVIDIA_API_KEY` is optional for local development — AI features will be disabled if not set.
 
 ---
 
 ## 📡 API Reference
 
-All endpoints are prefixed with `/api`. Protected routes require `Authorization: Bearer <token>`.
+Base URL: `/api` · Protected routes require `Authorization: Bearer <token>`
 
-### Authentication
-
-| Method | Endpoint | Auth | Description |
-|---|---|---|---|
-| POST | `/auth/register` | No | Create new account |
-| POST | `/auth/login` | No | Login and receive tokens |
-| POST | `/auth/refresh` | No | Refresh access token |
-| POST | `/auth/logout` | Yes | Invalidate refresh token |
-
-### Missions
-
-| Method | Endpoint | Auth | Description |
-|---|---|---|---|
-| GET | `/missions` | Yes | List all missions |
-| GET | `/missions/:slug` | Yes | Get mission detail by slug |
-| POST | `/missions/:id/attempt` | Yes | Submit architecture for evaluation |
-| GET | `/missions/:id/attempts` | Yes | Get attempt history |
-
-### Simulation
-
-| Method | Endpoint | Auth | Description |
-|---|---|---|---|
-| POST | `/simulation/run` | Yes | Run simulation on architecture |
-| POST | `/simulate/validate` | Yes | Validate against mission criteria |
-| GET | `/simulate/results/:id` | Yes | Retrieve previous simulation result |
-
-### Progress
-
-| Method | Endpoint | Auth | Description |
-|---|---|---|---|
-| GET | `/progress` | Yes | User progress and history |
-| POST | `/progress/complete-mission` | Yes | Mark mission complete, award XP |
-| GET | `/progress/leaderboard` | Yes | Global XP rankings |
-
-### AI Chat
-
-| Method | Endpoint | Auth | Description |
-|---|---|---|---|
-| POST | `/chat/message` | Yes | Send message to AI tutor |
-| POST | `/chat/simulation-analysis` | Yes | AI narrative on simulation results |
-
-### Rubric
-
-| Method | Endpoint | Auth | Description |
-|---|---|---|---|
-| POST | `/rubric/evaluate` | Yes | Evaluate architecture against living rubric |
-| GET | `/rubric/:slug` | Yes | Fetch approved rubric for a mission |
+| Group | Method | Endpoint | Auth | Description |
+|---|---|---|---|---|
+| Auth | POST | `/auth/register` | No | Create account |
+| Auth | POST | `/auth/login` | No | Login, receive tokens |
+| Auth | POST | `/auth/refresh` | No | Refresh access token |
+| Auth | POST | `/auth/logout` | Yes | Invalidate session |
+| Missions | GET | `/missions` | Yes | List all missions with user progress |
+| Missions | GET | `/missions/:slug` | Yes | Mission detail |
+| Missions | POST | `/missions/:id/attempt` | Yes | Submit architecture |
+| Simulation | POST | `/simulation/run` | Yes | Evaluate architecture |
+| Progress | GET | `/progress` | Yes | XP, level, completions |
+| Progress | GET | `/progress/leaderboard` | Yes | Global rankings |
+| Chat | POST | `/chat/message` | Yes | AI tutor message |
+| Chat | POST | `/chat/simulation-analysis` | Yes | AI simulation narrative |
+| Rubric | POST | `/rubric/evaluate` | Yes | Living rubric evaluation |
+| Rubric | GET | `/rubric/:slug` | Yes | Fetch approved rubric |
 
 ---
 
 ## 🗄️ Database Schema
 
-Managed by Prisma. Run `npx prisma studio` to browse data visually.
+```
+Mission
+  slug (unique), title, difficulty (1-5), xpReward, order
+  learningPath, skillLevel, estimatedTime
+  objectives · requirements · components · feedbackData (all JSON)
 
-**User** — account credentials and identity
-```
-id, email (unique), username (unique), password_hash, created_at, updated_at
-```
+MissionAttempt
+  id, user_id → User, mission_id → Mission
+  architecture (JSON), score, completed, feedback (JSON), attempt_number
 
-**UserProgress** — XP, level, and mission completion state
-```
-id, user_id → User, current_level, total_xp, unlocked_storylines[], completed_missions[]
-```
+User
+  id, email (unique), username (unique), password_hash
+  xp, level, skillLevel, derivedSkillLevel
 
-**Mission** — scenario, requirements, and rewards (seeded — 13 missions)
-```
-slug (unique), title, difficulty (1-5), estimatedTime, xpReward, order
-learningPath, skillLevel, description, scenario
-objectives (JSON), requirements (JSON), components (JSON), feedbackData (JSON)
-```
+Achievement (9 total)
+  slug, title, description, icon, xp_bonus
 
-**MissionAttempt** — each architecture submission per user
-```
-id, user_id → User, mission_id → Mission, architecture (JSON), score, completed, feedback (JSON), attempt_number, created_at
-```
-
-**Achievement** — badge definitions (9 achievements)
-```
-slug, title, description, icon, xp_bonus
-```
-
-**MissionRubric** — AI-evaluated rubric results per mission
-```
-id, mission_slug, rubric_items (JSON), evaluated_at, approved
+MissionRubric
+  mission_slug, rubric_items (JSON), evaluated_at, approved
 ```
 
 ---
 
 ## 🔬 Simulation Engine
 
-```typescript
-interface ArchitectureMetrics {
-  latency: number;      // Response time in ms
-  throughput: number;   // Requests per second
-  availability: number; // Uptime percentage (0-100)
-  cost: number;         // Estimated monthly cost in USD
-  scalability: number;  // Max concurrent users
-}
-```
-
 | Metric | Base | Key Modifiers |
 |---|---|---|
-| Latency | 50ms | +20ms/DB hop · x0.7 with cache · -60% with CDN |
-| Throughput | 200 req/s | x server count behind LB · x cache hit multiplier |
+| Latency | 50ms | +20ms/DB hop · ×0.7 with cache · −60% with CDN |
+| Throughput | 200 req/s | ×server count behind LB · ×cache hit multiplier |
 | Availability | 99.5% | +0.4% with LB+2 servers · +0.1% per DB replica |
-| Scalability | 200 concurrent/server | +500/server behind LB · x1.5 cache · x2 CDN |
-| Cost | $50/server/month | Additive per component; CDN/S3 usage-based |
+| Scalability | 200 users/server | +500/server behind LB · ×1.5 cache · ×2 CDN |
+| Cost | $50/server/mo | Additive per component |
 
 ---
 
 ## 📦 NPM Scripts
 
-### Backend (`/backend`)
+| Location | Script | Description |
+|---|---|---|
+| backend | `npm run dev` | Hot-reload dev server |
+| backend | `npm run build` | Compile TypeScript |
+| backend | `npx prisma db seed` | Load 23 missions + 9 achievements |
+| backend | `npx prisma studio` | Visual DB browser |
+| frontend | `npm run dev` | Vite dev server |
+| frontend | `npm run build` | Production build |
+| frontend | `npm run type-check` | TypeScript check |
 
-| Script | Description |
-|---|---|
-| `npm run dev` | Start dev server with hot reload |
-| `npm run build` | Compile TypeScript to `/dist` |
-| `npm run start` | Run compiled production build |
-| `npx prisma migrate dev` | Run pending migrations |
-| `npx prisma studio` | Open Prisma visual DB browser |
-| `npx prisma db seed` | Seed 13 missions + 9 achievements |
-| `npx prisma generate` | Regenerate Prisma client |
+---
 
-### Frontend (`/frontend`)
+## 📊 XP Summary
 
-| Script | Description |
-|---|---|
-| `npm run dev` | Start Vite dev server |
-| `npm run build` | Production build to `/dist` |
-| `npm run preview` | Preview production build locally |
-| `npm run type-check` | Run TypeScript compiler check |
+| Path | Missions | XP Available |
+|---|---|---|
+| Foundations | 4 | 1,250 |
+| Async & Queues | 4 | 1,575 |
+| High-Read Systems | 3 | 1,600 |
+| Real-Time & Messaging | 4 | 2,850 |
+| Consistency & Transactions | 3 | 1,850 |
+| Scale & Streaming | 5 | 4,750 |
+| **Total** | **23** | **13,875 XP** |
 
 ---
 
@@ -885,42 +770,17 @@ interface ArchitectureMetrics {
 
 ## 🤝 Contributing
 
-1. **Fork** the repository
-2. **Branch** from `feature/systemquest-mvp`:
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
-3. **Make your changes** with clear, focused commits
-4. **Test locally** using Docker Compose or manual setup
-5. **Open a PR** targeting `feature/systemquest-mvp`
-
 ### Adding a New Mission
 
-1. Add the mission definition to `backend/src/prisma/seed.ts`
-2. Define `objectives`, `requirements`, `components`, and `feedbackData` as JSON matching the seed schema
-3. Set the correct `learningPath`, `skillLevel`, `difficulty` (1–5), and `xpReward`
-4. Run `npx prisma db seed` to load it locally
-5. Update the built missions table in this README
-
----
-
-## 📊 XP Summary
-
-| Path | Missions Built | XP Available Now | Full Path XP (planned) |
-|---|---|---|---|
-| Foundations | 3 | 950 | ~3,500 |
-| Async & Queues | 2 | 850 | ~2,800 |
-| High-Read Systems | 2 | 1,150 | ~3,200 |
-| Real-Time & Messaging | 2 | 1,300 | ~3,400 |
-| Consistency & Transactions | 2 | 1,350 | ~4,000 |
-| Scale & Streaming | 2 | 1,900 | ~4,200 |
-| **Total** | **13** | **7,500** | **~21,100** |
+1. Add the mission to `backend/src/prisma/seed.ts` with `slug`, `title`, `learningPath`, `skillLevel`, `difficulty` (1–5), `xpReward`, `order`, `objectives`, `requirements`, `components`, and `feedbackData`
+2. Run `npx prisma db seed` to load locally
+3. Update the mission table in this README
 
 ---
 
 ## 📄 License
 
-MIT — see [LICENSE](./LICENSE) for details.
+MIT
 
 ---
 

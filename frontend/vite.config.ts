@@ -14,6 +14,17 @@ export default defineConfig({
       },
     },
   },
+  preview: {
+    port: 3005,
+    host: '0.0.0.0',
+    allowedHosts: ['9c02rdal.run.complete.dev', 'localhost'],
+    proxy: {
+      '/api': {
+        target: 'http://localhost:4000',
+        changeOrigin: true,
+      },
+    },
+  },
   build: {
     outDir: 'dist',
     sourcemap: true,

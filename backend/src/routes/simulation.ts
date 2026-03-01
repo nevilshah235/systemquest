@@ -37,18 +37,28 @@ simulationRouter.post('/run', authenticate, async (req: AuthRequest, res: Respon
 
     // ── Persist attempt ──────────────────────────────────────────────────────
     let skillPromotion: { promoted: boolean; newLevel: SkillLevel; derivedSkillLevel: SkillLevel } | null = null;
+    let xpGranted = 0; // only set when XP is actually awarded (first completion only)
 
     if (metrics.score > 0) {
-      const existing = await prisma.missionAttempt.findFirst({
+      const completed = metrics.score >= 60;
+
+      // Check if the user has ALREADY completed this mission (any prior passing attempt)
+      const priorCompletion = await prisma.missionAttempt.findFirst({
+        where: { userId: req.userId!, missionId: mission.id, completed: true },
+      });
+      const isReplay = !!priorCompletion;
+
+      // XP is only awarded on the FIRST completion — never on replays
+      const xpEarned = completed && !isReplay ? metrics.xpEarned + metrics.bonusXp : 0;
+
+      // Upsert: update the existing in-progress attempt, or create a new one
+      const inProgress = await prisma.missionAttempt.findFirst({
         where: { userId: req.userId!, missionId: mission.id, completed: false },
       });
 
-      const completed = metrics.score >= 60;
-      const xpEarned = metrics.xpEarned + metrics.bonusXp;
-
-      if (existing) {
+      if (inProgress) {
         await prisma.missionAttempt.update({
-          where: { id: existing.id },
+          where: { id: inProgress.id },
           data: {
             score: metrics.score,
             xpEarned,
@@ -57,7 +67,8 @@ simulationRouter.post('/run', authenticate, async (req: AuthRequest, res: Respon
             metrics: JSON.stringify(metrics),
           },
         });
-      } else {
+      } else if (!isReplay) {
+        // Only create a new attempt record if this is not a replay of an already-completed mission
         await prisma.missionAttempt.create({
           data: {
             userId: req.userId!,
@@ -69,6 +80,18 @@ simulationRouter.post('/run', authenticate, async (req: AuthRequest, res: Respon
             metrics: JSON.stringify(metrics),
           },
         });
+      } else {
+        // Replay of a completed mission — update the best score if improved
+        if (metrics.score > priorCompletion.score) {
+          await prisma.missionAttempt.update({
+            where: { id: priorCompletion.id },
+            data: {
+              score: metrics.score,
+              architecture: JSON.stringify(architecture),
+              metrics: JSON.stringify(metrics),
+            },
+          });
+        }
       }
 
       // ── F-005: Spaced Repetition — update SR queue (fire-and-forget) ──────
@@ -76,8 +99,9 @@ simulationRouter.post('/run', authenticate, async (req: AuthRequest, res: Respon
         console.error('[SR] upsertSRItem failed:', err?.message);
       });
 
-      if (completed) {
-        // Award XP and recalculate level
+      if (completed && !isReplay) {
+        // Award XP only on first completion — set outer xpGranted for the response
+        xpGranted = xpEarned;
         const updatedUser = await prisma.user.update({
           where: { id: req.userId! },
           data: { xp: { increment: xpEarned } },
@@ -104,6 +128,7 @@ simulationRouter.post('/run', authenticate, async (req: AuthRequest, res: Respon
       metrics,
       missionTitle: mission.title,
       skillPromotion,
+      xpGranted, // 0 on replays, actual XP on first completion
     });
   } catch (err) {
     console.error(err);

@@ -26,9 +26,9 @@ export const AuthPage: React.FC = () => {
           </p>
           <div className="grid grid-cols-3 gap-4 text-center">
             {[
-              { icon: '🚀', label: '3 Missions' },
-              { icon: '⭐', label: '950 XP' },
-              { icon: '🏆', label: 'Achievements' },
+              { icon: '🚀', label: '48 Missions' },
+              { icon: '⭐', label: '27,050 XP' },
+              { icon: '🏆', label: '23 Real-World Systems' },
             ].map((item) => (
               <div key={item.label} className="bg-gray-800/50 rounded-xl p-3 border border-gray-700">
                 <div className="text-2xl mb-1">{item.icon}</div>

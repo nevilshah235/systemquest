@@ -22,11 +22,18 @@ export const MissionCard: React.FC<MissionCardProps> = ({ mission, isLocked, ind
   const pathMeta = LEARNING_PATHS[mission.learningPath];
   const skillBadge = SKILL_BADGE[mission.skillLevel] ?? SKILL_BADGE['beginner'];
 
+  const lldUnlocked = (progress?.bestScore ?? 0) >= 60;
+
   const statusColor = progress?.completed
-    ? 'border-green-700/50 bg-green-900/10'
+    ? 'border-green-700/50 bg-green-900/10 cursor-pointer hover:border-green-500/70'
     : !isLocked
     ? 'border-brand-700/50 hover:border-brand-500/70 cursor-pointer'
     : 'border-gray-800 opacity-60';
+
+  const handleCardClick = () => {
+    if (isLocked) return;
+    navigate(progress?.completed ? `/mission/${mission.slug}?phase=results` : `/mission/${mission.slug}`);
+  };
 
   return (
     <motion.div
@@ -34,7 +41,7 @@ export const MissionCard: React.FC<MissionCardProps> = ({ mission, isLocked, ind
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}
       className={`card p-6 border-2 transition-all duration-200 ${statusColor}`}
-      onClick={() => !isLocked && navigate(`/mission/${mission.slug}`)}
+      onClick={handleCardClick}
     >
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1 min-w-0">
@@ -79,6 +86,32 @@ export const MissionCard: React.FC<MissionCardProps> = ({ mission, isLocked, ind
             className="h-full bg-gradient-to-r from-green-500 to-emerald-400 rounded-full"
             style={{ width: `${progress.bestScore}%` }}
           />
+        </div>
+      )}
+
+      {/* Quick-action buttons for completed missions */}
+      {progress?.completed && (
+        <div className="mt-4 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={() => navigate(`/mission/${mission.slug}?phase=results`)}
+            className="text-xs px-3 py-1.5 rounded-lg border border-green-700/50 bg-green-900/20 text-green-400 hover:bg-green-800/30 transition-all font-medium"
+          >
+            📊 View Results
+          </button>
+          {lldUnlocked && (
+            <button
+              onClick={() => navigate(`/mission/${mission.slug}?phase=lld`)}
+              className="text-xs px-3 py-1.5 rounded-lg border border-yellow-700/50 bg-yellow-900/20 text-yellow-400 hover:bg-yellow-800/30 transition-all font-medium"
+            >
+              🔧 Try LLD
+            </button>
+          )}
+          <button
+            onClick={() => navigate(`/mission/${mission.slug}?phase=builder`)}
+            className="text-xs px-3 py-1.5 rounded-lg border border-gray-700 bg-gray-800/50 text-gray-400 hover:text-gray-200 transition-all font-medium"
+          >
+            🔄 Retry
+          </button>
         </div>
       )}
     </motion.div>

@@ -44,46 +44,66 @@ const Navbar: React.FC<{ onCTA: () => void }> = ({ onCTA }) => (
 );
 
 // ─── Hero architecture diagram preview ───────────────────────────────────────
-const ArchPreview: React.FC = () => (
-  <div className="relative w-full h-64 md:h-80">
-    <div className="absolute inset-0 rounded-2xl bg-violet-500/10 blur-2xl" />
-    <div className="relative rounded-2xl border border-violet-500/20 bg-gray-900/60 backdrop-blur h-full p-4 overflow-hidden">
-      {[
-        { label: 'Client', x: '8%',  y: '40%', color: 'from-blue-500 to-cyan-400' },
-        { label: 'Load Balancer', x: '32%', y: '20%', color: 'from-violet-500 to-purple-400' },
-        { label: 'API Server', x: '56%', y: '40%', color: 'from-violet-600 to-blue-500' },
-        { label: 'Cache', x: '76%', y: '20%', color: 'from-amber-500 to-yellow-400' },
-        { label: 'Database', x: '76%', y: '60%', color: 'from-emerald-500 to-teal-400' },
-      ].map((n) => (
-        <div
-          key={n.label}
-          className="absolute flex flex-col items-center gap-1"
-          style={{ left: n.x, top: n.y, transform: 'translate(-50%,-50%)' }}
-        >
-          <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${n.color} flex items-center justify-center shadow-lg`}>
-            <div className="w-4 h-4 bg-white/30 rounded" />
+const ArchPreview: React.FC = () => {
+  // Generate unique IDs per instance to avoid duplicate SVG marker IDs
+  // when this component is rendered more than once on the same page.
+  const uid = React.useId().replace(/:/g, '');
+  const markViolet = `arrow-violet-${uid}`;
+  const markAmber  = `arrow-amber-${uid}`;
+  const markEmerald = `arrow-emerald-${uid}`;
+
+  return (
+    <div className="relative w-full h-64 md:h-80">
+      <div className="absolute inset-0 rounded-2xl bg-violet-500/10 blur-2xl" />
+      <div className="relative rounded-2xl border border-violet-500/20 bg-gray-900/60 backdrop-blur h-full p-4 overflow-hidden">
+        {[
+          { label: 'Client',        x: '8%',  y: '40%', color: 'from-blue-500 to-cyan-400' },
+          { label: 'Load Balancer', x: '32%', y: '20%', color: 'from-violet-500 to-purple-400' },
+          { label: 'API Server',    x: '56%', y: '40%', color: 'from-violet-600 to-blue-500' },
+          { label: 'Cache',         x: '76%', y: '20%', color: 'from-amber-500 to-yellow-400' },
+          { label: 'Database',      x: '76%', y: '60%', color: 'from-emerald-500 to-teal-400' },
+        ].map((n) => (
+          <div
+            key={n.label}
+            className="absolute flex flex-col items-center gap-1"
+            style={{ left: n.x, top: n.y, transform: 'translate(-50%,-50%)' }}
+          >
+            <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${n.color} flex items-center justify-center shadow-lg`}>
+              <div className="w-4 h-4 bg-white/30 rounded" />
+            </div>
+            <span className="text-[10px] text-gray-400 whitespace-nowrap">{n.label}</span>
           </div>
-          <span className="text-[10px] text-gray-400 whitespace-nowrap">{n.label}</span>
+        ))}
+        <svg className="absolute inset-0 w-full h-full" style={{ pointerEvents: 'none' }}>
+          <defs>
+            {/* Unique per-instance markers — prevents ID collision when rendered twice */}
+            <marker id={markViolet}  markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L6,3 z" fill="#7c3aed" opacity="0.8" />
+            </marker>
+            <marker id={markAmber}   markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L6,3 z" fill="#f59e0b" opacity="0.8" />
+            </marker>
+            <marker id={markEmerald} markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L6,3 z" fill="#10b981" opacity="0.8" />
+            </marker>
+          </defs>
+          {/* Client → Load Balancer */}
+          <line x1="10%" y1="40%" x2="30%" y2="22%" stroke="#7c3aed" strokeWidth="1.5" strokeOpacity="0.6" markerEnd={`url(#${markViolet})`}  strokeDasharray="4 2" />
+          {/* Load Balancer → API Server */}
+          <line x1="34%" y1="22%" x2="54%" y2="38%" stroke="#7c3aed" strokeWidth="1.5" strokeOpacity="0.6" markerEnd={`url(#${markViolet})`}  strokeDasharray="4 2" />
+          {/* API Server → Cache */}
+          <line x1="58%" y1="37%" x2="74%" y2="22%" stroke="#f59e0b" strokeWidth="1.5" strokeOpacity="0.6" markerEnd={`url(#${markAmber})`}   strokeDasharray="4 2" />
+          {/* API Server → Database */}
+          <line x1="58%" y1="43%" x2="74%" y2="58%" stroke="#10b981" strokeWidth="1.5" strokeOpacity="0.6" markerEnd={`url(#${markEmerald})`} strokeDasharray="4 2" />
+        </svg>
+        <div className="absolute bottom-4 right-4 flex items-center gap-2 bg-violet-600/20 border border-violet-500/30 rounded-lg px-3 py-1.5">
+          <span className="text-violet-300 text-xs font-semibold">Score</span>
+          <span className="text-white font-bold">94/100</span>
         </div>
-      ))}
-      <svg className="absolute inset-0 w-full h-full" style={{ pointerEvents: 'none' }}>
-        <defs>
-          <marker id="arrow" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
-            <path d="M0,0 L0,6 L6,3 z" fill="#7c3aed" opacity="0.7" />
-          </marker>
-        </defs>
-        <line x1="10%" y1="40%" x2="32%" y2="22%" stroke="#7c3aed" strokeWidth="1.5" strokeOpacity="0.6" markerEnd="url(#arrow)" strokeDasharray="4 2" />
-        <line x1="34%" y1="22%" x2="56%" y2="38%" stroke="#7c3aed" strokeWidth="1.5" strokeOpacity="0.6" markerEnd="url(#arrow)" strokeDasharray="4 2" />
-        <line x1="58%" y1="38%" x2="76%" y2="22%" stroke="#f59e0b" strokeWidth="1.5" strokeOpacity="0.6" markerEnd="url(#arrow)" strokeDasharray="4 2" />
-        <line x1="58%" y1="42%" x2="76%" y2="58%" stroke="#10b981" strokeWidth="1.5" strokeOpacity="0.6" markerEnd="url(#arrow)" strokeDasharray="4 2" />
-      </svg>
-      <div className="absolute bottom-4 right-4 flex items-center gap-2 bg-violet-600/20 border border-violet-500/30 rounded-lg px-3 py-1.5">
-        <span className="text-violet-300 text-xs font-semibold">Score</span>
-        <span className="text-white font-bold">94/100</span>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 export const LandingPage: React.FC = () => {
   const navigate = useNavigate();

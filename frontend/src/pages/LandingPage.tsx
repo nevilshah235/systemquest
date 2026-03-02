@@ -192,7 +192,7 @@ export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
 
   // Fetch real mission/XP totals from the backend; fall back to static values
-  const [statsTargets, setStatsTargets] = useState({ missions: 50, xp: 19550 });
+  const [statsTargets, setStatsTargets] = useState({ missions: 48, xp: 27050 });
   useEffect(() => {
     fetch('/api/missions/stats')
       .then(r => r.ok ? r.json() : null)
@@ -200,7 +200,7 @@ export const LandingPage: React.FC = () => {
         if (data?.totalMissions) {
           setStatsTargets({
             missions: data.totalMissions,
-            xp: data.totalXP || 19550,
+            xp: data.totalXP || 27050,
           });
         }
       })
@@ -278,7 +278,7 @@ export const LandingPage: React.FC = () => {
             <h2 className="text-2xl font-bold mb-8 text-white">HOW IT WORKS</h2>
             <div className="flex flex-col gap-6">
               {[
-                { step: '01', title: 'Pick a Mission', desc: 'Choose from 50 real-world scenarios: URL shortener, WhatsApp, Stripe, Netflix and more. Each mission is a structured engineering challenge.', icon: '🎯' },
+                { step: '01', title: 'Pick a Mission', desc: 'Choose from 48 real-world scenarios: URL shortener, WhatsApp, Stripe, Netflix and more. Each mission is a structured engineering challenge.', icon: '🎯' },
                 { step: '02', title: 'Build Your Architecture', desc: 'Drag and drop components onto the canvas. Connect services, add databases, caches, and queues. Get AI-assisted hints as you design.', icon: '🏗️' },
                 { step: '03', title: 'Simulate & Score', desc: 'Run the simulation engine — get scored on latency, throughput, availability, and cost. Unlock LLD deep dives when you pass.', icon: '⚡' },
                 { step: '04', title: 'Go Deeper with LLD', desc: 'Once you score ≥ 60, unlock the Low-Level Design phase — schema design, API contracts, data flows, and class diagrams.', icon: '🔬' },
@@ -579,8 +579,8 @@ export const LandingPage: React.FC = () => {
               {
                 tier: 'Pro', price: '$12', desc: 'Per month, billed annually',
                 features: [
-                  'All 6 learning paths (50 missions)',
-                  '19,550 XP to earn',
+                  'All 6 learning paths (48 missions)',
+                  '27,050 XP to earn',
                   'LLD Deep Dives (all missions)',
                   '45-min Interview Simulation mode',
                   '5-Dimension Scorecard & rubric',

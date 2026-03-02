@@ -242,9 +242,10 @@ interface LLDBuilderProps {
 export const LLDBuilder: React.FC<LLDBuilderProps> = ({
   missionSlug, config, lldContent, previousState, onXpEarned,
 }) => {
-  const [activeSection, setActiveSection] = useState<Section>('arch');
-  const [submitting,    setSubmitting]    = useState(false);
-  const [result,        setResult]        = useState<LLDScoreResponse | null>(null);
+  const [activeSection,  setActiveSection]  = useState<Section>('arch');
+  const [submitting,     setSubmitting]     = useState(false);
+  const [result,         setResult]         = useState<LLDScoreResponse | null>(null);
+  const [hasSubmitted,   setHasSubmitted]   = useState(false);
 
   const { initBuilder, setValidationErrors, setSubmittedWithWarnings } = useLLDBuilderStore();
   const { errors, isValid, hasArchErrors, hasSchemaErrors, hasApiErrors } = useLLDValidation();
@@ -267,6 +268,7 @@ export const LLDBuilder: React.FC<LLDBuilderProps> = ({
       const payload = selectSubmissionPayload(useLLDBuilderStore.getState());
       const res = await apiClient.post<LLDScoreResponse>(`/lld/${missionSlug}/score`, payload);
       setResult(res);
+      setHasSubmitted(true);
       if (res.xpEarned > 0) onXpEarned?.(res.xpEarned);
     } catch (err) {
       console.error('[LLDBuilder] Score failed:', err);
@@ -280,6 +282,14 @@ export const LLDBuilder: React.FC<LLDBuilderProps> = ({
   if (result) return (
     <div className="space-y-4">
       <ScorePanel result={result} onRetry={() => setResult(null)} />
+      <div className="border-t border-gray-700/60 pt-4">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-base">💡</span>
+          <span className="text-sm font-semibold text-white">Reference Solution</span>
+          <span className="text-xs text-gray-500">Compare your design against the intended approach</span>
+        </div>
+        <SolutionPanel lldContent={lldContent ?? null} />
+      </div>
       <XPHintOverlay />
     </div>
   );
@@ -292,15 +302,22 @@ export const LLDBuilder: React.FC<LLDBuilderProps> = ({
           {SECTION_CONFIG.map(s => {
             const hasErr = s.errorKey ? errMap[s.errorKey] : false;
             const isSolution = s.id === 'solution';
+            const solutionLocked = isSolution && !hasSubmitted;
             return (
-              <button key={s.id} onClick={() => setActiveSection(s.id)}
-                className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all
-                  ${activeSection === s.id
-                    ? isSolution ? 'bg-yellow-900/40 text-yellow-300 shadow-sm' : 'bg-gray-700 text-white shadow-sm'
-                    : isSolution ? 'text-yellow-600 hover:text-yellow-400' : 'text-gray-500 hover:text-gray-300'
+              <button key={s.id}
+                onClick={() => !solutionLocked && setActiveSection(s.id)}
+                disabled={solutionLocked}
+                title={solutionLocked ? 'Submit first to unlock' : undefined}
+                className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all
+                  ${solutionLocked
+                    ? 'text-gray-600 cursor-not-allowed opacity-50'
+                    : activeSection === s.id
+                      ? isSolution ? 'bg-yellow-900/40 text-yellow-300 shadow-sm' : 'bg-gray-700 text-white shadow-sm'
+                      : isSolution ? 'text-yellow-600 hover:text-yellow-400' : 'text-gray-500 hover:text-gray-300'
                   }`}>
                 <span>{s.icon}</span>
                 <span className="hidden sm:inline">{s.label}</span>
+                {solutionLocked && <span className="ml-0.5 text-[10px]">🔒</span>}
                 {hasErr && <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />}
               </button>
             );

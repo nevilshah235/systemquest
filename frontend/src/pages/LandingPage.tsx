@@ -189,9 +189,26 @@ const ArchPreview: React.FC<{ showToolbar?: boolean }> = ({ showToolbar = true }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export const LandingPage: React.FC = () => {
-  const navigate  = useNavigate();
-  const missions  = useCounter(50);
-  const xp        = useCounter(19550);
+  const navigate = useNavigate();
+
+  // Fetch real mission/XP totals from the backend; fall back to static values
+  const [statsTargets, setStatsTargets] = useState({ missions: 50, xp: 19550 });
+  useEffect(() => {
+    fetch('/api/missions/stats')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.totalMissions) {
+          setStatsTargets({
+            missions: data.totalMissions,
+            xp: data.totalXP || 19550,
+          });
+        }
+      })
+      .catch(() => { /* keep fallback */ });
+  }, []);
+
+  const missions  = useCounter(statsTargets.missions);
+  const xp        = useCounter(statsTargets.xp);
   const concepts  = useCounter(40);
   const companies = useCounter(23);
 

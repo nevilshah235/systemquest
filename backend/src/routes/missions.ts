@@ -5,6 +5,23 @@ import { authenticate, AuthRequest } from '../middleware/auth';
 export const missionRouter = Router();
 const prisma = new PrismaClient();
 
+// ── GET /api/missions/stats — public, no auth required ────────────────────────────
+// Returns platform-wide totals for landing page counters.
+missionRouter.get('/stats', async (_req, res: Response): Promise<void> => {
+  try {
+    const [total, xpSum] = await Promise.all([
+      prisma.mission.count(),
+      prisma.mission.aggregate({ _sum: { xpReward: true } }),
+    ]);
+    res.json({
+      totalMissions: total,
+      totalXP: xpSum._sum.xpReward ?? 0,
+    });
+  } catch {
+    res.status(500).json({ error: 'Failed to fetch stats' });
+  }
+});
+
 // ── Server-side path unlock logic ─────────────────────────────────────────────────
 /**
  * Determines lock status for every mission based on:

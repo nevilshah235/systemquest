@@ -182,7 +182,8 @@ lldRouter.post('/:slug/score', authenticate, async (req: AuthRequest, res: Respo
       });
     }
 
-    res.json(result);
+    // Expose incremental XP awarded so the frontend can sync authStore accurately
+    res.json({ ...result, incrementalXpAwarded: incrementalXP });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'LLD scoring failed' });

@@ -1,0 +1,39 @@
+{
+  "missionSlug": "design-google-search",
+  "components": [
+    { "id": "client", "label": "Search Client (Web/App)", "description": "Sends search query to Query API; receives ranked result list with snippets; autocomplete requests go to a separate low-latency suggest service" },
+    { "id": "server", "label": "Query Processing Service + Crawler Fleet + Indexer", "description": "Query Service intersects postings lists across index shards and merges/re-ranks results; Crawler Fleet runs distributed BFS over the web graph; Indexer parses crawled pages and writes to the inverted index" },
+    { "id": "database", "label": "Inverted Index (Sharded by Doc ID Range)", "description": "Maps terms to postings lists: {term → [(doc_id, tf_idf_score), ...]}; sharded horizontally by document ID range; each shard answers queries in parallel (scatter-gather pattern)" },
+    { "id": "cache", "label": "Query Result Cache (Redis)", "description": "Caches full result pages for the top 1% of queries (navigational queries like 'facebook', 'youtube') — these account for ~30% of all traffic; TTL varies by query freshness requirements" },
+    { "id": "storage", "label": "Document Store + Web Graph + PageRank Store", "description": "Document Store holds crawled page content and extracted text; Web Graph stores outbound link relationships for PageRank computation; PageRank Store holds pre-computed scores per doc_id" },
+    { "id": "queue", "label": "URL Frontier + Indexing Pipeline Queue (Kafka)", "description": "URL Frontier is a priority queue of URLs to crawl, ordered by estimated PageRank and freshness; Indexing Pipeline queue carries parsed page content from crawlers to indexers asynchronously" }
+  ],
+  "connections": [
+    { "from": "client", "to": "server", "label": "GET /search?q=system+design" },
+    { "from": "server", "to": "cache", "label": "Check result cache for popular queries" },
+    { "from": "server", "to": "database", "label": "Scatter: fan-out query to all index shards in parallel" },
+    { "from": "database", "to": "server", "label": "Gather: each shard returns top-k docs with scores" },
+    { "from": "server", "to": "storage", "label": "Fetch PageRank scores + snippet text for top results" },
+    { "from": "server", "to": "queue", "label": "Crawl discovery: push newly found URLs to URL frontier" },
+    { "from": "queue", "to": "server", "label": "Indexing pipeline: deliver parsed page content to indexer" },
+    { "from": "storage", "to": "database", "label": "Batch index write: new documents added to inverted index" }
+  ],
+  "keyInsights": [
+    "The inverted index inverts the natural document→words relationship into words→documents: instead of asking 'what words does doc_1 contain?', it answers 'which documents contain the word system?' by looking up the postings list for 'system' — this is what makes sub-millisecond term lookups possible across 50 billion documents",
+    "Query processing as set intersection: for the query 'system design interview', retrieve the postings lists for all three terms and intersect them — only documents containing all three words are candidates; starting with the rarest term ('interview' has a shorter postings list than 'system') minimises the working set before intersection",
+    "Scatter-gather across shards: the index is horizontally sharded by document ID range (shard 1: doc IDs 0-1B, shard 2: doc IDs 1B-2B, etc.); a query fans out to all shards simultaneously, each returns its local top-k results, and a central merger re-ranks the combined set by global score — query latency is bounded by the slowest shard, not the total index size",
+    "PageRank is a batch computation: PageRank requires iterating over the full web graph (50B nodes, trillions of edges) — this takes hours on a distributed MapReduce cluster; the computed score per doc_id is stored and merged with real-time query signals (CTR, freshness, personalisation) at query time",
+    "Bloom filter for crawler deduplication: maintaining a hash set of 50 billion crawled URLs would require terabytes of memory; a Bloom filter represents the same 50B URLs in ~60GB (10 bits/element at 1% false-positive rate) and answers 'have I seen this URL?' in O(1) with zero false negatives — occasionally a new URL is mistakenly flagged as seen (false positive), but a URL is never missed"
+  ],
+  "tradeoffs": [
+    { "decision": "Horizontal index sharding by doc ID over vertical sharding by term range", "pro": "Even data distribution; all shards participate in every query enabling full parallelism; new documents distributed across all shards", "con": "Every query must fan out to all shards; cannot isolate hot terms (e.g. 'the', 'a') to dedicated high-memory shards" },
+    { "decision": "Pre-computed PageRank over real-time link analysis", "pro": "PageRank computation over 50B nodes is impractical at query time; offline batch gives accurate scores without impacting query latency", "con": "PageRank scores are hours to days stale; newly published highly-linked pages appear lower in results until the next PageRank computation" },
+    { "decision": "Separate crawl pipeline and indexing pipeline", "pro": "Decouples crawl throughput (network-bound) from indexing throughput (CPU-bound); each scales independently; failures in one do not block the other", "con": "Adds end-to-end latency from page discovery to index availability; a newly published page may not appear in search results for hours" }
+  ],
+  "antiPatterns": [
+    "Full-text LIKE queries on a relational database — SELECT * FROM documents WHERE content LIKE '%system design%' is a full table scan; completely impractical at 50B documents",
+    "Single-node inverted index — no single machine has enough RAM to hold an index for 50B documents; the index must be sharded and queries must fan out across shards",
+    "Crawling every URL on every crawl cycle — re-crawling stable pages (e.g. historical Wikipedia articles) wastes resources; the URL frontier must prioritise high-PageRank and recently-updated pages",
+    "Computing PageRank at query time — even for a small subset of the web graph, PageRank requires multiple graph traversal iterations; it must be pre-computed offline and stored as a score per doc_id"
+  ]
+}

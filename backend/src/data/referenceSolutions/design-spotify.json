@@ -1,0 +1,38 @@
+{
+  "missionSlug": "design-spotify",
+  "components": [
+    { "id": "client", "label": "Mobile/Desktop/Web Client", "description": "Requests a time-limited pre-signed CDN URL for audio; streams audio directly from CDN edge node; caches tracks locally for offline mode; sends listening events (play, skip, seek, complete) to ingest API" },
+    { "id": "server", "label": "Metadata API + Audio Auth Service + Sync Service", "description": "Metadata API serves track info, playlists, and search; Audio Auth Service generates pre-signed CDN URLs for track access; Sync Service handles delta sync protocol for offline downloads" },
+    { "id": "storage", "label": "Object Storage (S3-compatible, multi-region)", "description": "Stores all audio files pre-encoded at multiple bitrates (96/160/320kbps); original master files stored separately; Storage is the origin that feeds CDN edge nodes" },
+    { "id": "cdn", "label": "CDN (Global Edge Network)", "description": "Caches audio files at edge nodes closest to users; serves 95%+ of audio bytes — origin is never hit during normal playback; pre-signed URL embeds CDN token for auth" },
+    { "id": "cache", "label": "Metadata Cache (Redis)", "description": "Caches track metadata (title, artist, album art URL), playlist contents, and user session state with long TTLs; eliminates DB reads on every track play" },
+    { "id": "database", "label": "Track DB + User DB + Recommendation Store", "description": "Track DB stores track metadata, licensing rights, and bitrate variants; User DB stores playlists, saved tracks, and preferences; Recommendation Store holds pre-computed Discover Weekly playlists" }
+  ],
+  "connections": [
+    { "from": "client", "to": "server", "label": "Request pre-signed CDN URL for track playback" },
+    { "from": "server", "to": "cache", "label": "Read track metadata from Redis cache" },
+    { "from": "server", "to": "database", "label": "Check track licensing and generate pre-signed URL" },
+    { "from": "server", "to": "client", "label": "Return pre-signed CDN URL (valid 60 seconds)" },
+    { "from": "client", "to": "cdn", "label": "Stream audio bytes directly from CDN edge node" },
+    { "from": "cdn", "to": "storage", "label": "Cache miss: fetch audio file from origin storage" },
+    { "from": "client", "to": "server", "label": "Send listening events (play, skip, complete) for recommendation pipeline" }
+  ],
+  "keyInsights": [
+    "Pre-signed URL architecture: the client never directly authenticates with the CDN for each byte; instead the Metadata API generates a short-lived (60s) signed URL that encodes the track ID, user entitlement, and HMAC signature — the CDN validates the signature without calling back to origin",
+    "Delta sync for offline mode: when the client wants to sync its offline library, it sends a manifest of {track_id: last_modified_timestamp} for all locally cached tracks; the Sync Service computes the diff and returns only {tracks_to_add: [], tracks_to_remove: []} — minimises bandwidth and battery drain on mobile",
+    "Listening event pipeline decoupling: the 500M daily listening events flow into Kafka, not into the Metadata API response path; a separate batch ML pipeline (running overnight) consumes these events to retrain collaborative filtering models and pre-compute Discover Weekly — the playback API response time is completely unaffected by recommendation computation",
+    "Spotify Connect control vs data plane separation: when a user switches playback from phone to laptop, only a tiny JSON command ('play track X from position Y') is sent over a WebSocket control channel to both devices; the audio bytes are not transferred — the laptop independently fetches a new pre-signed CDN URL and starts its own stream",
+    "Multi-bitrate pre-encoding trade-off: encoding each track at 3 bitrates costs 3x storage (~3GB per million tracks vs 1GB) but eliminates real-time transcoding, enables adaptive bitrate switching (ABR) when network degrades, and allows a single CDN cache entry per bitrate tier to serve all users"
+  ],
+  "tradeoffs": [
+    { "decision": "CDN pre-signed URLs over streaming proxy", "pro": "100% of audio bytes served from CDN edge — origin servers never handle audio bandwidth; scales to any number of concurrent streams without origin capacity changes", "con": "Short-lived URL means the client must refresh the signed URL every 60s for long tracks; URL expiry race condition if playback pauses for >60s" },
+    { "decision": "Offline delta sync over full sync", "pro": "Mobile bandwidth and battery efficiency — only changed tracks are transferred; sync completes in seconds not minutes for an established offline library", "con": "Client must accurately maintain and report its local manifest; manifest corruption requires a full re-sync; conflict resolution needed if the same track is deleted server-side while being played offline" },
+    { "decision": "Async listening event pipeline over synchronous recommendation updates", "pro": "Playback API latency unaffected by ML computation; recommendation model trains on complete sessions (including skip patterns), not partial streams", "con": "Discover Weekly reflects listening behaviour from the previous day, not the current session; cannot incorporate real-time taste signals" }
+  ],
+  "antiPatterns": [
+    "Streaming audio bytes through the application server — at 50K concurrent streams each at 160kbps, the server would need 8 Gbps of outbound bandwidth; CDN edge delivery is the only viable approach at this scale",
+    "Full library sync on every offline refresh — sending all 10K track IDs and metadata on every sync request wastes mobile bandwidth; always use delta sync with client-side manifest",
+    "Computing recommendations synchronously during playback — collaborative filtering on 500M events cannot run in <200ms; recommendations must be pre-computed and cached, never computed on-demand in the playback path",
+    "Storing audio file metadata in the same DB as audio binary data — binary large objects inflate DB storage, slow query performance, and prevent the metadata DB from fitting in cache; audio binaries belong in object storage, metadata in a relational or key-value store"
+  ]
+}

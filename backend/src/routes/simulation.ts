@@ -3,6 +3,8 @@ import { PrismaClient } from '@prisma/client';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { runSimulation, Architecture } from '../services/simulationEngine';
 import { promoteIfEarned, SkillLevel } from '../services/skillService';
+import { upsertSRItem } from '../services/spacedRepetitionService';
+import { refreshMistakePatterns } from '../services/mistakePatternService';
 
 export const simulationRouter = Router();
 const prisma = new PrismaClient();
@@ -35,18 +37,28 @@ simulationRouter.post('/run', authenticate, async (req: AuthRequest, res: Respon
 
     // ── Persist attempt ──────────────────────────────────────────────────────
     let skillPromotion: { promoted: boolean; newLevel: SkillLevel; derivedSkillLevel: SkillLevel } | null = null;
+    let xpGranted = 0; // only set when XP is actually awarded (first completion only)
 
     if (metrics.score > 0) {
-      const existing = await prisma.missionAttempt.findFirst({
+      const completed = metrics.score >= 60;
+
+      // Check if the user has ALREADY completed this mission (any prior passing attempt)
+      const priorCompletion = await prisma.missionAttempt.findFirst({
+        where: { userId: req.userId!, missionId: mission.id, completed: true },
+      });
+      const isReplay = !!priorCompletion;
+
+      // XP is only awarded on the FIRST completion — never on replays
+      const xpEarned = completed && !isReplay ? metrics.xpEarned + metrics.bonusXp : 0;
+
+      // Upsert: update the existing in-progress attempt, or create a new one
+      const inProgress = await prisma.missionAttempt.findFirst({
         where: { userId: req.userId!, missionId: mission.id, completed: false },
       });
 
-      const completed = metrics.score >= 60;
-      const xpEarned = metrics.xpEarned + metrics.bonusXp;
-
-      if (existing) {
+      if (inProgress) {
         await prisma.missionAttempt.update({
-          where: { id: existing.id },
+          where: { id: inProgress.id },
           data: {
             score: metrics.score,
             xpEarned,
@@ -55,7 +67,8 @@ simulationRouter.post('/run', authenticate, async (req: AuthRequest, res: Respon
             metrics: JSON.stringify(metrics),
           },
         });
-      } else {
+      } else if (!isReplay) {
+        // Only create a new attempt record if this is not a replay of an already-completed mission
         await prisma.missionAttempt.create({
           data: {
             userId: req.userId!,
@@ -67,10 +80,28 @@ simulationRouter.post('/run', authenticate, async (req: AuthRequest, res: Respon
             metrics: JSON.stringify(metrics),
           },
         });
+      } else {
+        // Replay of a completed mission — update the best score if improved
+        if (metrics.score > priorCompletion.score) {
+          await prisma.missionAttempt.update({
+            where: { id: priorCompletion.id },
+            data: {
+              score: metrics.score,
+              architecture: JSON.stringify(architecture),
+              metrics: JSON.stringify(metrics),
+            },
+          });
+        }
       }
 
-      if (completed) {
-        // Award XP and recalculate level
+      // ── F-005: Spaced Repetition — update SR queue (fire-and-forget) ──────
+      upsertSRItem(req.userId!, mission.id, metrics.score).catch((err) => {
+        console.error('[SR] upsertSRItem failed:', err?.message);
+      });
+
+      if (completed && !isReplay) {
+        // Award XP only on first completion — set outer xpGranted for the response
+        xpGranted = xpEarned;
         const updatedUser = await prisma.user.update({
           where: { id: req.userId! },
           data: { xp: { increment: xpEarned } },
@@ -83,18 +114,21 @@ simulationRouter.post('/run', authenticate, async (req: AuthRequest, res: Respon
         });
 
         // ── Adaptive skill promotion ──────────────────────────────────────────
-        // Re-evaluate the user's skill level based on their full completion history.
-        // If they've now scored ≥90 on 3+ missions at the next tier, upgrade them.
         const promotion = await promoteIfEarned(req.userId!);
         skillPromotion = promotion;
+
+        // ── F-003: Mistake Patterns — refresh report async ───────────────────
+        refreshMistakePatterns(req.userId!).catch((err) => {
+          console.error('[Patterns] refresh failed:', err?.message);
+        });
       }
     }
 
     res.json({
       metrics,
       missionTitle: mission.title,
-      // Included only on a completed run; null otherwise
       skillPromotion,
+      xpGranted, // 0 on replays, actual XP on first completion
     });
   } catch (err) {
     console.error(err);

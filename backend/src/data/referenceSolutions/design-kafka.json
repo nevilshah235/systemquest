@@ -1,0 +1,37 @@
+{
+  "missionSlug": "design-kafka",
+  "components": [
+    { "id": "client", "label": "Producer / Consumer Applications", "description": "Producers write events to topic partitions; Consumer groups read from partitions at their own committed offset; both use the Kafka client library for broker discovery and offset management" },
+    { "id": "server", "label": "Kafka Broker Cluster", "description": "Each broker stores partition logs for which it is the leader; handles producer writes, consumer reads, and replication to follower brokers; horizontally scalable by adding brokers" },
+    { "id": "storage", "label": "Append-Only Partition Log (Disk)", "description": "Each partition is a sequence of segment files on disk; new messages are appended to the active segment; sequential disk I/O enables 1M+ writes/sec per broker; messages are never modified or deleted until retention expires" },
+    { "id": "queue", "label": "Topic Partition Layer", "description": "Topics are divided into N partitions; partition assignment determines which broker is the leader; producers hash message keys to partitions for ordering guarantees within a key" },
+    { "id": "database", "label": "KRaft Controller (Cluster Metadata)", "description": "KRaft (or ZooKeeper in legacy setups) manages broker metadata, partition leadership, ISR lists, and topic configuration; it is the control plane — it never stores message data" }
+  ],
+  "connections": [
+    { "from": "client", "to": "server", "label": "Producer: write event to partition leader" },
+    { "from": "server", "to": "storage", "label": "Append event to partition log segment on disk" },
+    { "from": "server", "to": "server", "label": "Replicate to ISR follower brokers" },
+    { "from": "server", "to": "client", "label": "ACK to producer after ISR replication (acks=all)" },
+    { "from": "client", "to": "server", "label": "Consumer: fetch from partition at committed offset" },
+    { "from": "client", "to": "database", "label": "Commit consumer offset to __consumer_offsets topic" },
+    { "from": "database", "to": "server", "label": "Controller assigns partition leadership, manages ISR" }
+  ],
+  "keyInsights": [
+    "The append-only log is the fundamental abstraction: events are never modified or removed until retention expires; a consumer can read the same event 100 times, multiple consumer groups can read the same log simultaneously, and any consumer can replay from offset 0 — none of this is possible with a traditional queue that deletes on ack",
+    "Partition-level ordering guarantee: Kafka guarantees order within a partition, not across partitions; to maintain order for a specific entity (e.g. all events for user_id=42), hash the entity key to a partition — all events for that key always land in the same partition and are consumed in order",
+    "Consumer offset ownership decouples consumers: each consumer group independently tracks its read position in __consumer_offsets; a slow batch analytics consumer reading at 1K events/sec does not affect a fast stream processing consumer reading at 1M events/sec from the same topic",
+    "ISR (in-sync replicas) is the durability contract: with acks=all, a producer write is only acknowledged after all ISR members have written it to their local log; if a follower falls behind (outside the replica.lag.time.max config), it is removed from ISR — the ack contract applies only to the current ISR set",
+    "KRaft vs ZooKeeper: ZooKeeper was the legacy metadata store but introduced operational complexity (separate cluster to manage); KRaft embeds the Raft consensus algorithm directly into Kafka brokers, eliminating ZooKeeper entirely in Kafka 3.x — same guarantees, simpler operations"
+  ],
+  "tradeoffs": [
+    { "decision": "Append-only log over traditional message queue", "pro": "Enables replay, multiple independent consumer groups, time-travel debugging, and event sourcing — none possible with delete-on-consume queues", "con": "Storage grows until retention expires; requires consumers to manage their own offsets; more complex client library than a simple queue" },
+    { "decision": "Partition-level ordering over global ordering", "pro": "Global ordering would require a single partition — no parallelism; partition-level ordering enables N-way parallel consumption while still guaranteeing order for each entity", "con": "Cross-partition ordering requires application-level sequencing; consumers must handle out-of-order messages across partitions if they care about global sequence" },
+    { "decision": "acks=all over acks=1 or acks=0", "pro": "Zero data loss on broker failure — message is on at least replication-factor copies before ack", "con": "Higher produce latency (must wait for all ISR members); if ISR shrinks to 1 broker, durability guarantee weakens" }
+  ],
+  "antiPatterns": [
+    "Using Kafka as a task queue with delete-on-consume semantics — Kafka does not support this natively; messages expire by time/size, not by acknowledgement; use RabbitMQ or SQS for true delete-on-consume task queues",
+    "Creating one partition per consumer to avoid rebalancing — partition count is the parallelism ceiling; over-partitioning wastes resources and increases rebalance time; partition count should match the peak consumer parallelism needed",
+    "Committing offsets before processing is complete — if the consumer crashes after commit but before processing, those events are silently skipped; commit offsets only after successful processing (at-least-once), or use a transactional producer for exactly-once semantics",
+    "Storing large payloads (>1MB) directly in Kafka messages — Kafka is optimised for small, frequent events; large payloads cause network saturation and broker memory pressure; store large objects in S3 and put only the object reference in the Kafka message"
+  ]
+}

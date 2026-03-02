@@ -1,0 +1,36 @@
+{
+  "missionSlug": "design-chatgpt",
+  "components": [
+    { "id": "client", "label": "Web/API Client", "description": "Sends prompt via HTTPS POST; receives streaming token response via SSE (Server-Sent Events); handles reconnection on stream drop" },
+    { "id": "apigateway", "label": "API Gateway (Rate Limiter + Auth)", "description": "Authenticates API keys, enforces token-bucket rate limits (60 req/min free, 3600 req/min paid) using Redis INCR+EXPIRE, routes requests to inference workers" },
+    { "id": "server", "label": "Inference Worker (GPU Server)", "description": "Runs LLM inference; holds KV-cache (attention state) in GPU memory during streaming; streams tokens back via SSE; stateful for the duration of one request" },
+    { "id": "cache", "label": "Session Cache + Semantic Cache (Redis + Vector DB)", "description": "Redis stores conversation history per session_id for multi-turn context; Vector DB (Pinecone/pgvector) stores prompt embeddings for semantic cache lookups (similarity > 0.95 returns cached response)" },
+    { "id": "database", "label": "User DB + Billing DB", "description": "User DB stores API key metadata, tier, and usage quotas; Billing DB stores aggregated token counts per API key per billing period" }
+  ],
+  "connections": [
+    { "from": "client", "to": "apigateway", "label": "POST /v1/chat/completions with API key" },
+    { "from": "apigateway", "to": "cache", "label": "Check semantic cache + rate limit bucket in Redis" },
+    { "from": "apigateway", "to": "server", "label": "Route to available GPU inference worker (sticky)" },
+    { "from": "server", "to": "cache", "label": "Read/write conversation history for multi-turn context" },
+    { "from": "server", "to": "client", "label": "Stream tokens via SSE (text/event-stream)" },
+    { "from": "server", "to": "database", "label": "Write token usage event to billing queue" }
+  ],
+  "keyInsights": [
+    "GPU KV-cache stickiness: the attention key-value state built up during token generation lives in GPU VRAM; sticky routing ensures the same GPU handles all tokens in a request — routing to a different GPU would require serialising and transferring gigabytes of GPU state",
+    "SSE over WebSockets for streaming: SSE is unidirectional (server to client), works over standard HTTP/2, multiplexes over a single connection, and auto-reconnects with Last-Event-ID header — perfect for one-way token streaming with no bidirectional signalling needed",
+    "Semantic cache with vector similarity: embedding the prompt into a high-dimensional vector and storing it in a vector DB allows returning cached responses for prompts that are semantically equivalent even if not lexically identical (e.g. 'What is the capital of France?' and 'France capital city?')",
+    "Token bucket rate limiting atomicity: Redis INCR increments the request counter and returns the new value in one operation; combined with EXPIRE in a Lua script, this is atomic — no two concurrent requests from the same API key can both pass a limit that only allows one more",
+    "Async billing decoupling: writing token counts synchronously in the inference hot path would add 10-50ms of DB latency to every request; instead a Kafka event carries (api_key, prompt_tokens, completion_tokens) and is aggregated by a downstream billing service every minute"
+  ],
+  "tradeoffs": [
+    { "decision": "Sticky GPU routing over stateless routing", "pro": "KV-cache reuse across multi-turn conversations dramatically reduces GPU compute; no state serialisation overhead", "con": "Uneven GPU utilisation if some conversations are much longer than others; requires consistent hashing in the load balancer and graceful drain on GPU node shutdown" },
+    { "decision": "SSE over WebSockets for token streaming", "pro": "Works over standard HTTP/2, no special proxying needed; auto-reconnect built into browser EventSource API; unidirectional simplicity", "con": "Cannot receive client messages mid-stream (e.g. 'stop generating'); follow-up messages require a new HTTP request" },
+    { "decision": "Semantic cache over exact-match cache", "pro": "Catches paraphrase variants of popular prompts; significantly higher cache hit rate than exact key matching", "con": "Embedding model adds 5-20ms per request; vector similarity search adds latency; false positives can return semantically close but contextually wrong cached answers" }
+  ],
+  "antiPatterns": [
+    "Writing billing records synchronously in the inference request handler — adds DB latency to the hot path and risks dropping tokens if the billing write fails",
+    "Using WebSocket for token streaming when SSE is sufficient — WebSockets require stateful connection management and bidirectional protocol handling; SSE is simpler and works over standard HTTP infrastructure",
+    "Routing all requests to a pool of stateless servers without sticky routing — each token generation must start from scratch without KV-cache; GPU utilisation drops and latency doubles",
+    "Storing conversation history in the relational DB and reading it on every token — at 500 tokens per response and 50 tokens/sec, this generates 10 DB reads per second per active conversation; conversation history belongs in Redis with a TTL"
+  ]
+}

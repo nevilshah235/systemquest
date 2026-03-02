@@ -4,7 +4,7 @@ import { missionsApi, simulationApi } from '../data/api';
 import { useBuilderStore } from './builderStore';
 import { useAuthStore } from './authStore';
 
-type MissionPhase = 'briefing' | 'requirements' | 'builder' | 'results';
+export type MissionPhase = 'briefing' | 'requirements' | 'builder' | 'results' | 'lld';
 
 interface MissionState {
   missions: Mission[];
@@ -16,7 +16,15 @@ interface MissionState {
   isSimulating: boolean;
   error: string | null;
   fetchMissions: () => Promise<void>;
-  startMission: (slug: string) => Promise<void>;
+  /**
+   * Load a mission by slug and set its initial phase.
+   *
+   * @param slug          Mission slug to load.
+   * @param requestedPhase  Optional phase to start on (e.g. from ?phase= URL param).
+   *                        When omitted the phase defaults to 'results' for completed
+   *                        missions, otherwise 'briefing'.
+   */
+  startMission: (slug: string, requestedPhase?: MissionPhase) => Promise<void>;
   setPhase: (phase: MissionPhase) => void;
   runSimulation: () => Promise<void>;
   resetMission: () => void;
@@ -42,7 +50,7 @@ export const useMissionStore = create<MissionState>()((set, get) => ({
     }
   },
 
-  startMission: async (slug) => {
+  startMission: async (slug, requestedPhase) => {
     set({ isLoading: true, error: null });
     try {
       const mission = await missionsApi.get(slug);
@@ -52,7 +60,16 @@ export const useMissionStore = create<MissionState>()((set, get) => ({
       if (mission.savedArchitecture) {
         builder.loadArchitecture(mission.savedArchitecture);
       }
-      set({ activeMission: mission, phase: 'briefing', simulationMetrics: null, isLoading: false });
+
+      // Resolve initial phase atomically — no separate effect required:
+      //   1. Honour explicit URL param (e.g. ?phase=lld, ?phase=results)
+      //   2. Default completed missions to Results so the user skips Briefing
+      //   3. Otherwise start at Briefing
+      const phase: MissionPhase =
+        requestedPhase ??
+        (mission.userProgress?.completed ? 'results' : 'briefing');
+
+      set({ activeMission: mission, phase, simulationMetrics: null, isLoading: false });
     } catch {
       set({ error: 'Failed to load mission', isLoading: false });
     }

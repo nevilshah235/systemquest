@@ -1,6 +1,28 @@
+/**
+ * LLDPhase — LLD phase orchestrator.
+ *
+ * When the mission has an lldConfig (interactive builder):
+ *   → mounts LLDBuilder with the structured interactive experience.
+ *
+ * When no lldConfig (legacy missions or missions not yet configured):
+ *   → falls back to the original textarea-based LLD form.
+ *
+ * Both paths share the same HLD-unlock guard.
+ *
+ * Bugfix: no longer returns null when apiResponse is unavailable.
+ * Returning null left the content area blank, forcing users to hit
+ * browser-back, which remounted MissionPage and reset phase to 'briefing'.
+ * Now renders a proper fallback screen with an explicit Back button.
+ */
+
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { apiClient } from '../../data/api';
+import { useLLDConfig } from '../../hooks/useLLDConfig';
+import { LLDBuilder } from '../builder/lld/LLDBuilder';
+import type { LLDApiResponse } from '../../data/lldTypes';
+
+// ── Legacy textarea types (retained for fallback path) ───────────────────────
 
 interface LLDFeedbackItem {
   type: 'success' | 'warning' | 'error';
@@ -16,52 +38,72 @@ interface LLDResult {
   referenceUnlocked: boolean;
 }
 
-interface LLDData {
-  missionSlug: string;
-  missionTitle: string;
-  hldCompleted: boolean;
-  lldContent: { prompt: string; keyEntities: string[]; apiHints: string[] } | null;
-  previousAttempt: {
-    classDesign: string; apiContracts: string; dataSchema: string;
-    score: number; feedback: LLDFeedbackItem[];
-  } | null;
-}
-
-interface LLDPhaseProps {
-  missionSlug: string;
-  onXpEarned?: (xp: number) => void;
-}
-
 const FEEDBACK_COLORS = {
   success: 'text-green-400 border-green-500/30 bg-green-900/20',
   warning: 'text-yellow-400 border-yellow-500/30 bg-yellow-900/20',
   error: 'text-red-400 border-red-500/30 bg-red-900/20',
 };
+const FEEDBACK_ICONS = { success: '\u2705', warning: '\u26a0\ufe0f', error: '\u274c' };
 
-const FEEDBACK_ICONS = { success: '✅', warning: '⚠️', error: '❌' };
+// ── Props ─────────────────────────────────────────────────────────────────────
 
-export const LLDPhase: React.FC<LLDPhaseProps> = ({ missionSlug, onXpEarned }) => {
-  const [lldData, setLldData]       = useState<LLDData | null>(null);
-  const [loading, setLoading]       = useState(true);
+interface LLDPhaseProps {
+  missionSlug: string;
+  onXpEarned?: (xp: number) => void;
+  /** Called when the user wants to go back to the Results phase */
+  onBack?: () => void;
+}
+
+// ── HLD Lock Screen ───────────────────────────────────────────────────────────
+
+const HLDLockScreen: React.FC<{ onBack?: () => void }> = ({ onBack }) => (
+  <div className="max-w-2xl mx-auto px-4 py-12 text-center">
+    <div className="text-4xl mb-4">🔒</div>
+    <h2 className="text-xl font-bold text-white mb-2">Complete HLD First</h2>
+    <p className="text-gray-400 mb-6">
+      Finish the architecture (HLD) phase with a passing score to unlock Low-Level Design.
+    </p>
+    {onBack && (
+      <button onClick={onBack} className="btn-secondary">
+        ← Back to Results
+      </button>
+    )}
+  </div>
+);
+
+// ── LLD Not Available Screen ──────────────────────────────────────────────────
+// Shown when apiResponse is null (mission not configured for LLD yet).
+// Previously returned null, causing a blank page that forced browser-back
+// and reset the mission phase to 'briefing'.
+
+const LLDNotAvailableScreen: React.FC<{ onBack?: () => void }> = ({ onBack }) => (
+  <div className="max-w-2xl mx-auto px-4 py-12 text-center">
+    <div className="text-4xl mb-4">🛠️</div>
+    <h2 className="text-xl font-bold text-white mb-2">LLD Coming Soon</h2>
+    <p className="text-gray-400 mb-6">
+      Low-Level Design for this mission is being prepared. Check back soon,
+      or go back and explore the results.
+    </p>
+    {onBack && (
+      <button onClick={onBack} className="btn-secondary">
+        ← Back to Results
+      </button>
+    )}
+  </div>
+);
+
+// ── Legacy Textarea Form ──────────────────────────────────────────────────────
+
+const LLDLegacyForm: React.FC<{
+  missionSlug: string;
+  lldData: LLDApiResponse;
+  onXpEarned?: (xp: number) => void;
+}> = ({ missionSlug, lldData, onXpEarned }) => {
   const [submitting, setSubmitting] = useState(false);
-  const [result, setResult]         = useState<LLDResult | null>(null);
-  const [classDesign, setClassDesign]   = useState('');
-  const [apiContracts, setApiContracts] = useState('');
-  const [dataSchema, setDataSchema]     = useState('');
-
-  useEffect(() => {
-    apiClient.get<LLDData>(`/lld/${missionSlug}`)
-      .then((data) => {
-        setLldData(data);
-        if (data.previousAttempt) {
-          setClassDesign(data.previousAttempt.classDesign);
-          setApiContracts(data.previousAttempt.apiContracts);
-          setDataSchema(data.previousAttempt.dataSchema);
-        }
-      })
-      .catch(() => {/* LLD not available */})
-      .finally(() => setLoading(false));
-  }, [missionSlug]);
+  const [result, setResult] = useState<LLDResult | null>(null);
+  const [classDesign, setClassDesign] = useState(lldData.previousAttempt?.classDesign ?? '');
+  const [apiContracts, setApiContracts] = useState(lldData.previousAttempt?.apiContracts ?? '');
+  const [dataSchema, setDataSchema] = useState(lldData.previousAttempt?.dataSchema ?? '');
 
   const handleSubmit = async () => {
     setSubmitting(true);
@@ -71,45 +113,12 @@ export const LLDPhase: React.FC<LLDPhaseProps> = ({ missionSlug, onXpEarned }) =
       });
       setResult(res);
       if (res.xpEarned > 0) onXpEarned?.(res.xpEarned);
-    } catch {/* handled silently */}
+    } catch { /* handled silently */ }
     finally { setSubmitting(false); }
   };
 
-  if (loading) return (
-    <div className="flex items-center justify-center py-12">
-      <div className="text-gray-400 animate-pulse">Loading LLD phase...</div>
-    </div>
-  );
-
-  if (!lldData) return null; // LLD not available for this mission
-
-  if (!lldData.hldCompleted) return (
-    <div className="max-w-2xl mx-auto px-4 py-8 text-center">
-      <div className="text-4xl mb-4">🔒</div>
-      <h2 className="text-xl font-bold text-white mb-2">Complete HLD First</h2>
-      <p className="text-gray-400">
-        Finish the architecture (HLD) phase with a passing score to unlock Low-Level Design.
-      </p>
-    </div>
-  );
-
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="max-w-3xl mx-auto px-4 py-6 space-y-6"
-    >
-      {/* Header */}
-      <div>
-        <h2 className="text-xl font-bold text-white flex items-center gap-2">
-          <span>🔧</span> Low-Level Design
-        </h2>
-        <p className="text-gray-400 text-sm mt-1">
-          Now go deeper — define the classes, API contracts, and data schema for <strong className="text-white">{lldData.missionTitle}</strong>.
-        </p>
-      </div>
-
-      {/* Hints from reference content */}
+    <div className="space-y-4">
       {lldData.lldContent && (
         <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-4 space-y-2">
           <div className="text-sm font-medium text-blue-300">💡 Design Prompt</div>
@@ -125,61 +134,51 @@ export const LLDPhase: React.FC<LLDPhaseProps> = ({ missionSlug, onXpEarned }) =
         </div>
       )}
 
-      {/* Form */}
-      <div className="space-y-4">
-        {/* Class Design */}
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
-            🏗️ Class / Entity Design <span className="text-gray-500 font-normal">(40 pts)</span>
-          </label>
-          <p className="text-xs text-gray-500 mb-2">
-            Define your core classes/entities, their key attributes, and relationships. Example: User has id, email, profilePicture. Message has id, senderId, chatId, content, createdAt.
-          </p>
-          <textarea
-            value={classDesign}
-            onChange={(e) => setClassDesign(e.target.value)}
-            rows={5}
-            placeholder="User: id (UUID), email (string), username (string), createdAt (timestamp)&#10;Message: id (UUID), senderId (FK → User), chatId (FK → Chat), content (text), type (enum: text|media), sentAt (timestamp)&#10;Chat: id (UUID), participants (User[]), lastMessageId (FK → Message), createdAt..."
-            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-brand-500 resize-none font-mono"
-          />
-        </div>
-
-        {/* API Contracts */}
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
-            📡 API Contracts <span className="text-gray-500 font-normal">(35 pts)</span>
-          </label>
-          <p className="text-xs text-gray-500 mb-2">
-            Define your key API endpoints with HTTP method, path, request body, and response shape.
-          </p>
-          <textarea
-            value={apiContracts}
-            onChange={(e) => setApiContracts(e.target.value)}
-            rows={5}
-            placeholder="POST /api/messages&#10;  Request: { chatId: string, content: string, type: 'text' | 'media' }&#10;  Response: { messageId: string, sentAt: string }&#10;&#10;GET /api/chats/:chatId/messages?limit=50&before=<cursor>&#10;  Response: { messages: Message[], nextCursor: string | null }"
-            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-brand-500 resize-none font-mono"
-          />
-        </div>
-
-        {/* Data Schema */}
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
-            🗄️ Data Schema <span className="text-gray-500 font-normal">(25 pts)</span>
-          </label>
-          <p className="text-xs text-gray-500 mb-2">
-            Define your database tables/collections with columns, types, and indexes.
-          </p>
-          <textarea
-            value={dataSchema}
-            onChange={(e) => setDataSchema(e.target.value)}
-            rows={5}
-            placeholder="messages table:&#10;  id UUID PRIMARY KEY&#10;  chat_id UUID NOT NULL REFERENCES chats(id)&#10;  sender_id UUID NOT NULL REFERENCES users(id)&#10;  content TEXT NOT NULL&#10;  created_at TIMESTAMP DEFAULT NOW()&#10;  INDEX ON (chat_id, created_at DESC)"
-            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-brand-500 resize-none font-mono"
-          />
-        </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-2">
+          🏗️ Class / Entity Design <span className="text-gray-500 font-normal">(40 pts)</span>
+        </label>
+        <textarea
+          value={classDesign}
+          onChange={e => setClassDesign(e.target.value)}
+          rows={5}
+          placeholder="User: id (UUID), email (string), username (string)&#10;Message: id (UUID), senderId (FK → User), content (text)..."
+          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-sm
+            text-gray-200 placeholder-gray-600 focus:outline-none focus:border-brand-500
+            resize-none font-mono"
+        />
       </div>
 
-      {/* Submit */}
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-2">
+          📡 API Contracts <span className="text-gray-500 font-normal">(35 pts)</span>
+        </label>
+        <textarea
+          value={apiContracts}
+          onChange={e => setApiContracts(e.target.value)}
+          rows={5}
+          placeholder="POST /api/messages&#10;  Request: { chatId: string, content: string }&#10;  Response: { messageId: string, sentAt: string }"
+          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-sm
+            text-gray-200 placeholder-gray-600 focus:outline-none focus:border-brand-500
+            resize-none font-mono"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-2">
+          🗄️ Data Schema <span className="text-gray-500 font-normal">(25 pts)</span>
+        </label>
+        <textarea
+          value={dataSchema}
+          onChange={e => setDataSchema(e.target.value)}
+          rows={5}
+          placeholder="messages table:&#10;  id UUID PRIMARY KEY&#10;  chat_id UUID NOT NULL REFERENCES chats(id)&#10;  INDEX ON (chat_id, created_at DESC)"
+          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-sm
+            text-gray-200 placeholder-gray-600 focus:outline-none focus:border-brand-500
+            resize-none font-mono"
+        />
+      </div>
+
       <div className="flex justify-end">
         <button
           onClick={handleSubmit}
@@ -190,14 +189,12 @@ export const LLDPhase: React.FC<LLDPhaseProps> = ({ missionSlug, onXpEarned }) =
         </button>
       </div>
 
-      {/* Results */}
       {result && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           className="space-y-4"
         >
-          {/* Score */}
           <div className="rounded-xl border border-gray-700 bg-gray-800/50 p-5 flex items-center justify-between">
             <div>
               <div className="text-3xl font-bold text-white">
@@ -220,17 +217,72 @@ export const LLDPhase: React.FC<LLDPhaseProps> = ({ missionSlug, onXpEarned }) =
               </div>
             </div>
           </div>
-
-          {/* Feedback */}
           <div className="space-y-2">
             {result.feedback.map((fb, i) => (
-              <div key={i} className={`flex items-start gap-2 rounded-lg border p-3 text-sm ${FEEDBACK_COLORS[fb.type]}`}>
-                <span>{FEEDBACK_ICONS[fb.type]}</span>
+              <div key={i} className={`flex items-start gap-2 rounded-lg border p-3 text-sm
+                ${FEEDBACK_COLORS[fb.type as keyof typeof FEEDBACK_COLORS]}`}>
+                <span>{FEEDBACK_ICONS[fb.type as keyof typeof FEEDBACK_ICONS]}</span>
                 <span>{fb.message}</span>
               </div>
             ))}
           </div>
         </motion.div>
+      )}
+    </div>
+  );
+};
+
+// ── Main Component ─────────────────────────────────────────────────────────────
+
+export const LLDPhase: React.FC<LLDPhaseProps> = ({ missionSlug, onXpEarned, onBack }) => {
+  const { config, apiResponse, isLoading } = useLLDConfig(missionSlug);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-gray-400 animate-pulse">Loading LLD phase…</div>
+      </div>
+    );
+  }
+
+  // LLD not configured for this mission — show a fallback instead of null.
+  // Returning null previously left a blank screen, forcing browser-back
+  // which remounted MissionPage and reset phase to 'briefing'.
+  if (!apiResponse) return <LLDNotAvailableScreen onBack={onBack} />;
+
+  // HLD not completed — show lock screen with back button
+  if (!apiResponse.hldCompleted) return <HLDLockScreen onBack={onBack} />;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="max-w-3xl mx-auto px-4 py-6 space-y-6"
+    >
+      <div>
+        <h2 className="text-xl font-bold text-white flex items-center gap-2">
+          <span>🔧</span> Low-Level Design
+        </h2>
+        <p className="text-gray-400 text-sm mt-1">
+          Go deeper — define the architecture details, entities, API contracts, and data schema for{' '}
+          <strong className="text-white">{apiResponse.missionTitle}</strong>.
+        </p>
+      </div>
+
+      {config ? (
+        <LLDBuilder
+          missionSlug={missionSlug}
+          config={config}
+          lldContent={apiResponse.lldContent}
+          previousState={apiResponse.previousAttempt?.lldState}
+          onXpEarned={onXpEarned}
+        />
+      ) : (
+        <LLDLegacyForm
+          missionSlug={missionSlug}
+          lldData={apiResponse}
+          onXpEarned={onXpEarned}
+        />
       )}
     </motion.div>
   );

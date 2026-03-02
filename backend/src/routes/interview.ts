@@ -1,14 +1,18 @@
 import { Router, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticate, AuthRequest } from '../middleware/auth';
-import { pickFollowupQuestion } from '../data/followupQuestions';
+import { pickFollowupQuestion, FOLLOWUP_QUESTIONS } from '../data/followupQuestions';
+import { SPRINT3_FOLLOWUP_QUESTIONS } from '../data/followupQuestions-sprint3';
 import { scoreInterviewSession } from '../services/interviewScorer';
 import { Architecture } from '../services/simulationEngine';
+
+// Merge Sprint 3 follow-up questions into the main bank at startup
+Object.assign(FOLLOWUP_QUESTIONS, SPRINT3_FOLLOWUP_QUESTIONS);
 
 export const interviewRouter = Router();
 const prisma = new PrismaClient();
 
-// ── POST /api/interview/start ─────────────────────────────────────────────────
+// ── POST /api/interview/start ────────────────────────────────────────────────────
 interviewRouter.post('/start', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   const { missionSlug, durationMinutes = 45 } = req.body as {
     missionSlug: string; durationMinutes?: number;
@@ -46,7 +50,7 @@ interviewRouter.post('/start', authenticate, async (req: AuthRequest, res: Respo
   }
 });
 
-// ── GET /api/interview/:id ────────────────────────────────────────────────────
+// ── GET /api/interview/:id ──────────────────────────────────────────────────────────
 interviewRouter.get('/:id', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const session = await prisma.interviewSession.findUnique({
@@ -67,7 +71,7 @@ interviewRouter.get('/:id', authenticate, async (req: AuthRequest, res: Response
   }
 });
 
-// ── POST /api/interview/:id/followup ─────────────────────────────────────────
+// ── POST /api/interview/:id/followup ──────────────────────────────────────────────────
 // Injected by the client at 50% elapsed time — returns the follow-up question.
 interviewRouter.post('/:id/followup', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -99,7 +103,7 @@ interviewRouter.post('/:id/followup', authenticate, async (req: AuthRequest, res
   }
 });
 
-// ── POST /api/interview/:id/answer ───────────────────────────────────────────
+// ── POST /api/interview/:id/answer ─────────────────────────────────────────────────────
 // Records user's answer to the injected follow-up question.
 interviewRouter.post('/:id/answer', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   const { questionId, answer } = req.body as { questionId: string; answer: string };
@@ -123,7 +127,7 @@ interviewRouter.post('/:id/answer', authenticate, async (req: AuthRequest, res: 
   }
 });
 
-// ── POST /api/interview/:id/submit ───────────────────────────────────────────
+// ── POST /api/interview/:id/submit ─────────────────────────────────────────────────────
 interviewRouter.post('/:id/submit', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   const { architecture, elapsedSeconds } = req.body as {
     architecture: Architecture; elapsedSeconds: number;
@@ -179,7 +183,7 @@ interviewRouter.post('/:id/submit', authenticate, async (req: AuthRequest, res: 
   }
 });
 
-// ── GET /api/interview/:id/result ────────────────────────────────────────────
+// ── GET /api/interview/:id/result ─────────────────────────────────────────────────────
 interviewRouter.get('/:id/result', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const session = await prisma.interviewSession.findUnique({

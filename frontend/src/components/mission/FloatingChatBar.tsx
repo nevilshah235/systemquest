@@ -143,6 +143,9 @@ const QUICK_PROMPTS = [
   { label: '🛡️ Uptime',  text: 'How do I improve availability?' },
 ];
 
+// ── Session storage key for first-visit attention animation ──────────────────
+const ATTENTION_KEY = 'arch-assistant-attention-shown';
+
 // ── FloatingChatBar ──────────────────────────────────────────────────────────────
 
 export interface FloatingChatBarProps {
@@ -156,15 +159,66 @@ export const FloatingChatBar: React.FC<FloatingChatBarProps> = ({ missionSlug, l
   const [input, setInput] = useState('');
   /** Count of new assistant messages received while panel was collapsed */
   const [unreadCount, setUnreadCount] = useState(0);
+  /** Controls the slide-in entrance animation */
+  const [mounted, setMounted] = useState(false);
+  /** Controls the one-time attention ring ping (first visit per session) */
+  const [showAttentionRing, setShowAttentionRing] = useState(false);
+  /** Controls the floating "Ask Arch Assistant →" nudge label */
+  const [showNudge, setShowNudge] = useState(false);
+  /** Detects macOS for keyboard shortcut hint */
+  const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
+
   const bottomRef  = useRef<HTMLDivElement>(null);
   const inputRef   = useRef<HTMLTextAreaElement>(null);
   const prevLenRef = useRef(messages.length);
+
+  // ── Slide-in entrance on mount ──────────────────────────────────────────────
+  useEffect(() => {
+    // Small delay so the CSS transition fires after the first paint
+    const t = setTimeout(() => setMounted(true), 60);
+    return () => clearTimeout(t);
+  }, []);
+
+  // ── One-time attention ring + nudge label (first visit per session) ─────────
+  useEffect(() => {
+    const alreadyShown = sessionStorage.getItem(ATTENTION_KEY);
+    if (!alreadyShown) {
+      // Show the nudge label after 1.5 s
+      const nudgeTimer = setTimeout(() => setShowNudge(true), 1500);
+      // Show the ring ping briefly
+      const ringTimer = setTimeout(() => setShowAttentionRing(true), 800);
+      // Hide ring after 2.4 s (3 pings)
+      const ringOff = setTimeout(() => setShowAttentionRing(false), 3200);
+      // Hide nudge after 4 s
+      const nudgeOff = setTimeout(() => setShowNudge(false), 5000);
+      // Mark as shown so it won't fire again this session
+      sessionStorage.setItem(ATTENTION_KEY, '1');
+      return () => {
+        clearTimeout(nudgeTimer);
+        clearTimeout(ringTimer);
+        clearTimeout(ringOff);
+        clearTimeout(nudgeOff);
+      };
+    }
+  }, []);
+
+  // ── Global keyboard shortcut: Ctrl+/ or Cmd+/ to toggle chat ───────────────
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === '/' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        toggleOpen();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [toggleOpen]);
 
   // Track unread assistant messages while collapsed
   useEffect(() => {
     const newLen = messages.length;
     if (newLen > prevLenRef.current && !isOpen) {
-      const newMsgs     = messages.slice(prevLenRef.current);
+      const newMsgs      = messages.slice(prevLenRef.current);
       const newAssistant = newMsgs.filter((m) => m.role === 'assistant').length;
       if (newAssistant > 0) setUnreadCount((c) => c + newAssistant);
     }
@@ -184,6 +238,11 @@ export const FloatingChatBar: React.FC<FloatingChatBarProps> = ({ missionSlug, l
   // Auto-focus input when panel opens
   useEffect(() => {
     if (isOpen) setTimeout(() => inputRef.current?.focus(), 120);
+  }, [isOpen]);
+
+  // Dismiss nudge as soon as the user opens the panel
+  useEffect(() => {
+    if (isOpen) setShowNudge(false);
   }, [isOpen]);
 
   const handleSend = useCallback(async () => {
@@ -208,28 +267,55 @@ export const FloatingChatBar: React.FC<FloatingChatBarProps> = ({ missionSlug, l
     ? <img src={logoSrc} alt="Arch Assistant" className="w-7 h-7 object-contain flex-shrink-0" />
     : <RobotLogo size={28} />;
 
+  /** Keyboard shortcut label adapts to OS */
+  const shortcutHint = isMac ? '⌘/ to open' : 'Ctrl+/ to open';
+
   return (
     /**
      * Fixed bottom-right container.
+     * Slides in from the right on mount via translate-x transition.
      * pointer-events are none on the wrapper so the canvas below stays
      * interactive outside the bar footprint; re-enabled on each child.
      */
     <div
-      className="fixed bottom-5 right-5 z-50 flex flex-col items-end"
+      className={`
+        fixed bottom-6 right-6 z-50 flex flex-col items-end
+        transition-transform duration-500 ease-out
+        ${mounted ? 'translate-x-0' : 'translate-x-[calc(100%+1.5rem)]'}
+      `}
       style={{ pointerEvents: 'none' }}
     >
+      {/* ── Floating nudge label — appears briefly on first visit ──────────── */}
+      <div
+        className={`
+          mb-3 mr-1 px-3 py-1.5 rounded-xl
+          bg-brand-600 text-white text-xs font-medium
+          shadow-lg shadow-brand-900/40
+          flex items-center gap-1.5
+          transition-all duration-400
+          ${showNudge ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2 pointer-events-none'}
+        `}
+        style={{ pointerEvents: showNudge ? 'auto' : 'none' }}
+        aria-hidden={!showNudge}
+      >
+        <span>Ask Arch Assistant</span>
+        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+        </svg>
+      </div>
+
       {/* ── Expanded chat panel ───────────────────────────────────────────── */}
       <div
         style={{ pointerEvents: isOpen ? 'auto' : 'none' }}
         className={`
-          w-[380px] mb-2 rounded-2xl overflow-hidden
+          w-[390px] mb-2 rounded-2xl overflow-hidden
           border border-gray-700/80 bg-gray-950
           flex flex-col
-          shadow-2xl shadow-black/50
+          shadow-2xl shadow-black/60
           transition-all duration-300 ease-out
           ${
             isOpen
-              ? 'opacity-100 max-h-[540px]'
+              ? 'opacity-100 max-h-[560px]'
               : 'opacity-0 max-h-0'
           }
         `}
@@ -257,7 +343,7 @@ export const FloatingChatBar: React.FC<FloatingChatBarProps> = ({ missionSlug, l
             <button
               onClick={toggleOpen}
               className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-500 hover:text-gray-200 hover:bg-gray-800 transition-colors"
-              title="Collapse chat"
+              title={`Collapse chat (${isMac ? '⌘/' : 'Ctrl+/'})`}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -269,7 +355,7 @@ export const FloatingChatBar: React.FC<FloatingChatBarProps> = ({ missionSlug, l
         {/* Message thread */}
         <div
           className="flex-1 overflow-y-auto px-3 py-4 space-y-3"
-          style={{ maxHeight: '340px' }}
+          style={{ maxHeight: '360px' }}
         >
           {/* Empty state */}
           {isEmpty && (
@@ -350,54 +436,70 @@ export const FloatingChatBar: React.FC<FloatingChatBarProps> = ({ missionSlug, l
       </div>
 
       {/* ── Floating trigger bar ──────────────────────────────────────────── */}
-      <button
-        onClick={toggleOpen}
-        style={{ pointerEvents: 'auto' }}
-        className={`
-          flex items-center gap-3 px-4 py-3 rounded-2xl
-          border shadow-xl shadow-black/40 cursor-pointer select-none
-          transition-all duration-200
-          ${
-            isOpen
-              ? 'bg-gray-900 border-brand-600/70 text-white'
-              : 'bg-gray-900 border-gray-700 hover:border-brand-600/60 text-gray-200 hover:text-white hover:shadow-brand-900/20'
-          }
-        `}
-        aria-label={isOpen ? 'Collapse Arch Assistant' : 'Open Arch Assistant'}
-      >
-        {/* Logo with online status dot */}
-        <div className="relative flex-shrink-0">
-          {logoEl}
-          <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-gray-900 block" />
-        </div>
-
-        {/* Label */}
-        <div className="text-left">
-          <p className="text-sm font-semibold leading-none">Arch Assistant</p>
-          <p className="text-[10px] text-gray-500 mt-0.5">
-            {isOpen ? 'Click to close' : 'Ask me anything'}
-          </p>
-        </div>
-
-        {/* Unread badge — pulsing when new messages arrive while collapsed */}
-        {unreadCount > 0 && !isOpen && (
-          <div className="ml-1 flex-shrink-0 min-w-5 h-5 rounded-full bg-brand-600 flex items-center justify-center px-1.5 animate-pulse">
-            <span className="text-[11px] font-bold text-white leading-none">{unreadCount}</span>
-          </div>
+      <div className="relative flex-shrink-0" style={{ pointerEvents: 'auto' }}>
+        {/*
+          Attention ring ping — fires once per session on first visit.
+          Uses an absolutely-positioned pseudo-ring that animates outward.
+        */}
+        {showAttentionRing && (
+          <span className="absolute inset-0 rounded-2xl animate-ping bg-brand-500/30 pointer-events-none" />
         )}
 
-        {/* Chevron rotates when open */}
-        <svg
-          className={`w-4 h-4 text-gray-500 flex-shrink-0 transition-transform duration-200 ml-auto ${
-            isOpen ? 'rotate-180' : ''
-          }`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
+        <button
+          onClick={toggleOpen}
+          className={`
+            relative flex items-center gap-3 px-4 py-3 rounded-2xl
+            border cursor-pointer select-none
+            transition-all duration-200
+            ${
+              isOpen
+                ? 'bg-gray-900 border-brand-600/70 text-white shadow-xl shadow-black/40'
+                : 'bg-gray-900 border-gray-700/80 hover:border-brand-600/60 text-gray-200 hover:text-white shadow-xl shadow-black/40 hover:shadow-brand-900/30'
+            }
+          `}
+          style={{
+            // Subtle brand glow in closed state to improve visibility against dark canvas
+            boxShadow: isOpen
+              ? undefined
+              : '0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(79,127,255,0.12), 0 4px 16px rgba(79,127,255,0.08)',
+          }}
+          aria-label={isOpen ? 'Collapse Arch Assistant' : 'Open Arch Assistant'}
+          title={isOpen ? `Collapse (${isMac ? '⌘/' : 'Ctrl+/'})` : `Open Arch Assistant (${isMac ? '⌘/' : 'Ctrl+/'})`}
         >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-        </svg>
-      </button>
+          {/* Logo with online status dot */}
+          <div className="relative flex-shrink-0">
+            {logoEl}
+            <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-gray-900 block" />
+          </div>
+
+          {/* Label */}
+          <div className="text-left">
+            <p className="text-sm font-semibold leading-none">Arch Assistant</p>
+            <p className="text-[10px] text-gray-500 mt-0.5">
+              {isOpen ? `${isMac ? '⌘/' : 'Ctrl+/'} to close` : shortcutHint}
+            </p>
+          </div>
+
+          {/* Unread badge — pulsing when new messages arrive while collapsed */}
+          {unreadCount > 0 && !isOpen && (
+            <div className="ml-1 flex-shrink-0 min-w-5 h-5 rounded-full bg-brand-600 flex items-center justify-center px-1.5 animate-pulse">
+              <span className="text-[11px] font-bold text-white leading-none">{unreadCount}</span>
+            </div>
+          )}
+
+          {/* Chevron rotates when open */}
+          <svg
+            className={`w-4 h-4 text-gray-500 flex-shrink-0 transition-transform duration-200 ml-auto ${
+              isOpen ? 'rotate-180' : ''
+            }`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+          </svg>
+        </button>
+      </div>
     </div>
   );
 };

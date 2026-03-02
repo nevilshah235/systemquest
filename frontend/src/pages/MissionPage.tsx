@@ -26,7 +26,7 @@ import { MissionBriefing } from '../components/mission/MissionBriefing';
 import { RequirementsPhase } from '../components/mission/RequirementsPhase';
 import { DragDropBuilder } from '../components/builder/DragDropBuilder';
 import { SimulationResults } from '../components/mission/SimulationResults';
-import { ChatAssistant } from '../components/mission/ChatAssistant';
+import { FloatingChatBar } from '../components/mission/FloatingChatBar';
 import { LLDPhase } from '../components/mission/LLDPhase';
 import { ComparePanel } from '../components/mission/ComparePanel';
 import { Mission } from '../data/types';
@@ -46,10 +46,10 @@ function useMissionContext(
     if (!mission) return;
     const passed = simulationMetrics?.allMetricsMet ?? false;
     (window as any).__missionContext = {
-      missionTitle:      mission.title,
-      problemStatement:  mission.scenario,
-      objectives:        mission.objectives,
-      phase:             phase === 'results' ? 'results' : 'builder',
+      missionTitle:     mission.title,
+      problemStatement: mission.scenario,
+      objectives:       mission.objectives,
+      phase:            phase === 'results' ? 'results' : 'builder',
       requirements: {
         latencyMs:    mission.requirements.performance.latencyMs,
         availability: mission.requirements.performance.availability,
@@ -201,7 +201,7 @@ const FloatingPillNav: React.FC<FloatingPillNavProps> = ({
                                   'bg-gray-700 text-gray-500'
                     }`}
                   >
-                    {completed ? '\u2713' : locked ? '\ud83d\udd12' : i + 1}
+                    {completed ? '✓' : locked ? '🔒' : i + 1}
                   </span>
                   <span className="font-medium flex-1 text-left">{labels[i]}</span>
                   {current && <span className="text-[10px] text-brand-400 font-medium">Now</span>}
@@ -225,28 +225,13 @@ export const MissionPage: React.FC = () => {
     activeMission, phase, setPhase, startMission, runSimulation,
     simulationMetrics, simulationXpGranted, isLoading, isSimulating, resetMission,
   } = useMissionStore();
-  const { isOpen: chatOpen, toggleOpen: toggleChat, clearChat } = useChatStore();
+  // Only clearChat is needed here; isOpen / toggleOpen live inside FloatingChatBar
+  const { clearChat } = useChatStore();
   const [showCompare, setShowCompare] = useState(false);
 
   // ─ Load mission on slug change ──────────────────────────────────────────────────
-  //
-  // Phase initialisation is handled entirely inside startMission:
-  //   ?phase=<x>  →  use that phase directly (e.g. ?phase=lld from MissionCard)
-  //   completed   →  default to 'results' (skip Briefing for returning users)
-  //   otherwise   →  'briefing'
-  //
-  // This avoids the previous two-step approach (startMission always set
-  // 'briefing', then a second useEffect tried to override it) which had a
-  // React StrictMode race: the double-invoked Effect 1 fired two concurrent
-  // startMission calls; the second resolved after setPhase('lld') fired and
-  // forcibly reset phase back to 'briefing', while the guard prevented
-  // Effect 2 from correcting it.
   useEffect(() => {
     if (slug) {
-      // Read the requested phase from the URL param once, at mount time.
-      // searchParams is intentionally NOT in the dep array — we only want
-      // to apply the phase param on fresh navigation (slug change), not on
-      // every query-string mutation while the user is mid-mission.
       const rawPhase = searchParams.get('phase');
       const requestedPhase = rawPhase && (PHASE_ORDER as readonly string[]).includes(rawPhase)
         ? rawPhase as Phase
@@ -278,6 +263,7 @@ export const MissionPage: React.FC = () => {
   const phaseIdx       = PHASE_ORDER.indexOf(phase as Phase);
   const isBuilderPhase = phase === 'builder';
   const isResultsPhase = phase === 'results';
+  /** Show the floating chat bar only during active build / review phases */
   const showChat       = isBuilderPhase || isResultsPhase;
   const isCompleted    = !!activeMission.userProgress?.completed;
   const bestScore      = activeMission.userProgress?.bestScore ?? 0;
@@ -311,6 +297,7 @@ export const MissionPage: React.FC = () => {
           />
 
           <div className="flex items-center gap-2">
+            {/* Compare button — results phase only, when reference solution exists */}
             {isResultsPhase && hasReference && (
               <button
                 onClick={() => setShowCompare(true)}
@@ -319,19 +306,6 @@ export const MissionPage: React.FC = () => {
                   text-purple-400 hover:text-purple-200 transition-all"
               >
                 ⚖️ Compare
-              </button>
-            )}
-            {showChat && (
-              <button
-                onClick={toggleChat}
-                className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full
-                  font-medium border transition-all ${
-                    chatOpen
-                      ? 'bg-brand-600/20 border-brand-600/50 text-brand-400'
-                      : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-gray-200'
-                  }`}
-              >
-                🤖 {chatOpen ? 'Hide Chat' : isResultsPhase ? 'Explain Design' : 'Ask AI'}
               </button>
             )}
             <div className="text-sm text-gray-400 font-medium">{activeMission.title}</div>
@@ -361,90 +335,76 @@ export const MissionPage: React.FC = () => {
           />
         )}
 
+        {/* Builder — full width now that chat is a floating overlay */}
         {phase === 'builder' && (
-          <>
-            <div className="flex-1 min-w-0 overflow-hidden">
-              <DragDropBuilder
-                mission={activeMission}
-                onSimulate={runSimulation}
-                isSimulating={isSimulating}
-              />
-            </div>
-            {chatOpen && (
-              <div className="w-80 flex-shrink-0 border-l border-gray-800 overflow-hidden">
-                <ChatAssistant missionSlug={activeMission.slug} />
-              </div>
-            )}
-          </>
+          <div className="flex-1 min-w-0 overflow-hidden">
+            <DragDropBuilder
+              mission={activeMission}
+              onSimulate={runSimulation}
+              isSimulating={isSimulating}
+            />
+          </div>
         )}
 
+        {/* Results — full width */}
         {phase === 'results' && (
-          <>
-            <div className="flex-1 min-w-0 overflow-hidden flex flex-col">
-              {simulationMetrics ? (
-                // ── Fresh simulation results ──
-                // onGoDeeper + lldUnlocked are wired so the bottom CTA bar
-                // correctly shows the "Go Deeper → LLD" button when unlocked.
-                <SimulationResults
-                  metrics={simulationMetrics}
-                  mission={activeMission}
-                  xpGranted={simulationXpGranted}
-                  onRetry={() => setPhase('builder')}
-                  onGoDeeper={lldUnlocked ? () => setPhase('lld') : undefined}
-                  lldUnlocked={lldUnlocked}
-                />
-              ) : (
-                // ── Completed mission returning to Results (no fresh metrics) ──
-                <div className="flex-1 overflow-auto flex items-center justify-center py-12">
-                  <div className="max-w-md text-center space-y-6 px-6">
-                    <div className="text-5xl">🏆</div>
-                    <div>
-                      <h2 className="text-2xl font-bold text-white mb-2">Mission Complete!</h2>
-                      <p className="text-gray-400 text-sm">
-                        Your best score:{' '}
-                        <span className={`font-bold text-lg ${
-                          bestScore >= 80 ? 'text-green-400' :
-                          bestScore >= 60 ? 'text-yellow-400' : 'text-red-400'
-                        }`}>
-                          {bestScore}/100
-                        </span>
-                      </p>
-                    </div>
-                    <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                      <button onClick={() => setPhase('builder')} className="btn-primary px-6 py-2.5">
-                        🔄 Re-run Simulation
+          <div className="flex-1 min-w-0 overflow-hidden flex flex-col">
+            {simulationMetrics ? (
+              // ── Fresh simulation results ──
+              <SimulationResults
+                metrics={simulationMetrics}
+                mission={activeMission}
+                xpGranted={simulationXpGranted}
+                onRetry={() => setPhase('builder')}
+                onGoDeeper={lldUnlocked ? () => setPhase('lld') : undefined}
+                lldUnlocked={lldUnlocked}
+              />
+            ) : (
+              // ── Completed mission returning to Results (no fresh metrics) ──
+              <div className="flex-1 overflow-auto flex items-center justify-center py-12">
+                <div className="max-w-md text-center space-y-6 px-6">
+                  <div className="text-5xl">🏆</div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-white mb-2">Mission Complete!</h2>
+                    <p className="text-gray-400 text-sm">
+                      Your best score:{' '}
+                      <span className={`font-bold text-lg ${
+                        bestScore >= 80 ? 'text-green-400' :
+                        bestScore >= 60 ? 'text-yellow-400' : 'text-red-400'
+                      }`}>
+                        {bestScore}/100
+                      </span>
+                    </p>
+                  </div>
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                    <button onClick={() => setPhase('builder')} className="btn-primary px-6 py-2.5">
+                      🔄 Re-run Simulation
+                    </button>
+                    {lldUnlocked && (
+                      <button
+                        onClick={() => setPhase('lld')}
+                        className="flex items-center gap-2 text-sm px-6 py-2.5 rounded-lg font-medium
+                          border bg-yellow-800/20 border-yellow-600/50 text-yellow-400
+                          hover:text-yellow-200 transition-all"
+                      >
+                        🔧 Go Deeper → LLD
                       </button>
-                      {lldUnlocked && (
-                        <button
-                          onClick={() => setPhase('lld')}
-                          className="flex items-center gap-2 text-sm px-6 py-2.5 rounded-lg font-medium
-                            border bg-yellow-800/20 border-yellow-600/50 text-yellow-400
-                            hover:text-yellow-200 transition-all"
-                        >
-                          🔧 Go Deeper → LLD
-                        </button>
-                      )}
-                      {hasReference && (
-                        <button
-                          onClick={() => setShowCompare(true)}
-                          className="flex items-center gap-2 text-sm px-6 py-2.5 rounded-lg font-medium
-                            border bg-purple-800/20 border-purple-600/50 text-purple-400
-                            hover:text-purple-200 transition-all"
-                        >
-                          ⚖️ Compare Solution
-                        </button>
-                      )}
-                    </div>
+                    )}
+                    {hasReference && (
+                      <button
+                        onClick={() => setShowCompare(true)}
+                        className="flex items-center gap-2 text-sm px-6 py-2.5 rounded-lg font-medium
+                          border bg-purple-800/20 border-purple-600/50 text-purple-400
+                          hover:text-purple-200 transition-all"
+                      >
+                        ⚖️ Compare Solution
+                      </button>
+                    )}
                   </div>
                 </div>
-              )}
-            </div>
-            {chatOpen && (
-              <div className="w-80 flex-shrink-0 border-l border-gray-800 overflow-hidden">
-                <ChatAssistant missionSlug={activeMission.slug} />
               </div>
             )}
-          </>
+          </div>
         )}
 
         {phase === 'lld' && (
@@ -456,6 +416,9 @@ export const MissionPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* ── Floating chat bar — visible during builder & results phases ──────── */}
+      {showChat && <FloatingChatBar missionSlug={activeMission.slug} logoSrc="/arch-assistant.png" />}
 
       <AnimatePresence>
         {showCompare && activeMission && (

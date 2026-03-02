@@ -9,6 +9,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { apiClient } from '../../../data/api';
+import { useAuthStore } from '../../../stores/authStore';
 import { useLLDBuilderStore, selectSubmissionPayload } from '../../../stores/lldBuilderStore';
 import { useXPEngine } from '../../../hooks/useXPEngine';
 import { useLLDValidation } from '../../../hooks/useLLDValidation';
@@ -393,6 +394,11 @@ export const LLDBuilder: React.FC<LLDBuilderProps> = ({
       const res = await apiClient.post<LLDScoreResponse>(`/lld/${missionSlug}/score`, payload);
       setResult(res);
       setHasSubmitted(true);
+      // Sync authStore XP so Navbar reflects LLD XP immediately
+      if ((res.incrementalXpAwarded ?? 0) > 0) {
+        const { user, updateUser } = useAuthStore.getState();
+        if (user) updateUser({ xp: user.xp + res.incrementalXpAwarded! });
+      }
       if (res.xpEarned > 0) onXpEarned?.(res.xpEarned);
     } catch (err) {
       console.error('[LLDBuilder] Score failed:', err);

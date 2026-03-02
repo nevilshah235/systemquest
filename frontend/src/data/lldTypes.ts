@@ -212,6 +212,8 @@ export interface LLDScoreResponse {
   scoreDelta?: number;
   attemptNumber?: number;
   attemptHistory?: AttemptRecord[];
+  /** Actual XP credited to the user (delta above previous best) — use to sync authStore */
+  incrementalXpAwarded?: number;
 }
 
 export interface LLDApiResponse {

@@ -10,7 +10,7 @@
 
 import React, { useCallback, useState } from 'react';
 import {
-  ReactFlow, Background, Controls, MiniMap,
+  ReactFlow, Background, MiniMap, Panel, useReactFlow,
   useNodesState, useEdgesState, addEdge,
   type Node, type Edge, type Connection,
   Handle, Position, type NodeTypes,
@@ -169,6 +169,34 @@ const EntityNode: React.FC<{ data: EntityNodeData }> = ({ data }) => {
 
 const nodeTypes: NodeTypes = { entityCard: EntityNode as React.ComponentType<Node> };
 
+// ── Custom canvas controls (replaces default ReactFlow Controls) ──────────────
+const CanvasControls: React.FC = () => {
+  const { zoomIn, zoomOut, fitView } = useReactFlow();
+  return (
+    <Panel position="bottom-left">
+      <div className="flex flex-col gap-0.5 bg-gray-800 border border-gray-600 rounded-lg p-1 shadow-lg">
+        <button
+          onClick={() => zoomIn({ duration: 200 })}
+          title="Zoom in"
+          className="w-8 h-8 flex items-center justify-center text-white font-bold text-lg bg-gray-700 hover:bg-indigo-600 rounded transition-colors"
+        >+</button>
+        <div className="h-px bg-gray-600 mx-1" />
+        <button
+          onClick={() => zoomOut({ duration: 200 })}
+          title="Zoom out"
+          className="w-8 h-8 flex items-center justify-center text-white font-bold text-lg bg-gray-700 hover:bg-indigo-600 rounded transition-colors"
+        >−</button>
+        <div className="h-px bg-gray-600 mx-1" />
+        <button
+          onClick={() => fitView({ duration: 400, padding: 0.3 })}
+          title="Fit all entities"
+          className="w-8 h-8 flex items-center justify-center text-gray-200 text-sm bg-gray-700 hover:bg-indigo-600 rounded transition-colors"
+        >⊡</button>
+      </div>
+    </Panel>
+  );
+};
+
 function toNodes(entities: EntityCard[], actions: EntityNodeData extends { entity: EntityCard } ? object : never, all: EntityCard[], errs: string[]): Node[] {
   return entities.map(e => ({ id: e.id, type: 'entityCard', position: e.position, data: { entity: e, entities: all, validationErrors: errs, ...(actions as object) } }));
 }
@@ -230,9 +258,9 @@ export const EntityCardBuilder: React.FC<{ validationErrors: string[] }> = ({ va
     <div className={`space-y-2 ${fullscreen ? 'fixed inset-0 z-50 bg-gray-950 p-4 flex flex-col' : ''}`}>
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+        <h3 className="text-base font-semibold text-white flex items-center gap-2">
           <span>🗂️</span> Entity Canvas
-          <span className="text-gray-500 font-normal text-xs">({entities.length} {entities.length===1?'entity':'entities'}{relationships.length>0?`, ${relationships.length} relations`:''})</span>
+          <span className="text-gray-500 font-normal text-sm">({entities.length} {entities.length===1?'entity':'entities'}{relationships.length>0?`, ${relationships.length} relations`:''})</span>
         </h3>
         <div className="flex items-center gap-2">
           {config && <span className="text-xs text-gray-500 bg-gray-800 px-2 py-1 rounded-full">{config.scoringWeights.schema} pts</span>}
@@ -256,7 +284,7 @@ export const EntityCardBuilder: React.FC<{ validationErrors: string[] }> = ({ va
       </div>
 
       {/* Legend */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-gray-500">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400">
         <span className="flex items-center gap-1.5">
           <span className="bg-indigo-900/40 border border-indigo-500/50 text-indigo-300 px-1 py-0.5 rounded font-bold text-[9px]">IDX</span>
           click to toggle index
@@ -273,7 +301,7 @@ export const EntityCardBuilder: React.FC<{ validationErrors: string[] }> = ({ va
           fitView fitViewOptions={{padding:0.3,maxZoom:1.0}} minZoom={0.25} maxZoom={2}
           className="bg-gray-900/60" deleteKeyCode={['Delete','Backspace']} proOptions={{hideAttribution:true}}>
           <Background color="#374151" gap={24} size={1} />
-          <Controls showInteractive={false} className="!bg-gray-800 !border-gray-700 !rounded-lg" />
+          <CanvasControls />
           <MiniMap nodeColor="#4f46e5" maskColor="rgba(17,24,39,0.75)" className="!bg-gray-800 !border-gray-700 !rounded-lg" />
         </ReactFlow>
       </div>

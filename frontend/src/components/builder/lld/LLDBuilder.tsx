@@ -18,7 +18,7 @@ import { EntityCardBuilder } from './EntityCardBuilder';
 import { APIContractDesigner } from './APIContractDesigner';
 import { LiveSchemaPreview } from './LiveSchemaPreview';
 import { XPHintOverlay } from './XPHintOverlay';
-import type { LLDMissionConfig, LLDScoreResponse, LLDBuilderState } from '../../../data/lldTypes';
+import type { LLDMissionConfig, LLDScoreResponse, LLDBuilderState, AttemptRecord } from '../../../data/lldTypes';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -203,72 +203,140 @@ const SolutionPanel: React.FC<{ lldContent: LLDContent | null }> = ({ lldContent
 
 // ── Score Panel ───────────────────────────────────────────────────────────────
 
-const ScorePanel: React.FC<{ result: LLDScoreResponse; onRetry: () => void }> = ({ result, onRetry }) => (
-  <motion.div initial={{ opacity:0,y:12 }} animate={{ opacity:1,y:0 }} className="space-y-4">
-    {result.completed && (
-      <motion.div initial={{scale:0.8,opacity:0}} animate={{scale:1,opacity:1}} transition={{type:'spring',stiffness:200}}
-        className="text-center py-4">
-        <div className="text-5xl mb-2">🎉</div>
-        <div className="text-xl font-bold text-white">LLD Complete!</div>
-        <div className="text-sm text-gray-400 mt-1">Your design is production-quality.</div>
-      </motion.div>
-    )}
+// ── Score Delta Badge ─────────────────────────────────────────────────────────
 
-    <div className="rounded-xl border border-gray-700 bg-gray-800/50 p-5">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <div className="text-3xl font-bold text-white">{result.score}<span className="text-gray-500 text-xl">/100</span></div>
-          <div className="text-sm text-gray-400 mt-0.5">
-            +{result.xpEarned} XP
-            {result.netPenalty > 0 && <span className="text-red-400 ml-1">(-{result.netPenalty} XP penalties)</span>}
-          </div>
-        </div>
-        <div className={`text-2xl font-bold ${result.totalXP>=100?'text-green-400':result.totalXP>=50?'text-yellow-400':'text-red-400'}`}>
-          {result.totalXP} XP
-        </div>
+const ScoreDeltaBadge: React.FC<{ delta: number }> = ({ delta }) => {
+  if (delta === 0) return <span className="text-xs text-gray-500 bg-gray-800 border border-gray-700 px-2 py-0.5 rounded-full">no change</span>;
+  const positive = delta > 0;
+  return (
+    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border
+      ${positive ? 'text-green-300 bg-green-900/30 border-green-500/40' : 'text-amber-300 bg-amber-900/30 border-amber-500/40'}`}>
+      {positive ? '+' : ''}{delta} pts from last attempt
+    </span>
+  );
+};
+
+// ── Attempt Timeline ──────────────────────────────────────────────────────────
+
+const AttemptTimeline: React.FC<{ history: AttemptRecord[] }> = ({ history }) => {
+  if (history.length < 2) return null;
+  const shown = history.slice(-5); // last 5
+  return (
+    <div className="rounded-xl border border-gray-700 bg-gray-800/30 p-4">
+      <div className="text-xs font-semibold text-gray-400 mb-3 flex items-center gap-1.5">
+        <span>📈</span> Attempt History
       </div>
-      <div className="space-y-2">
-        {[
-          { label:'Architecture', ...result.breakdown.archDecisions },
-          { label:'Schema',       ...result.breakdown.schema       },
-          { label:'API Contracts',...result.breakdown.apiContracts  },
-        ].map(({ label, earned, max }) => {
-          const p = max > 0 ? Math.round((earned/max)*100) : 0;
+      <div className="flex items-end gap-2">
+        {shown.map((a, i) => {
+          const pct = a.score;
+          const isLast = i === shown.length - 1;
           return (
-            <div key={label}>
-              <div className="flex items-center justify-between text-xs mb-1">
-                <span className="text-gray-400">{label}</span>
-                <span className="text-white font-mono">{earned}/{max} pts</span>
+            <div key={a.attempt} className="flex flex-col items-center gap-1 flex-1">
+              <span className={`text-[10px] font-mono ${isLast ? 'text-white' : 'text-gray-500'}`}>{a.score}</span>
+              <div className="w-full bg-gray-700 rounded-sm overflow-hidden" style={{ height: '40px' }}>
+                <motion.div
+                  initial={{ height: 0 }}
+                  animate={{ height: `${pct}%` }}
+                  transition={{ duration: 0.5, ease: 'easeOut', delay: i * 0.08 }}
+                  className={`w-full rounded-sm ${isLast ? 'bg-indigo-500' : 'bg-gray-600'}`}
+                  style={{ marginTop: `${100 - pct}%` }}
+                />
               </div>
-              <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                <motion.div initial={{width:0}} animate={{width:`${p}%`}} transition={{duration:0.6,ease:'easeOut'}}
-                  className={`h-full rounded-full ${p>=80?'bg-green-500':p>=50?'bg-yellow-500':'bg-red-500'}`} />
-              </div>
+              <span className="text-[9px] text-gray-600">#{a.attempt}</span>
             </div>
           );
         })}
       </div>
     </div>
+  );
+};
 
-    <div className="space-y-2">
-      {result.feedback.map((fb, i) => (
-        <div key={i} className={`flex items-start gap-2 rounded-lg border p-3 text-sm
-          ${fb.type==='success'?'text-green-400 border-green-500/30 bg-green-900/20':
-            fb.type==='error'  ?'text-red-400 border-red-500/30 bg-red-900/20':
-            'text-yellow-400 border-yellow-500/30 bg-yellow-900/20'}`}>
-          <span>{fb.type==='success'?'✅':fb.type==='error'?'❌':'⚠️'}</span>
-          <span>{fb.message}</span>
+// ── Score Panel ───────────────────────────────────────────────────────────────
+
+const ScorePanel: React.FC<{ result: LLDScoreResponse; onRetry: () => void }> = ({ result, onRetry }) => {
+  const breakdownRows = [
+    { label: 'Architecture', icon: '⚙️',  data: result.breakdown.archDecisions },
+    { label: 'Schema',       icon: '🗄️',  data: result.breakdown.schema        },
+    { label: 'API Contracts',icon: '📡',  data: result.breakdown.apiContracts  },
+    ...(result.breakdown.performance ? [{ label: 'Performance', icon: '⚡', data: result.breakdown.performance }] : []),
+    ...(result.breakdown.security    ? [{ label: 'Security',    icon: '🔐', data: result.breakdown.security    }] : []),
+  ];
+
+  return (
+    <motion.div initial={{ opacity:0,y:12 }} animate={{ opacity:1,y:0 }} className="space-y-4">
+      {result.completed && (
+        <motion.div initial={{scale:0.8,opacity:0}} animate={{scale:1,opacity:1}} transition={{type:'spring',stiffness:200}}
+          className="text-center py-4">
+          <div className="text-5xl mb-2">🎉</div>
+          <div className="text-xl font-bold text-white">LLD Complete!</div>
+          <div className="text-sm text-gray-400 mt-1">Your design is production-quality.</div>
+        </motion.div>
+      )}
+
+      <div className="rounded-xl border border-gray-700 bg-gray-800/50 p-5">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <div className="text-3xl font-bold text-white">{result.score}<span className="text-gray-500 text-xl">/100</span></div>
+              {result.scoreDelta !== undefined && <ScoreDeltaBadge delta={result.scoreDelta} />}
+            </div>
+            <div className="text-sm text-gray-400 mt-0.5">
+              +{result.xpEarned} XP
+              {result.netPenalty > 0 && <span className="text-red-400 ml-1">(-{result.netPenalty} XP penalties)</span>}
+              {result.attemptNumber && result.attemptNumber > 1 && (
+                <span className="text-gray-600 ml-2">attempt #{result.attemptNumber}</span>
+              )}
+            </div>
+          </div>
+          <div className={`text-2xl font-bold ${result.totalXP>=100?'text-green-400':result.totalXP>=50?'text-yellow-400':'text-red-400'}`}>
+            {result.totalXP} XP
+          </div>
         </div>
-      ))}
-    </div>
 
-    <div className="flex justify-end">
-      <button onClick={onRetry} className="text-sm text-gray-400 hover:text-white border border-gray-700 hover:border-gray-500 px-4 py-2 rounded-lg transition-colors">
-        Revise & Resubmit →
-      </button>
-    </div>
-  </motion.div>
-);
+        <div className="space-y-2">
+          {breakdownRows.map(({ label, icon, data }) => {
+            const p = data.max > 0 ? Math.round((data.earned / data.max) * 100) : 0;
+            return (
+              <div key={label}>
+                <div className="flex items-center justify-between text-xs mb-1">
+                  <span className="text-gray-400 flex items-center gap-1"><span>{icon}</span>{label}</span>
+                  <span className="text-white font-mono">{data.earned}/{data.max} pts</span>
+                </div>
+                <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                  <motion.div initial={{width:0}} animate={{width:`${p}%`}} transition={{duration:0.6,ease:'easeOut'}}
+                    className={`h-full rounded-full ${p>=80?'bg-green-500':p>=50?'bg-yellow-500':'bg-red-500'}`} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Attempt timeline — shown from 2+ attempts */}
+      {result.attemptHistory && result.attemptHistory.length >= 2 && (
+        <AttemptTimeline history={result.attemptHistory} />
+      )}
+
+      <div className="space-y-2">
+        {result.feedback.map((fb, i) => (
+          <div key={i} className={`flex items-start gap-2 rounded-lg border p-3 text-sm
+            ${fb.type==='success'?'text-green-400 border-green-500/30 bg-green-900/20':
+              fb.type==='error'  ?'text-red-400 border-red-500/30 bg-red-900/20':
+              'text-yellow-400 border-yellow-500/30 bg-yellow-900/20'}`}>
+            <span>{fb.type==='success'?'✅':fb.type==='error'?'❌':'⚠️'}</span>
+            <span>{fb.message}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex justify-end">
+        <button onClick={onRetry} className="text-sm text-gray-400 hover:text-white border border-gray-700 hover:border-gray-500 px-4 py-2 rounded-lg transition-colors">
+          Revise & Resubmit →
+        </button>
+      </div>
+    </motion.div>
+  );
+};
 
 // ── XP bar ────────────────────────────────────────────────────────────────────
 

@@ -66,6 +66,28 @@ export interface ScoringWeights {
   archDecisions: number;
   schema: number;
   apiContracts: number;
+  /** Optional — omit to skip performance scoring for this mission */
+  performance?: number;
+  /** Optional — omit to skip security scoring for this mission */
+  security?: number;
+}
+
+export interface PerformanceConfig {
+  /** Arch decision keys where any non-'none' selection earns credit (e.g. 'caching', 'cdn') */
+  beneficialPatterns?: string[];
+  /** Entity names where at least one index is expected on a non-PK field */
+  indexBeneficialEntities?: string[];
+  /** Path substrings for endpoints that should use async pattern (HTTP 202) */
+  asyncRecommendedFor?: string[];
+}
+
+export interface SecurityPatterns {
+  /** True if this mission's APIs require auth headers on protected routes */
+  requiresAuth: boolean;
+  /** Field name substrings flagged as sensitive (default: password, secret, api_key) */
+  sensitiveFieldNames?: string[];
+  /** Path substrings that must carry an Authorization header */
+  protectedEndpointPatterns?: string[];
 }
 
 export interface ArchDecisionCategory {
@@ -83,6 +105,10 @@ export interface LLDMissionConfig {
   scoringWeights: ScoringWeights;
   penaltyRules: PenaltyRule[];
   penaltyCap: number;
+  /** Present → performance dimension is scored */
+  performanceConfig?: PerformanceConfig;
+  /** Present → security dimension is scored */
+  securityPatterns?: SecurityPatterns;
 }
 
 export interface LLDBuilderSubmission {
@@ -97,12 +123,21 @@ export interface LLDBuilderSubmission {
   submittedWithWarnings?: boolean; // flag set when user ignores validation errors
 }
 
+export interface AttemptRecord {
+  attempt: number;
+  score: number;
+  xpEarned: number;
+  timestamp: number;
+}
+
 export interface LLDScoreResponse {
   totalXP: number;
   breakdown: {
     archDecisions: { earned: number; max: number };
     schema: { earned: number; max: number };
     apiContracts: { earned: number; max: number };
+    performance?: { earned: number; max: number };
+    security?: { earned: number; max: number };
   };
   penaltiesApplied: AppliedPenalty[];
   netPenalty: number;
@@ -111,6 +146,11 @@ export interface LLDScoreResponse {
   score: number; // 0–100 for backward compat
   xpEarned: number;
   feedback: Array<{ type: 'success' | 'warning' | 'error'; dimension: string; message: string }>;
+  /** Attempt tracking — undefined on first submission */
+  previousScore?: number;
+  scoreDelta?: number;
+  attemptNumber?: number;
+  attemptHistory?: AttemptRecord[];
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -294,6 +334,145 @@ function scoreApiContracts(
   return { earned: Math.round(earned), max, hints };
 }
 
+// ── Performance Scorer ────────────────────────────────────────────────────────
+
+function scorePerformance(
+  submission: LLDBuilderSubmission,
+  config: LLDMissionConfig,
+): { earned: number; max: number; hints: string[] } | null {
+  const { performanceConfig, scoringWeights } = config;
+  const max = scoringWeights.performance;
+  if (!performanceConfig || !max) return null;
+
+  const hints: string[] = [];
+  let earned = 0;
+  const thirdMax = max / 3;
+
+  // 1/3: Beneficial arch patterns selected (caching, CDN, read replica, etc.)
+  const beneficial = performanceConfig.beneficialPatterns ?? [];
+  const selectedBeneficial = beneficial.filter(
+    p => submission.archDecisions[p] && submission.archDecisions[p] !== 'none',
+  );
+  if (selectedBeneficial.length > 0) {
+    earned += thirdMax;
+    hints.push(`✅ Performance patterns applied: ${selectedBeneficial.join(', ')} — good for throughput.`);
+  } else if (beneficial.length > 0) {
+    hints.push(`⚠️ Consider adding performance patterns (${beneficial.join(', ')}) to meet this mission's load constraints.`);
+  } else {
+    earned += thirdMax;
+  }
+
+  // 1/3: Indexes on high-traffic entities
+  const indexEntities = performanceConfig.indexBeneficialEntities ?? [];
+  if (indexEntities.length > 0) {
+    const indexed = indexEntities.filter(name => {
+      const entity = submission.entities.find(e => e.name.toLowerCase() === name.toLowerCase());
+      return entity && entity.fields.some(f => f.hasIndex && !f.isPrimaryKey);
+    });
+    if (indexed.length >= Math.ceil(indexEntities.length / 2)) {
+      earned += thirdMax;
+      hints.push(`✅ Indexes on high-traffic entities (${indexed.join(', ')}) — reads will be fast.`);
+    } else {
+      hints.push(`💡 Add indexes on high-read entities: ${indexEntities.join(', ')} to improve query performance.`);
+    }
+  } else {
+    earned += thirdMax;
+  }
+
+  // 1/3: Async pattern for long-running operations (HTTP 202 Accepted)
+  const asyncOps = performanceConfig.asyncRecommendedFor ?? [];
+  if (asyncOps.length > 0 && submission.apiStyle === 'rest') {
+    const hasAsync = submission.restEndpoints.some(ep =>
+      asyncOps.some(op => ep.path.toLowerCase().includes(op.toLowerCase())) &&
+      ep.statusCodes.includes(202),
+    );
+    if (hasAsync) {
+      earned += thirdMax;
+      hints.push(`✅ Async pattern (202 Accepted) used for long-running operations — frees threads and improves throughput.`);
+    } else {
+      hints.push(`⚠️ Consider async (HTTP 202) for long-running operations: ${asyncOps.join(', ')}. Synchronous long calls block threads and increase latency.`);
+    }
+  } else {
+    earned += thirdMax;
+  }
+
+  return { earned: Math.round(earned), max, hints };
+}
+
+// ── Security Scorer ───────────────────────────────────────────────────────────
+
+function scoreSecurity(
+  submission: LLDBuilderSubmission,
+  config: LLDMissionConfig,
+): { earned: number; max: number; hints: string[] } | null {
+  const { securityPatterns, scoringWeights } = config;
+  const max = scoringWeights.security;
+  if (!securityPatterns || !max) return null;
+
+  const hints: string[] = [];
+  let earned = 0;
+  const halfMax = max / 2;
+
+  // 1/2: No plaintext sensitive fields (password, secret, api_key, etc.)
+  const sensitiveNames = securityPatterns.sensitiveFieldNames ?? ['password', 'secret', 'api_key', 'token'];
+  const plaintextFields: string[] = [];
+  for (const entity of submission.entities) {
+    for (const field of entity.fields) {
+      const nameLower = field.name.toLowerCase();
+      if (sensitiveNames.some(s => nameLower.includes(s)) && field.type === 'string') {
+        plaintextFields.push(`${entity.name}.${field.name}`);
+      }
+    }
+  }
+  if (plaintextFields.length === 0) {
+    earned += halfMax;
+    hints.push(`✅ No plaintext sensitive fields — good security hygiene.`);
+  } else {
+    hints.push(
+      `⚠️ Sensitive fields typed as plain string: ${plaintextFields.join(', ')}. ` +
+      `Use a hashed type or omit from response schemas. ` +
+      `(Educational: storing passwords as plaintext is a critical vulnerability — always hash with bcrypt/argon2.)`,
+    );
+  }
+
+  // 1/2: Auth headers on protected endpoints
+  if (securityPatterns.requiresAuth && submission.apiStyle === 'rest') {
+    const protectedPatterns = securityPatterns.protectedEndpointPatterns ?? [];
+    if (protectedPatterns.length > 0) {
+      const unprotected = submission.restEndpoints.filter(ep =>
+        protectedPatterns.some(p => ep.path.includes(p)) &&
+        !(ep.headers && Object.keys(ep.headers).some(h => h.toLowerCase().includes('authorization'))),
+      );
+      if (unprotected.length === 0) {
+        earned += halfMax;
+        hints.push(`✅ Authorization headers present on all protected endpoints.`);
+      } else {
+        hints.push(
+          `⚠️ Missing auth headers on: ${unprotected.map(e => e.path).join(', ')}. ` +
+          `(Educational: protected endpoints must validate JWT/OAuth tokens — never trust client identity without a verified token.)`,
+        );
+      }
+    } else {
+      const hasAnyAuth = submission.restEndpoints.some(ep =>
+        ep.headers && Object.keys(ep.headers).some(h => h.toLowerCase().includes('authorization')),
+      );
+      if (hasAnyAuth) {
+        earned += halfMax;
+        hints.push(`✅ Authorization headers included on API endpoints.`);
+      } else {
+        hints.push(
+          `⚠️ This mission requires authentication — add Authorization headers to protected endpoints. ` +
+          `(Educational: every protected route must validate the caller's identity via a token.)`,
+        );
+      }
+    }
+  } else {
+    earned += halfMax; // no auth required or not REST
+  }
+
+  return { earned: Math.round(earned), max, hints };
+}
+
 // ── Penalty Evaluator ─────────────────────────────────────────────────────────
 
 export function evaluatePenalties(
@@ -358,35 +537,52 @@ export async function scoreLLDSubmission(
   submission: LLDBuilderSubmission,
   config: LLDMissionConfig,
 ): Promise<LLDScoreResponse> {
-  const archResult = scoreArchDecisions(submission.archDecisions, config);
-  const schemaResult = scoreSchema(submission.entities, submission.relationships, config);
-  const apiResult = scoreApiContracts(
+  const archResult    = scoreArchDecisions(submission.archDecisions, config);
+  const schemaResult  = scoreSchema(submission.entities, submission.relationships, config);
+  const apiResult     = scoreApiContracts(
     submission.restEndpoints,
     submission.graphqlOperations,
     submission.apiStyle,
     submission.archDecisions,
     config,
   );
+  const perfResult = scorePerformance(submission, config);   // null if not configured
+  const secResult  = scoreSecurity(submission, config);       // null if not configured
 
-  const totalWeighted =
-    pct(archResult.earned, archResult.max) * (config.scoringWeights.archDecisions / 100) +
-    pct(schemaResult.earned, schemaResult.max) * (config.scoringWeights.schema / 100) +
-    pct(apiResult.earned, apiResult.max) * (config.scoringWeights.apiContracts / 100);
+  // Weighted score — base weights always 100, new dimensions adjust proportionally
+  const totalWeights =
+    config.scoringWeights.archDecisions +
+    config.scoringWeights.schema +
+    config.scoringWeights.apiContracts +
+    (perfResult ? (config.scoringWeights.performance ?? 0) : 0) +
+    (secResult  ? (config.scoringWeights.security    ?? 0) : 0);
 
-  const rawScore = Math.round(totalWeighted);
+  const weightedSum =
+    pct(archResult.earned,   archResult.max)   * config.scoringWeights.archDecisions +
+    pct(schemaResult.earned, schemaResult.max) * config.scoringWeights.schema +
+    pct(apiResult.earned,    apiResult.max)    * config.scoringWeights.apiContracts +
+    (perfResult ? pct(perfResult.earned, perfResult.max) * (config.scoringWeights.performance ?? 0) : 0) +
+    (secResult  ? pct(secResult.earned,  secResult.max)  * (config.scoringWeights.security    ?? 0) : 0);
+
+  const rawScore = Math.round(weightedSum / (totalWeights || 100));
 
   // Evaluate penalties
   const { penalties, netPenalty } = evaluatePenalties(submission, config.penaltyRules, config.penaltyCap);
 
-  const finalScore = Math.max(0, rawScore); // score itself not penalised — only XP
-  const baseXP = Math.round((finalScore / 100) * MAX_LLD_XP);
-  const totalXP = Math.max(0, baseXP - netPenalty);
-  const xpEarned = totalXP;
+  const finalScore = Math.max(0, rawScore);
+  const baseXP     = Math.round((finalScore / 100) * MAX_LLD_XP);
+  const totalXP    = Math.max(0, baseXP - netPenalty);
+  const xpEarned   = totalXP;
 
-  const allHints = [...archResult.hints, ...schemaResult.hints, ...apiResult.hints];
+  const allHints = [
+    ...archResult.hints,
+    ...schemaResult.hints,
+    ...apiResult.hints,
+    ...(perfResult?.hints ?? []),
+    ...(secResult?.hints  ?? []),
+  ];
   const completed = finalScore >= 60;
 
-  // Backward-compatible feedback array
   const feedback: LLDScoreResponse['feedback'] = allHints.map(h => ({
     type: h.startsWith('✅') ? 'success' : h.startsWith('❌') ? 'error' : 'warning',
     dimension: 'overall',
@@ -398,7 +594,6 @@ export async function scoreLLDSubmission(
       feedback.push({ type: 'error', dimension: 'penalty', message: p.message }),
     );
   }
-
   if (completed) {
     feedback.push({ type: 'success', dimension: 'overall', message: '🎉 LLD complete! Your design is production-quality.' });
   }
@@ -406,9 +601,11 @@ export async function scoreLLDSubmission(
   return {
     totalXP,
     breakdown: {
-      archDecisions: { earned: archResult.earned, max: archResult.max },
-      schema: { earned: schemaResult.earned, max: schemaResult.max },
-      apiContracts: { earned: apiResult.earned, max: apiResult.max },
+      archDecisions: { earned: archResult.earned,   max: archResult.max   },
+      schema:         { earned: schemaResult.earned, max: schemaResult.max },
+      apiContracts:   { earned: apiResult.earned,    max: apiResult.max    },
+      ...(perfResult ? { performance: { earned: perfResult.earned, max: perfResult.max } } : {}),
+      ...(secResult  ? { security:    { earned: secResult.earned,  max: secResult.max  } } : {}),
     },
     penaltiesApplied: penalties,
     netPenalty,

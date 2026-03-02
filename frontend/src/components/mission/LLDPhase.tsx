@@ -273,6 +273,7 @@ export const LLDPhase: React.FC<LLDPhaseProps> = ({ missionSlug, onXpEarned, onB
         <LLDBuilder
           missionSlug={missionSlug}
           config={config}
+          lldContent={apiResponse.lldContent}
           previousState={apiResponse.previousAttempt?.lldState}
           onXpEarned={onXpEarned}
         />

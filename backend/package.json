@@ -11,6 +11,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "ts-node src/prisma/seed.ts",
     "prisma:seed-sprint2": "ts-node src/prisma/seed-sprint2.ts",
+    "prisma:seed-demo": "ts-node src/prisma/seed-demo.ts",
     "prisma:studio": "prisma studio"
   },
   "dependencies": {

@@ -45,6 +45,62 @@ const SECTION_CONFIG: Array<{
   { id: 'solution', label: 'Solution',     icon: '💡',  errorKey: null             },
 ];
 
+// ── Mission Brief Banner ──────────────────────────────────────────────────────
+// Always visible above the tab bar — gives users full context before designing.
+
+const MissionBriefBanner: React.FC<{ lldContent: LLDContent | null }> = ({ lldContent }) => {
+  const [collapsed, setCollapsed] = useState(false);
+
+  if (!lldContent?.prompt) return null;
+
+  return (
+    <div className="rounded-xl border border-blue-500/25 bg-blue-900/10">
+      {/* Header row — always visible */}
+      <button
+        onClick={() => setCollapsed(c => !c)}
+        className="w-full flex items-center justify-between px-4 py-3 text-left"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-base">📋</span>
+          <span className="text-sm font-semibold text-blue-200">Mission Brief</span>
+          <span className="text-xs text-gray-500">What you're building</span>
+        </div>
+        <span className="text-gray-500 text-xs">{collapsed ? '▼ show' : '▲ hide'}</span>
+      </button>
+
+      {/* Collapsible body */}
+      <AnimatePresence initial={false}>
+        {!collapsed && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="px-4 pb-4 space-y-3 border-t border-blue-500/15 pt-3">
+              <p className="text-sm text-gray-200 leading-relaxed">{lldContent.prompt}</p>
+              {lldContent.keyEntities.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs text-gray-500 shrink-0">Key entities:</span>
+                  {lldContent.keyEntities.map(entity => (
+                    <span
+                      key={entity}
+                      className="text-xs font-mono bg-purple-900/30 border border-purple-500/30 text-purple-200 px-2.5 py-1 rounded-lg"
+                    >
+                      {entity}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
 // ── Solution Panel ────────────────────────────────────────────────────────────
 
 const SolutionPanel: React.FC<{ lldContent: LLDContent | null }> = ({ lldContent }) => {
@@ -296,6 +352,9 @@ export const LLDBuilder: React.FC<LLDBuilderProps> = ({
 
   return (
     <div className="space-y-4">
+      {/* Mission brief — always visible context banner */}
+      <MissionBriefBanner lldContent={lldContent ?? null} />
+
       {/* Tab bar */}
       <div className="flex items-center justify-between">
         <div className="flex gap-1 bg-gray-800/50 rounded-xl p-1 flex-wrap">

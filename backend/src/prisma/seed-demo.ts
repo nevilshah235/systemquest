@@ -4,9 +4,11 @@
  * Creates a ready-to-demo user state for the SystemQuest demo video.
  *
  * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- *  Demo Login
- *    Email:    demo@systemquest.io
- *    Password: Demo@2026!
+ *  Credentials are loaded from environment variables — never hardcoded.
+ *  Copy backend/.env.demo.example → backend/.env.local and fill in values.
+ *
+ *    DEMO_SEED_EMAIL=...      (e.g. demo@your-domain.com)
+ *    DEMO_SEED_PASSWORD=...   (strong password, ≥12 chars)
  * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  *
  *  State seeded:
@@ -19,11 +21,11 @@
  *     Booking System (consistency)              → unlocks Payment Processing
  *
  *  🎨 PREFILLED IN-PROGRESS (showcased on the drag-and-drop canvas)
- *     Design WhatsApp   — WebSocket + Queue + Cassandra architecture
+ *     Design WhatsApp    — WebSocket + Queue + Cassandra architecture
  *     Payment Processing — Stripe-style idempotency + ACID design
  *
  *  🔒 LOCKED (server-side sequential lock — prerequisites not met)
- *     Design Slack          — locked until WhatsApp is completed
+ *     Design Slack             — locked until WhatsApp is completed
  *     How Stock Exchange Works — new capstone mission (600 XP, order 50)
  *
  *  ⚠️  MISTAKE PATTERNS (4 active — populates Mistakes Tracker panel)
@@ -31,17 +33,37 @@
  *     Synchronous Payment Call · No Dead Letter Queue
  *
  * Usage:
- *   npx ts-node src/prisma/seed-demo.ts
- *   -- or --
- *   npm run prisma:seed-demo
- *
- * Prerequisites: run seed.ts first so base missions exist.
+ *   cp backend/.env.demo.example backend/.env.local
+ *   # edit .env.local with real credentials
+ *   npm run prisma:seed        # run base seed first
+ *   npm run prisma:seed-demo   # then this
  */
 
+import * as dotenv from 'dotenv';
+import * as path from 'path';
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
+// Load .env.local first (demo-specific overrides), then fall back to .env
+dotenv.config({ path: path.resolve(__dirname, '../../../.env.local') });
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+
 const prisma = new PrismaClient();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Validate required env vars before doing anything
+// ─────────────────────────────────────────────────────────────────────────────
+
+function requireEnv(key: string): string {
+  const val = process.env[key];
+  if (!val || val.trim() === '') {
+    throw new Error(
+      `[seed-demo] Missing required environment variable: ${key}\n` +
+      `  Copy backend/.env.demo.example → backend/.env.local and set a value.`,
+    );
+  }
+  return val.trim();
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Architecture JSON payloads
@@ -134,7 +156,7 @@ const paymentArch = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Simple architecture helpers for prerequisite missions
+// Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
 function makeSimpleArch(types: string[]) {
@@ -151,10 +173,6 @@ function makeSimpleArch(types: string[]) {
   return { components, connections };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// XP → Level (mirrors simulationEngine / routes/simulation.ts)
-// ─────────────────────────────────────────────────────────────────────────────
-
 function calculateLevel(xp: number): number {
   if (xp < 100)  return 1;
   if (xp < 300)  return 2;
@@ -170,6 +188,11 @@ function calculateLevel(xp: number): number {
 
 async function main() {
   console.log('🎬  SystemQuest — Demo Data Seed\n');
+
+  // ── Validate credentials from env (fail fast, never use defaults) ───────────
+  const DEMO_EMAIL    = requireEnv('DEMO_SEED_EMAIL');
+  const DEMO_PASSWORD = requireEnv('DEMO_SEED_PASSWORD');
+  const DEMO_USERNAME = process.env.DEMO_SEED_USERNAME ?? 'SysQuestDemo';
 
   // ── Step 1: Create the Stock Exchange capstone mission (locked in demo) ──────
 
@@ -245,27 +268,24 @@ async function main() {
   console.log('👤  Step 2 — Creating demo user…');
 
   // XP earned from 8 completed missions (score/100 × xpReward, rounded)
-  //   mvp-launch(92→138) + scaling-up(88→264) + global-expansion(85→425)
-  //   + design-chatgpt(82→246) + live-scoreboard(79→474) + ride-hailing(78→546)
-  //   + booking-system(82→451) + url-shortener(91→455)
   const totalXp = 2999;
   const level   = calculateLevel(totalXp); // → 10
 
-  const passwordHash = await bcrypt.hash('Demo@2026!', 10);
+  const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
 
   const demoUser = await prisma.user.upsert({
-    where: { email: 'demo@systemquest.io' },
-    update: { passwordHash, xp: totalXp, level, skillLevel: 'advanced', username: 'SysQuestDemo' },
+    where: { email: DEMO_EMAIL },
+    update: { passwordHash, xp: totalXp, level, skillLevel: 'advanced', username: DEMO_USERNAME },
     create: {
-      email: 'demo@systemquest.io',
-      username: 'SysQuestDemo',
+      email: DEMO_EMAIL,
+      username: DEMO_USERNAME,
       passwordHash,
       xp: totalXp,
       level,
       skillLevel: 'advanced',
     },
   });
-  console.log(`  ✅  SysQuestDemo — Level ${level} | ${totalXp} XP | advanced\n`);
+  console.log(`  ✅  ${DEMO_USERNAME} — Level ${level} | ${totalXp} XP | advanced\n`);
 
   // ── Step 3: Fetch missions needed for attempts ───────────────────────────────
 
@@ -295,55 +315,20 @@ async function main() {
     score: number;
     arch: ReturnType<typeof makeSimpleArch> | typeof urlShortenerArch;
   }> = [
-    {
-      slug: 'mvp-launch',
-      score: 92,
-      arch: makeSimpleArch(['client', 'server', 'database']),
-    },
-    {
-      slug: 'scaling-up',
-      score: 88,
-      arch: makeSimpleArch(['client', 'loadbalancer', 'server', 'server', 'cache', 'database']),
-    },
-    {
-      slug: 'global-expansion',
-      score: 85,
-      arch: makeSimpleArch(['client', 'cdn', 'loadbalancer', 'server', 'cache', 'database']),
-    },
-    {
-      slug: 'design-chatgpt',
-      score: 82,
-      arch: makeSimpleArch(['client', 'apigateway', 'server', 'cache', 'database', 'monitoring']),
-    },
-    {
-      slug: 'live-scoreboard',
-      score: 79,
-      arch: makeSimpleArch(['client', 'loadbalancer', 'server', 'server', 'cache', 'queue', 'database']),
-    },
-    {
-      slug: 'ride-hailing',
-      score: 78,
-      arch: makeSimpleArch(['client', 'apigateway', 'loadbalancer', 'server', 'server', 'cache', 'database', 'queue']),
-    },
-    {
-      slug: 'booking-system',
-      score: 82,
-      arch: makeSimpleArch(['client', 'apigateway', 'loadbalancer', 'server', 'server', 'cache', 'database', 'monitoring']),
-    },
-    {
-      // Showcase mission — perfect design for URL Shortener demo
-      slug: 'url-shortener',
-      score: 91,
-      arch: urlShortenerArch,
-    },
+    { slug: 'mvp-launch',       score: 92, arch: makeSimpleArch(['client', 'server', 'database']) },
+    { slug: 'scaling-up',       score: 88, arch: makeSimpleArch(['client', 'loadbalancer', 'server', 'server', 'cache', 'database']) },
+    { slug: 'global-expansion', score: 85, arch: makeSimpleArch(['client', 'cdn', 'loadbalancer', 'server', 'cache', 'database']) },
+    { slug: 'design-chatgpt',   score: 82, arch: makeSimpleArch(['client', 'apigateway', 'server', 'cache', 'database', 'monitoring']) },
+    { slug: 'live-scoreboard',  score: 79, arch: makeSimpleArch(['client', 'loadbalancer', 'server', 'server', 'cache', 'queue', 'database']) },
+    { slug: 'ride-hailing',     score: 78, arch: makeSimpleArch(['client', 'apigateway', 'loadbalancer', 'server', 'server', 'cache', 'database', 'queue']) },
+    { slug: 'booking-system',   score: 82, arch: makeSimpleArch(['client', 'apigateway', 'loadbalancer', 'server', 'server', 'cache', 'database', 'monitoring']) },
+    { slug: 'url-shortener',    score: 91, arch: urlShortenerArch }, // showcase mission
   ];
 
   for (const { slug, score, arch } of completedMissions) {
     const mission = missionMap.get(slug);
     if (!mission) continue;
-
     const xpEarned = Math.round((score / 100) * mission.xpReward);
-    // Clean slate for this user+mission combo
     await prisma.missionAttempt.deleteMany({ where: { userId: demoUser.id, missionId: mission.id } });
     await prisma.missionAttempt.create({
       data: {
@@ -376,22 +361,13 @@ async function main() {
   console.log('\n🎨  Step 5 — Saving prefilled in-progress architectures…');
 
   const inProgress: Array<{ slug: string; arch: object; label: string }> = [
-    {
-      slug:  'design-whatsapp',
-      arch:  whatsappArch,
-      label: 'Design WhatsApp — WebSocket + Queue + Cassandra + S3',
-    },
-    {
-      slug:  'payment-processing',
-      arch:  paymentArch,
-      label: 'Payment Processing — Stripe-style idempotency + ACID',
-    },
+    { slug: 'design-whatsapp',    arch: whatsappArch, label: 'Design WhatsApp — WebSocket + Queue + Cassandra + S3' },
+    { slug: 'payment-processing', arch: paymentArch,  label: 'Payment Processing — Stripe-style idempotency + ACID' },
   ];
 
   for (const { slug, arch, label } of inProgress) {
     const mission = missionMap.get(slug);
     if (!mission) continue;
-
     await prisma.missionAttempt.deleteMany({ where: { userId: demoUser.id, missionId: mission.id } });
     await prisma.missionAttempt.create({
       data: {
@@ -413,40 +389,28 @@ async function main() {
 
   const patterns = [
     {
-      dimension:        'api-design',
-      patternSlug:      'missing-rate-limiter',
-      patternName:      'Missing Rate Limiter',
-      frequency:        3,
+      dimension: 'api-design', patternSlug: 'missing-rate-limiter',
+      patternName: 'Missing Rate Limiter', frequency: 3,
       affectedMissions: JSON.stringify(['url-shortener', 'mvp-launch', 'global-expansion']),
-      conceptSlug:      'rate-limiting',
-      isResolved:       false,
+      conceptSlug: 'rate-limiting', isResolved: false,
     },
     {
-      dimension:        'reliability',
-      patternSlug:      'single-database-spof',
-      patternName:      'Single Database — No Read Replica',
-      frequency:        2,
+      dimension: 'reliability', patternSlug: 'single-database-spof',
+      patternName: 'Single Database — No Read Replica', frequency: 2,
       affectedMissions: JSON.stringify(['design-whatsapp', 'live-scoreboard']),
-      conceptSlug:      'availability',
-      isResolved:       false,
+      conceptSlug: 'availability', isResolved: false,
     },
     {
-      dimension:        'consistency',
-      patternSlug:      'synchronous-critical-path',
-      patternName:      'Synchronous Payment Call (Queue Missing)',
-      frequency:        2,
+      dimension: 'consistency', patternSlug: 'synchronous-critical-path',
+      patternName: 'Synchronous Payment Call (Queue Missing)', frequency: 2,
       affectedMissions: JSON.stringify(['payment-processing', 'booking-system']),
-      conceptSlug:      'saga-pattern',
-      isResolved:       false,
+      conceptSlug: 'saga-pattern', isResolved: false,
     },
     {
-      dimension:        'reliability',
-      patternSlug:      'no-dead-letter-queue',
-      patternName:      'No Dead Letter Queue for Failed Events',
-      frequency:        2,
+      dimension: 'reliability', patternSlug: 'no-dead-letter-queue',
+      patternName: 'No Dead Letter Queue for Failed Events', frequency: 2,
       affectedMissions: JSON.stringify(['live-scoreboard', 'ride-hailing']),
-      conceptSlug:      'message-queues',
-      isResolved:       false,
+      conceptSlug: 'message-queues', isResolved: false,
     },
   ];
 
@@ -465,8 +429,8 @@ async function main() {
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🎬  DEMO SEED COMPLETE
 
-  Login:     demo@systemquest.io  /  Demo@2026!
-  User:      SysQuestDemo  |  Level ${level}  |  ${totalXp} XP  |  advanced
+  Login:     ${DEMO_EMAIL}  (password from DEMO_SEED_PASSWORD)
+  User:      ${DEMO_USERNAME}  |  Level ${level}  |  ${totalXp} XP  |  advanced
 
   ✅  Completed (8 missions — unlocks all paths + prerequisites)
        Foundations:  MVP Launch · Scaling Up · Global Expansion · ChatGPT Backend
@@ -479,8 +443,8 @@ async function main() {
        Payment Processing   (consistency / advanced)
 
   🔒  Locked (sequential prerequisite not met — shows lock UI naturally)
-       Design Slack          — needs Design WhatsApp completed first
-       How Stock Exchange Works — new capstone (order 50, 600 XP)
+       Design Slack              — needs Design WhatsApp completed first
+       How Stock Exchange Works  — new capstone (order 50, 600 XP)
 
   ⚠️   Mistake Patterns (4 active — populates Mistakes Tracker panel)
        Missing Rate Limiter        (api-design)   freq 3

@@ -13,12 +13,19 @@
  *
  *  State seeded:
  *
- *  ✅ COMPLETED (unlocked paths & prerequisites)
- *     MVP Launch · Scaling Up · Global Expansion · ChatGPT Backend
- *       → completes Foundations path → unlocks ALL other paths
- *     URL Shortener (high-read, score 91) — perfect reference design shown
- *     Live Scoreboard · Ride Hailing (real-time) → unlocks Design WhatsApp
- *     Booking System (consistency)              → unlocks Payment Processing
+ *  ✅ COMPLETED (13 missions — rich unlocked state across all path cards)
+ *     Foundations:       MVP Launch · Scaling Up · Global Expansion
+ *                          → completes Foundations path → unlocks ALL other paths
+ *     Async Queues:      File Converter · Code Judge · ChatGPT Backend
+ *                          → 3 modules unlocked on Async card
+ *     High-Read:         URL Shortener (score 91) · Search Engine
+ *                          → 2 modules unlocked on High-Read card
+ *     Real-Time:         Live Scoreboard · Ride Hailing
+ *                          → 2 modules unlocked → unlocks Design WhatsApp
+ *     Scale & Streaming: Social Feed · Video Streaming
+ *                          → 2 modules unlocked on Scale card
+ *     Consistency:       Booking System
+ *                          → unlocks Payment Processing
  *
  *  🎨 PREFILLED IN-PROGRESS (showcased on the drag-and-drop canvas)
  *     Design WhatsApp    — WebSocket + Queue + Cassandra architecture
@@ -267,9 +274,10 @@ async function main() {
 
   console.log('👤  Step 2 — Creating demo user…');
 
-  // XP earned from 8 completed missions (score/100 × xpReward, rounded)
-  const totalXp = 2999;
-  const level   = calculateLevel(totalXp); // → 10
+  // XP earned from 13 completed missions (score/100 × xpReward, rounded)
+  // Foundations (3) + Async Queues (3) + High-Read (2) + Real-Time (2) + Scale & Streaming (2) + Consistency (1)
+  const totalXp = 5720;
+  const level   = calculateLevel(totalXp); // → 20
 
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
 
@@ -291,9 +299,20 @@ async function main() {
 
   console.log('🔍  Step 3 — Resolving mission IDs…');
   const targetSlugs = [
-    'mvp-launch', 'scaling-up', 'global-expansion', 'design-chatgpt',
-    'live-scoreboard', 'ride-hailing', 'booking-system',
-    'url-shortener', 'design-whatsapp', 'payment-processing',
+    // Foundations (3 completed)
+    'mvp-launch', 'scaling-up', 'global-expansion',
+    // Async Queues (3 completed)
+    'file-converter', 'code-judge', 'design-chatgpt',
+    // High-Read (2 completed)
+    'url-shortener', 'search-engine',
+    // Real-Time (2 completed → unlocks WhatsApp)
+    'live-scoreboard', 'ride-hailing',
+    // Scale & Streaming (2 completed)
+    'social-feed', 'video-streaming',
+    // Consistency (1 completed → unlocks Payment Processing)
+    'booking-system',
+    // In-progress (canvas prefill)
+    'design-whatsapp', 'payment-processing',
   ];
   const found = await prisma.mission.findMany({
     where: { slug: { in: targetSlugs } },
@@ -315,14 +334,36 @@ async function main() {
     score: number;
     arch: ReturnType<typeof makeSimpleArch> | typeof urlShortenerArch;
   }> = [
+    // ── Foundations ──────────────────────────────────────────────────────────
     { slug: 'mvp-launch',       score: 92, arch: makeSimpleArch(['client', 'server', 'database']) },
     { slug: 'scaling-up',       score: 88, arch: makeSimpleArch(['client', 'loadbalancer', 'server', 'server', 'cache', 'database']) },
     { slug: 'global-expansion', score: 85, arch: makeSimpleArch(['client', 'cdn', 'loadbalancer', 'server', 'cache', 'database']) },
-    { slug: 'design-chatgpt',   score: 82, arch: makeSimpleArch(['client', 'apigateway', 'server', 'cache', 'database', 'monitoring']) },
+
+    // ── Async Queues (3 unlocked) ─────────────────────────────────────────────
+    // file-converter: async worker + queue + S3 — classic producer/consumer pattern
+    { slug: 'file-converter',   score: 85, arch: makeSimpleArch(['client', 'apigateway', 'server', 'queue', 'server', 'storage', 'database']) },
+    // code-judge: sandboxed workers drained from a queue — 3 bonus components
+    { slug: 'code-judge',       score: 82, arch: makeSimpleArch(['client', 'apigateway', 'loadbalancer', 'server', 'queue', 'server', 'database', 'monitoring']) },
+    // design-chatgpt: LLM gateway with token-budget cache + streaming queue
+    { slug: 'design-chatgpt',   score: 82, arch: makeSimpleArch(['client', 'apigateway', 'server', 'cache', 'queue', 'server', 'database', 'monitoring']) },
+
+    // ── High-Read (2 unlocked) ────────────────────────────────────────────────
+    { slug: 'url-shortener',    score: 91, arch: urlShortenerArch }, // showcase — near-perfect design
+    // search-engine: inverted-index reads, heavy cache layer, Elasticsearch-style
+    { slug: 'search-engine',    score: 80, arch: makeSimpleArch(['client', 'apigateway', 'loadbalancer', 'server', 'cache', 'database', 'storage']) },
+
+    // ── Real-Time (2 unlocked → prerequisite for Design WhatsApp) ────────────
     { slug: 'live-scoreboard',  score: 79, arch: makeSimpleArch(['client', 'loadbalancer', 'server', 'server', 'cache', 'queue', 'database']) },
     { slug: 'ride-hailing',     score: 78, arch: makeSimpleArch(['client', 'apigateway', 'loadbalancer', 'server', 'server', 'cache', 'database', 'queue']) },
+
+    // ── Scale & Streaming (2 unlocked) ───────────────────────────────────────
+    // social-feed: fan-out-on-write, CDN, high read:write ratio
+    { slug: 'social-feed',      score: 78, arch: makeSimpleArch(['client', 'cdn', 'apigateway', 'loadbalancer', 'server', 'cache', 'queue', 'database', 'storage']) },
+    // video-streaming: CDN-heavy, chunked storage, transcoding queue
+    { slug: 'video-streaming',  score: 79, arch: makeSimpleArch(['client', 'cdn', 'loadbalancer', 'server', 'queue', 'storage', 'database', 'monitoring']) },
+
+    // ── Consistency (1 completed → prerequisite for Payment Processing) ──────
     { slug: 'booking-system',   score: 82, arch: makeSimpleArch(['client', 'apigateway', 'loadbalancer', 'server', 'server', 'cache', 'database', 'monitoring']) },
-    { slug: 'url-shortener',    score: 91, arch: urlShortenerArch }, // showcase mission
   ];
 
   for (const { slug, score, arch } of completedMissions) {
@@ -432,11 +473,13 @@ async function main() {
   Login:     ${DEMO_EMAIL}  (password from DEMO_SEED_PASSWORD)
   User:      ${DEMO_USERNAME}  |  Level ${level}  |  ${totalXp} XP  |  advanced
 
-  ✅  Completed (8 missions — unlocks all paths + prerequisites)
-       Foundations:  MVP Launch · Scaling Up · Global Expansion · ChatGPT Backend
-       High-Read:    URL Shortener (score 91 — reference design shown on canvas)
-       Real-Time:    Live Scoreboard · Ride Hailing → unlocks WhatsApp
-       Consistency:  Booking System              → unlocks Payment Processing
+  ✅  Completed (13 missions — 2-3 unlocked per path card)
+       Foundations (3):        MVP Launch · Scaling Up · Global Expansion
+       Async Queues (3):       File Converter · Code Judge · ChatGPT Backend
+       High-Read (2):          URL Shortener (score 91) · Search Engine
+       Real-Time (2):          Live Scoreboard · Ride Hailing → unlocks WhatsApp
+       Scale & Streaming (2):  Social Feed · Video Streaming
+       Consistency (1):        Booking System → unlocks Payment Processing
 
   🎨  Prefilled In-Progress (opens with rich canvas for demo video)
        Design WhatsApp      (real-time / intermediate)

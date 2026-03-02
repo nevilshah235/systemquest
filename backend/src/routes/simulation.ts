@@ -26,10 +26,21 @@ simulationRouter.post('/run', authenticate, async (req: AuthRequest, res: Respon
     }
 
     const requirements = JSON.parse(mission.requirements);
+
+    // Normalise requirements — missions may use variant field names
+    // e.g. design-chatgpt uses timeToFirstTokenMs / peakRequestsPerSecond
+    const latencyMs  = requirements.performance.latencyMs
+                    ?? requirements.performance.timeToFirstTokenMs
+                    ?? 500;
+    const concurrent = requirements.traffic.concurrent
+                    ?? requirements.traffic.peakRequestsPerSecond
+                    ?? requirements.traffic.concurrentUsers
+                    ?? 1000;
+
     const metrics = runSimulation(architecture, {
-      latencyMs: requirements.performance.latencyMs,
+      latencyMs,
       availability: requirements.performance.availability,
-      throughput: requirements.traffic.concurrent,
+      throughput: concurrent,
       budget: requirements.budget,
       baseXp: mission.xpReward,
       bonusComponents: requirements.bonus,

@@ -88,6 +88,27 @@ export interface ScoringWeights {
   archDecisions: number;  // e.g. 40
   schema: number;         // e.g. 25
   apiContracts: number;   // e.g. 35
+  /** Optional — if absent this dimension is skipped for this mission */
+  performance?: number;
+  /** Optional — if absent this dimension is skipped for this mission */
+  security?: number;
+}
+
+export interface PerformanceConfig {
+  /** Arch decision keys where any non-'none' selection earns performance credit */
+  beneficialPatterns?: string[];
+  /** Entity names where at least one non-PK index is expected */
+  indexBeneficialEntities?: string[];
+  /** Path substrings for endpoints that should use async pattern (HTTP 202) */
+  asyncRecommendedFor?: string[];
+}
+
+export interface SecurityPatterns {
+  requiresAuth: boolean;
+  /** Field name substrings treated as sensitive (default: password, secret, api_key, token) */
+  sensitiveFieldNames?: string[];
+  /** Path substrings that must carry an Authorization header */
+  protectedEndpointPatterns?: string[];
 }
 
 export interface PenaltyRule {
@@ -111,6 +132,10 @@ export interface LLDMissionConfig {
   penaltyRules: PenaltyRule[];
   /** Maximum total XP penalty per submission (default: 20) */
   penaltyCap: number;
+  /** Present → performance dimension scored */
+  performanceConfig?: PerformanceConfig;
+  /** Present → security dimension scored */
+  securityPatterns?: SecurityPatterns;
 }
 
 // ── Builder State Types ────────────────────────────────────────────────────────
@@ -157,10 +182,19 @@ export interface LLDBuilderState {
 
 // ── API Response Types ────────────────────────────────────────────────────────
 
+export interface AttemptRecord {
+  attempt: number;
+  score: number;
+  xpEarned: number;
+  timestamp: number;
+}
+
 export interface LLDScoreBreakdown {
   archDecisions: { earned: number; max: number };
   schema: { earned: number; max: number };
   apiContracts: { earned: number; max: number };
+  performance?: { earned: number; max: number };
+  security?: { earned: number; max: number };
 }
 
 export interface LLDScoreResponse {
@@ -173,6 +207,11 @@ export interface LLDScoreResponse {
   score: number;
   xpEarned: number;
   feedback: Array<{ type: 'success' | 'warning' | 'error'; dimension: string; message: string }>;
+  /** Attempt tracking */
+  previousScore?: number;
+  scoreDelta?: number;
+  attemptNumber?: number;
+  attemptHistory?: AttemptRecord[];
 }
 
 export interface LLDApiResponse {

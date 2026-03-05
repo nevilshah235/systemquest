@@ -12,7 +12,10 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
 COPY package*.json ./
+COPY scripts/docker-entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 ENV NODE_ENV=production
 EXPOSE 8080
-# Schema: run `prisma db push` once (e.g. via backend/scripts/db-push-cloudrun.sh or Cloud SQL Proxy)
+# Entrypoint writes DEMO_SEED_* + DATABASE_URL etc. to .env for scripts
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["node", "dist/index.js"]

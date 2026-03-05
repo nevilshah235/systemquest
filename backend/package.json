@@ -12,6 +12,9 @@
     "prisma:seed": "ts-node src/prisma/seed.ts",
     "prisma:seed-sprint2": "ts-node src/prisma/seed-sprint2.ts",
     "prisma:seed-demo": "ts-node src/prisma/seed-demo.ts",
+    "prisma:seed-all": "ts-node src/prisma/seed-all.ts",
+    "prisma:seed-check": "ts-node src/prisma/seed-check.ts",
+    "prisma:seed-ref": "ts-node src/prisma/seed-reference-solutions.ts",
     "prisma:studio": "prisma studio"
   },
   "dependencies": {

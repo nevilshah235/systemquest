@@ -39,16 +39,51 @@ interface Hint {
 /** Extract a ComponentType from free-form hint text via keyword matching */
 function extractComponentType(text: string): ComponentType | undefined {
   const t = text.toLowerCase();
-  if (t.includes('load balanc')) return 'loadbalancer';
-  if (t.includes('api gateway')) return 'apigateway';
-  if (t.includes('monitoring') || t.includes('monitor'))  return 'monitoring';
-  if (t.includes('database') || t.includes(' db '))       return 'database';
-  if (t.includes('cache') || t.includes('cach'))          return 'cache';
+  
+  // Specific types first (most specific to least specific)
+  if (t.includes('websocket')) return 'websocket-server';
+  if (t.includes('geospatial') || t.includes('geo-spatial') || t.includes('location')) return 'geospatial-index';
+  if (t.includes('elasticsearch') || t.includes('search engine')) return 'search-engine';
+  if (t.includes('cassandra') || t.includes('wide-column')) return 'wide-column-store';
+  if (t.includes('mongodb') || t.includes('document db')) return 'document-db';
+  if (t.includes('redis') && (t.includes('cache') || t.includes('caching'))) return 'redis-cache';
+  if (t.includes('redis') && (t.includes('kv') || t.includes('key-value'))) return 'key-value-store';
+  if (t.includes('kafka') || t.includes('event stream')) return 'event-stream';
+  if (t.includes('rabbitmq') || t.includes('message queue')) return 'message-queue';
+  if (t.includes('pub/sub') || t.includes('pubsub')) return 'pub-sub';
+  if (t.includes('s3') || t.includes('object storage')) return 'object-storage';
+  if (t.includes('transcoder') || t.includes('transcode')) return 'transcoder';
+  if (t.includes('worker') || t.includes('background job')) return 'worker';
+  if (t.includes('lambda') || t.includes('serverless')) return 'serverless-function';
+  if (t.includes('rate limit')) return 'rate-limiter';
+  if (t.includes('auth service') || t.includes('authentication')) return 'auth-service';
+  if (t.includes('notification')) return 'notification-hub';
+  if (t.includes('ml') || t.includes('inference') || t.includes('model')) return 'ml-inference-engine';
+  if (t.includes('vector db') || t.includes('embeddings')) return 'vector-db';
+  if (t.includes('time-series') || t.includes('influx')) return 'time-series-db';
+  if (t.includes('graph db') || t.includes('neo4j')) return 'graph-db';
+  if (t.includes('consensus') || t.includes('zookeeper')) return 'consensus-service';
+  if (t.includes('service mesh') || t.includes('istio')) return 'service-mesh';
+  if (t.includes('circuit breaker')) return 'circuit-breaker';
+  if (t.includes('distributed tracing') || t.includes('jaeger')) return 'distributed-tracing';
+  if (t.includes('prometheus') || t.includes('metrics')) return 'metrics-collector';
+  
+  // Generic types (backward compatibility + fallback)
+  if (t.includes('load balanc') && t.includes('l4')) return 'load-balancer-l4';
+  if (t.includes('load balanc')) return 'load-balancer-l7';
+  if (t.includes('api gateway')) return 'api-gateway';
+  if (t.includes('reverse proxy')) return 'reverse-proxy';
+  if (t.includes('logging') || t.includes('logs')) return 'logging-service';
+  if (t.includes('database') || t.includes(' db ')) return 'relational-db';
+  if (t.includes('cache') || t.includes('cach')) return 'redis-cache';
   if (t.includes('cdn') || t.includes('content delivery')) return 'cdn';
-  if (t.includes('queue'))   return 'queue';
-  if (t.includes('storage')) return 'storage';
-  if (t.includes('server'))  return 'server';
-  if (t.includes('client'))  return 'client';
+  if (t.includes('queue')) return 'message-queue';
+  if (t.includes('storage')) return 'object-storage';
+  if (t.includes('server')) return 'app-server';
+  if (t.includes('mobile')) return 'mobile-client';
+  if (t.includes('client')) return 'web-client';
+  if (t.includes('dns')) return 'dns';
+  
   return undefined;
 }
 

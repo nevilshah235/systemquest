@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Architecture, ArchitectureComponent, Connection, ComponentType, COMPONENT_META } from '../data/types';
+import { Architecture, ArchitectureComponent, Connection, ComponentType, COMPONENT_META, migrateLegacyType } from '../data/types';
 
 const MAX_HISTORY = 50;
 
@@ -182,8 +182,17 @@ export const useBuilderStore = create<BuilderState>()((set, get) => ({
 
   setSelectedComponent: (id) => set({ selectedComponentId: id }),
 
-  loadArchitecture: (arch) =>
-    set({ architecture: arch, isDirty: false, past: [], future: [], lastActionLabel: '' }),
+  loadArchitecture: (arch) => {
+    // Migrate legacy component types to new types
+    const migratedArch: Architecture = {
+      components: arch.components.map((comp) => ({
+        ...comp,
+        type: migrateLegacyType(comp.type),
+      })),
+      connections: arch.connections,
+    };
+    set({ architecture: migratedArch, isDirty: false, past: [], future: [], lastActionLabel: '' });
+  },
 
   resetArchitecture: () =>
     set((s) => ({

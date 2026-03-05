@@ -61,7 +61,9 @@ export interface ArchDecisionCategory {
 
 export type ApiStyle = 'rest' | 'graphql' | 'grpc';
 
-export type SchemaShape = Record<string, 'string' | 'number' | 'boolean' | 'string[]' | SchemaShape>;
+export interface SchemaShape {
+  [key: string]: 'string' | 'number' | 'boolean' | 'string[]' | SchemaShape;
+}
 
 export interface RestEndpoint {
   id: string;

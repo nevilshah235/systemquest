@@ -167,7 +167,7 @@ const EntityNode: React.FC<{ data: EntityNodeData }> = ({ data }) => {
   );
 };
 
-const nodeTypes: NodeTypes = { entityCard: EntityNode as React.ComponentType<Node> };
+const nodeTypes = { entityCard: EntityNode as unknown as React.ComponentType<Node> } as unknown as NodeTypes;
 
 // ── Custom canvas controls (replaces default ReactFlow Controls) ──────────────
 const CanvasControls: React.FC = () => {

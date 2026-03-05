@@ -12,7 +12,15 @@ import {
 import { ComponentPalette } from './ComponentPalette';
 import { ArchitectureCanvas } from './ArchitectureCanvas';
 import { useBuilderStore } from '../../stores/builderStore';
-import { Mission, ComponentType, COMPONENT_META, COMPONENT_COSTS, Architecture } from '../../data/types';
+import {
+  Mission,
+  ComponentType,
+  COMPONENT_META,
+  COMPONENT_COSTS,
+  Architecture,
+  migrateLegacyArchitecture,
+  LEGACY_TYPE_MAP,
+} from '../../data/types';
 import { missionsApi } from '../../data/api';
 
 export interface DragDropBuilderProps {
@@ -39,16 +47,73 @@ interface Hint {
 /** Extract a ComponentType from free-form hint text via keyword matching */
 function extractComponentType(text: string): ComponentType | undefined {
   const t = text.toLowerCase();
-  if (t.includes('load balanc')) return 'loadbalancer';
-  if (t.includes('api gateway')) return 'apigateway';
-  if (t.includes('monitoring') || t.includes('monitor'))  return 'monitoring';
-  if (t.includes('database') || t.includes(' db '))       return 'database';
-  if (t.includes('cache') || t.includes('cach'))          return 'cache';
+
+  // Data stores
+  if (t.includes('redis cache') || t.includes('caching') && t.includes('redis')) return 'redis-cache';
+  if (t.includes('elasticsearch') || t.includes('search engine')) return 'search-engine';
+  if (t.includes('cassandra') || t.includes('wide column')) return 'wide-column-store';
+  if (t.includes('mongodb') || t.includes('document')) return 'document-db';
+  if (t.includes('key-value') || t.includes('kv store')) return 'key-value-store';
+  if (t.includes('neo4j') || t.includes('graph')) return 'graph-db';
+  if (t.includes('influx') || t.includes('time series')) return 'time-series-db';
+  if (t.includes('vector') || t.includes('pinecone')) return 'vector-db';
+  if (t.includes('postgres') || t.includes('relational') || t.includes('sql') || t.includes('database')) return 'relational-db';
+
+  // Messaging
+  if (t.includes('kafka') || t.includes('event stream')) return 'event-stream';
+  if (t.includes('rabbitmq') || t.includes('sqs') || t.includes('message queue')) return 'message-queue';
+  if (t.includes('pub/sub') || t.includes('pub-sub')) return 'pub-sub';
+
+  // Caching
   if (t.includes('cdn') || t.includes('content delivery')) return 'cdn';
-  if (t.includes('queue'))   return 'queue';
-  if (t.includes('storage')) return 'storage';
-  if (t.includes('server'))  return 'server';
-  if (t.includes('client'))  return 'client';
+  if (t.includes('cache')) return 'redis-cache';
+
+  // Storage
+  if (t.includes('s3') || t.includes('object storage')) return 'object-storage';
+  if (t.includes('ebs') || t.includes('block storage')) return 'block-storage';
+
+  // Compute
+  if (t.includes('worker') || t.includes('consumer')) return 'worker';
+  if (t.includes('lambda') || t.includes('serverless')) return 'serverless-function';
+  if (t.includes('scheduler') || t.includes('cron')) return 'scheduler';
+  if (t.includes('server')) return 'app-server';
+
+  // Networking
+  if (t.includes('l4') || t.includes('layer 4') || t.includes('tcp load')) return 'load-balancer-l4';
+  if (t.includes('load balanc') || t.includes('l7')) return 'load-balancer-l7';
+  if (t.includes('api gateway')) return 'api-gateway';
+  if (t.includes('dns')) return 'dns';
+  if (t.includes('reverse proxy')) return 'reverse-proxy';
+
+  // Real-time
+  if (t.includes('websocket')) return 'websocket-server';
+
+  // Security
+  if (t.includes('auth') || t.includes('oauth') || t.includes('jwt')) return 'auth-service';
+  if (t.includes('rate limit')) return 'rate-limiter';
+
+  // Specialized
+  if (t.includes('ml') || t.includes('inference') || t.includes('model serving')) return 'ml-inference-engine';
+  if (t.includes('geo') || t.includes('spatial') || t.includes('h3') || t.includes('quadtree')) return 'geospatial-index';
+  if (t.includes('transcoder') || t.includes('video processing')) return 'transcoder';
+  if (t.includes('notification')) return 'notification-hub';
+  if (t.includes('zookeeper') || t.includes('etcd') || t.includes('consensus')) return 'consensus-service';
+  if (t.includes('service mesh') || t.includes('istio')) return 'service-mesh';
+  if (t.includes('circuit breaker')) return 'circuit-breaker';
+  if (t.includes('config')) return 'config-service';
+  if (t.includes('metrics') || t.includes('prometheus')) return 'metrics-collector';
+  if (t.includes('tracing') || t.includes('jaeger')) return 'distributed-tracing';
+  if (t.includes('log')) return 'logging-service';
+
+  // Clients
+  if (t.includes('mobile') || t.includes('ios') || t.includes('android')) return 'mobile-client';
+  if (t.includes('web') || t.includes('browser') || t.includes('client')) return 'web-client';
+
+  // Legacy fallbacks
+  if (t.includes('monitoring') || t.includes('monitor')) return 'logging-service';
+  if (t.includes('queue')) return 'message-queue';
+  if (t.includes('storage')) return 'object-storage';
+
   return undefined;
 }
 
@@ -110,11 +175,12 @@ const UndoToast: React.FC<{ message: string; visible: boolean }> = ({ message, v
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSimulate, isSimulating }) => {
-  const { addComponent, architecture, isDirty, markClean, past, future, undo, redo, lastActionLabel } = useBuilderStore();
+  const { addComponent, architecture, isDirty, markClean, past, future, undo, redo, lastActionLabel, setArchitecture } = useBuilderStore();
   const autoSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [activeType, setActiveType] = useState<ComponentType | null>(null);
   const [showHint, setShowHint] = useState(false);
   const [hintIdx, setHintIdx] = useState(0);
+  const [isMigrating, setIsMigrating] = useState(false);
 
   // Toast state
   const [toast, setToast] = useState('');
@@ -128,6 +194,22 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     toastTimerRef.current = setTimeout(() => setToastVisible(false), 2000);
   }, []);
+
+  // Legacy type migration on mount - checks if architecture contains old types
+  useEffect(() => {
+    const hasLegacyTypes = architecture.components.some(c => {
+      const type = c.type as string;
+      return Object.keys(LEGACY_TYPE_MAP).includes(type);
+    });
+
+    if (hasLegacyTypes) {
+      setIsMigrating(true);
+      const migrated = migrateLegacyArchitecture(architecture);
+      setArchitecture(migrated);
+      showToast('Architecture migrated to new component types');
+      setIsMigrating(false);
+    }
+  }, []); // Run once on mount
 
   // Show toast whenever lastActionLabel changes (undo/redo)
   const prevLabelRef = useRef('');
@@ -172,7 +254,7 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
 
   // Auto-save every 30 seconds when dirty
   useEffect(() => {
-    if (!isDirty) return;
+    if (!isDirty || isMigrating) return;
     if (autoSaveRef.current) clearTimeout(autoSaveRef.current);
     autoSaveRef.current = setTimeout(async () => {
       try {
@@ -183,7 +265,7 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
       }
     }, 30000);
     return () => { if (autoSaveRef.current) clearTimeout(autoSaveRef.current); };
-  }, [isDirty, architecture, mission.slug, markClean]);
+  }, [isDirty, architecture, mission.slug, markClean, isMigrating]);
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveType((event.active.data.current?.type as ComponentType) ?? null);
@@ -236,7 +318,8 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
             <span className="text-sm text-gray-400">
               {architecture.components.length} components · {architecture.connections.length} connections
             </span>
-            {isDirty && <span className="text-xs text-amber-400">● Unsaved</span>}
+            {isDirty && !isMigrating && <span className="text-xs text-amber-400">● Unsaved</span>}
+            {isMigrating && <span className="text-xs text-blue-400">↻ Migrating...</span>}
             {/* Live cost tracker */}
             <div
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${costColor}`}
@@ -256,7 +339,7 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
             <button
               className="btn-ghost text-sm px-2 disabled:opacity-30"
               onClick={() => useBuilderStore.getState().undo()}
-              disabled={past.length === 0}
+              disabled={past.length === 0 || isMigrating}
               title="Undo (Ctrl+Z)"
             >
               ↩
@@ -264,17 +347,21 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
             <button
               className="btn-ghost text-sm px-2 disabled:opacity-30"
               onClick={() => useBuilderStore.getState().redo()}
-              disabled={future.length === 0}
+              disabled={future.length === 0 || isMigrating}
               title="Redo (Ctrl+Y)"
             >
               ↪
             </button>
             <div className="w-px h-4 bg-gray-700" />
-            <button className="btn-ghost text-sm" onClick={() => useBuilderStore.getState().resetArchitecture()}>
+            <button
+              className="btn-ghost text-sm"
+              onClick={() => useBuilderStore.getState().resetArchitecture()}
+              disabled={isMigrating}
+            >
               Reset
             </button>
             <button
-              disabled={!requiredMet || isSimulating}
+              disabled={!requiredMet || isSimulating || isMigrating}
               onClick={onSimulate}
               className="btn-primary text-sm"
               title={
@@ -297,6 +384,7 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
               highlightedType={showHint ? (currentHint.componentType ?? null) : null}
               currentCost={currentCost}
               budget={budget}
+              missionContext={mission.components.missionContext}
             />
           </div>
           <div className="flex-1 overflow-hidden">

@@ -12,21 +12,132 @@ const HANDLE_R     = 6;   // edge handle radius px
 const snap = (v: number) => Math.round(v / GRID_SIZE) * GRID_SIZE;
 
 // ── Auto-label lookup ─────────────────────────────────────────────────────────
+// Expanded for ~40 building blocks
 
 const CONN_LABELS: Partial<Record<string, Partial<Record<string, string>>>> = {
-  client:      { loadbalancer: 'HTTP', server: 'HTTP', apigateway: 'HTTP', cdn: 'static' },
-  loadbalancer:{ server: 'route' },
-  apigateway:  { server: 'route', loadbalancer: 'route' },
-  server:      { database: 'queries', cache: 'cache', queue: 'enqueue',
-                 storage: 'files',   monitoring: 'metrics', apigateway: 'API' },
-  cache:       { database: 'miss→DB' },
-  queue:       { server: 'consume' },
-  monitoring:  { server: 'alerts' },
-  cdn:         { server: 'origin', storage: 'files' },
+  // Clients
+  'web-client':     { 'load-balancer-l7': 'HTTP', 'api-gateway': 'HTTP', 'cdn': 'static', 'app-server': 'HTTP' },
+  'mobile-client':  { 'load-balancer-l7': 'HTTP', 'api-gateway': 'HTTP', 'cdn': 'static', 'app-server': 'HTTP' },
+
+  // Networking
+  'dns':            { 'load-balancer-l7': 'resolve', 'cdn': 'resolve' },
+  'load-balancer-l7':{ 'app-server': 'route', 'api-gateway': 'route', 'reverse-proxy': 'route' },
+  'load-balancer-l4':{ 'app-server': 'TCP', 'websocket-server': 'TCP' },
+  'api-gateway':    { 'app-server': 'route', 'load-balancer-l7': 'route', 'auth-service': 'verify' },
+  'reverse-proxy':  { 'app-server': 'proxy', 'cdn': 'origin' },
+
+  // Compute
+  'app-server':     {
+    'relational-db': 'SQL',
+    'document-db': 'query',
+    'wide-column-store': 'write',
+    'key-value-store': 'KV',
+    'graph-db': 'traverse',
+    'time-series-db': 'metrics',
+    'search-engine': 'search',
+    'vector-db': 'embed',
+    'redis-cache': 'cache',
+    'cdn': 'invalidate',
+    'message-queue': 'enqueue',
+    'event-stream': 'produce',
+    'pub-sub': 'publish',
+    'object-storage': 'upload',
+    'block-storage': 'mount',
+    'worker': 'dispatch',
+    'serverless-function': 'trigger',
+    'websocket-server': 'push',
+    'logging-service': 'logs',
+    'metrics-collector': 'metrics',
+    'auth-service': 'auth',
+    'rate-limiter': 'check',
+    'ml-inference-engine': 'predict',
+    'geospatial-index': 'nearby',
+    'transcoder': 'convert',
+    'notification-hub': 'notify',
+  },
+  'worker':         {
+    'relational-db': 'update',
+    'document-db': 'process',
+    'key-value-store': 'compute',
+    'search-engine': 'index',
+    'message-queue': 'consume',
+    'event-stream': 'consume',
+    'object-storage': 'process',
+    'app-server': 'callback',
+    'logging-service': 'logs',
+  },
+  'serverless-function': {
+    'object-storage': 'process',
+    'event-stream': 'trigger',
+    'app-server': 'response',
+    'logging-service': 'logs',
+  },
+  'scheduler':      { 'worker': 'cron', 'app-server': 'trigger' },
+
+  // Data Stores
+  'relational-db':  { 'redis-cache': 'warm', 'object-storage': 'backup' },
+  'document-db':    { 'redis-cache': 'warm', 'search-engine': 'index' },
+  'wide-column-store':{ 'redis-cache': 'warm', 'event-stream': 'feed' },
+  'key-value-store':{ 'relational-db': 'miss→DB', 'app-server': 'fast' },
+  'graph-db':       { 'app-server': 'relations' },
+  'time-series-db': { 'app-server': 'query', 'metrics-collector': 'store' },
+  'search-engine':  { 'app-server': 'results', 'worker': 'index' },
+  'vector-db':      { 'app-server': 'similar', 'ml-inference-engine': 'embed' },
+
+  // Caching
+  'redis-cache':    {
+    'relational-db': 'miss→DB',
+    'document-db': 'miss→DB',
+    'app-server': 'hit',
+    'key-value-store': 'hit',
+  },
+  'cdn':            {
+    'object-storage': 'origin',
+    'app-server': 'origin',
+    'web-client': 'static',
+    'mobile-client': 'static',
+  },
+
+  // Messaging
+  'message-queue':  { 'worker': 'consume', 'app-server': 'ack', 'notification-hub': 'push' },
+  'event-stream':   { 'worker': 'consume', 'pub-sub': 'fan-out', 'wide-column-store': 'sink' },
+  'pub-sub':        { 'websocket-server': 'broadcast', 'app-server': 'subscribe' },
+
+  // Storage
+  'object-storage': { 'transcoder': 'process', 'cdn': 'origin', 'app-server': 'download' },
+  'block-storage':  { 'relational-db': 'data', 'document-db': 'data' },
+
+  // Real-time
+  'websocket-server':{ 'pub-sub': 'subscribe', 'app-server': 'events' },
+
+  // Security
+  'auth-service':   { 'app-server': 'verify', 'api-gateway': 'jwt' },
+  'rate-limiter':   { 'api-gateway': 'check', 'app-server': 'allow?' },
+
+  // Specialized
+  'ml-inference-engine':{ 'vector-db': 'embed', 'app-server': 'predict' },
+  'geospatial-index':{ 'app-server': 'radius', 'key-value-store': 'geo' },
+  'transcoder':     { 'object-storage': 'output', 'event-stream': 'status' },
+  'notification-hub':{ 'pub-sub': 'trigger', 'message-queue': 'batch' },
+  'consensus-service':{ 'app-server': 'lock', 'config-service': 'sync' },
+  'service-mesh':   { 'app-server': 'mTLS', 'metrics-collector': 'trace' },
+  'circuit-breaker':{ 'app-server': 'protect', 'api-gateway': 'trip' },
+  'config-service': { 'app-server': 'config', 'consensus-service': 'watch' },
+  'metrics-collector':{ 'logging-service': 'correlate', 'app-server': 'scrape' },
+  'distributed-tracing':{ 'app-server': 'span', 'logging-service': 'trace' },
+  'logging-service':{ 'app-server': 'collect' },
 };
 
 function autoLabel(fromType: string, toType: string): string {
-  return CONN_LABELS[fromType]?.[toType] ?? 'data flow';
+  // Try direct lookup
+  const direct = CONN_LABELS[fromType]?.[toType];
+  if (direct) return direct;
+
+  // Try reverse lookup (some connections are symmetric)
+  const reverse = CONN_LABELS[toType]?.[fromType];
+  if (reverse) return `${reverse} ←`;
+
+  return 'data flow';
 }
 
 // ── Geometry helpers ──────────────────────────────────────────────────────────

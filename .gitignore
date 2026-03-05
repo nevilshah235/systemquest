@@ -13,3 +13,5 @@ coverage/
 prisma/migrations/
 backend/.db-app-pw.txt
 backend/.deploy-credentials.txt
+backend/.env.cloudrun
+backend/auth/

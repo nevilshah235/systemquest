@@ -9,6 +9,7 @@ services:
       - "4000:4000"
     environment:
       - DATABASE_URL=file:./dev.db
+      # Dev-only placeholders — use strong random values in production
       - JWT_SECRET=systemquest-jwt-secret-change-in-production
       - JWT_REFRESH_SECRET=systemquest-refresh-secret-change-in-production
       - JWT_EXPIRES_IN=15m

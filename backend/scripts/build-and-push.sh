@@ -12,4 +12,4 @@ docker build --platform linux/amd64 -t "$IMAGE" .
 echo "Pushing $IMAGE ..."
 docker push "$IMAGE"
 
-echo "Done. Deploy with: gcloud run deploy systemquest-api --image=$IMAGE --region=us-central1 ..."
+echo "Done. Deploy with: ./scripts/deploy-cloudrun.sh"

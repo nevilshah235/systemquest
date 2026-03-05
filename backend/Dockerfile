@@ -14,4 +14,5 @@ COPY --from=builder /app/prisma ./prisma
 COPY package*.json ./
 ENV NODE_ENV=production
 EXPOSE 8080
-CMD ["sh", "-c", "npx prisma db push && node dist/index.js"]
+# Schema: run `prisma db push` once (e.g. via backend/scripts/db-push-cloudrun.sh or Cloud SQL Proxy)
+CMD ["node", "dist/index.js"]

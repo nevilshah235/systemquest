@@ -37,6 +37,7 @@ interface FeedbackItem {
 
 // Component cost per month (USD) and performance characteristics
 const COMPONENT_SPECS: Record<string, { cost: number; latencyReduction: number; availabilityBoost: number; throughputMultiplier: number }> = {
+  // Legacy types (backward compatibility)
   client:      { cost: 0,    latencyReduction: 0,   availabilityBoost: 0,    throughputMultiplier: 1.0 },
   loadbalancer:{ cost: 20,   latencyReduction: 10,  availabilityBoost: 1.5,  throughputMultiplier: 2.5 },
   server:      { cost: 50,   latencyReduction: 0,   availabilityBoost: 0.5,  throughputMultiplier: 1.0 },
@@ -47,6 +48,47 @@ const COMPONENT_SPECS: Record<string, { cost: number; latencyReduction: number; 
   storage:     { cost: 20,   latencyReduction: 5,   availabilityBoost: 0.1,  throughputMultiplier: 1.1 },
   monitoring:  { cost: 10,   latencyReduction: 0,   availabilityBoost: 0.8,  throughputMultiplier: 1.0 },
   apigateway:  { cost: 35,   latencyReduction: 15,  availabilityBoost: 0.4,  throughputMultiplier: 1.4 },
+  
+  // New specific types
+  'web-client':        { cost: 0,    latencyReduction: 0,   availabilityBoost: 0,    throughputMultiplier: 1.0 },
+  'mobile-client':     { cost: 0,    latencyReduction: 0,   availabilityBoost: 0,    throughputMultiplier: 1.0 },
+  'dns':               { cost: 2,    latencyReduction: 5,   availabilityBoost: 0.1,  throughputMultiplier: 1.0 },
+  'load-balancer-l7':  { cost: 20,   latencyReduction: 10,  availabilityBoost: 1.5,  throughputMultiplier: 2.5 },
+  'load-balancer-l4':  { cost: 18,   latencyReduction: 8,   availabilityBoost: 1.4,  throughputMultiplier: 2.3 },
+  'api-gateway':       { cost: 35,   latencyReduction: 15,  availabilityBoost: 0.4,  throughputMultiplier: 1.4 },
+  'reverse-proxy':     { cost: 15,   latencyReduction: 8,   availabilityBoost: 0.3,  throughputMultiplier: 1.2 },
+  'app-server':        { cost: 50,   latencyReduction: 0,   availabilityBoost: 0.5,  throughputMultiplier: 1.0 },
+  'worker':            { cost: 45,   latencyReduction: 0,   availabilityBoost: 0.4,  throughputMultiplier: 1.2 },
+  'serverless-function': { cost: 0,  latencyReduction: 0,   availabilityBoost: 0.2,  throughputMultiplier: 1.1 },
+  'scheduler':         { cost: 8,    latencyReduction: 0,   availabilityBoost: 0.2,  throughputMultiplier: 1.0 },
+  'relational-db':     { cost: 40,   latencyReduction: 0,   availabilityBoost: 0,    throughputMultiplier: 1.0 },
+  'document-db':       { cost: 38,   latencyReduction: 5,   availabilityBoost: 0.1,  throughputMultiplier: 1.1 },
+  'wide-column-store': { cost: 50,   latencyReduction: 0,   availabilityBoost: 0.2,  throughputMultiplier: 1.3 },
+  'key-value-store':   { cost: 20,   latencyReduction: 70,  availabilityBoost: 0.3,  throughputMultiplier: 2.0 },
+  'graph-db':          { cost: 45,   latencyReduction: 10,  availabilityBoost: 0.1,  throughputMultiplier: 1.0 },
+  'time-series-db':    { cost: 35,   latencyReduction: 15,  availabilityBoost: 0.2,  throughputMultiplier: 1.2 },
+  'search-engine':     { cost: 60,   latencyReduction: 20,  availabilityBoost: 0.3,  throughputMultiplier: 1.5 },
+  'vector-db':         { cost: 65,   latencyReduction: 25,  availabilityBoost: 0.2,  throughputMultiplier: 1.3 },
+  'redis-cache':       { cost: 15,   latencyReduction: 60,  availabilityBoost: 0.3,  throughputMultiplier: 1.8 },
+  'message-queue':     { cost: 25,   latencyReduction: 20,  availabilityBoost: 0.3,  throughputMultiplier: 1.3 },
+  'event-stream':      { cost: 40,   latencyReduction: 15,  availabilityBoost: 0.4,  throughputMultiplier: 1.6 },
+  'pub-sub':           { cost: 20,   latencyReduction: 10,  availabilityBoost: 0.3,  throughputMultiplier: 1.4 },
+  'object-storage':    { cost: 20,   latencyReduction: 5,   availabilityBoost: 0.1,  throughputMultiplier: 1.1 },
+  'block-storage':     { cost: 25,   latencyReduction: 0,   availabilityBoost: 0.1,  throughputMultiplier: 1.0 },
+  'websocket-server':  { cost: 30,   latencyReduction: 30,  availabilityBoost: 0.3,  throughputMultiplier: 1.5 },
+  'logging-service':   { cost: 10,   latencyReduction: 0,   availabilityBoost: 0.8,  throughputMultiplier: 1.0 },
+  'ml-inference-engine': { cost: 120, latencyReduction: 0,  availabilityBoost: 0,    throughputMultiplier: 1.0 },
+  'geospatial-index':  { cost: 45,   latencyReduction: 50,  availabilityBoost: 0.2,  throughputMultiplier: 1.4 },
+  'transcoder':        { cost: 80,   latencyReduction: 0,   availabilityBoost: 0.1,  throughputMultiplier: 1.0 },
+  'rate-limiter':      { cost: 12,   latencyReduction: 5,   availabilityBoost: 0.3,  throughputMultiplier: 1.1 },
+  'auth-service':      { cost: 20,   latencyReduction: 10,  availabilityBoost: 0.4,  throughputMultiplier: 1.0 },
+  'notification-hub':  { cost: 25,   latencyReduction: 0,   availabilityBoost: 0.2,  throughputMultiplier: 1.2 },
+  'consensus-service': { cost: 35,   latencyReduction: 0,   availabilityBoost: 0.5,  throughputMultiplier: 1.0 },
+  'service-mesh':      { cost: 30,   latencyReduction: 5,   availabilityBoost: 0.4,  throughputMultiplier: 1.1 },
+  'circuit-breaker':   { cost: 10,   latencyReduction: 0,   availabilityBoost: 0.6,  throughputMultiplier: 1.0 },
+  'config-service':    { cost: 15,   latencyReduction: 0,   availabilityBoost: 0.2,  throughputMultiplier: 1.0 },
+  'metrics-collector': { cost: 18,   latencyReduction: 0,   availabilityBoost: 0.5,  throughputMultiplier: 1.0 },
+  'distributed-tracing': { cost: 22, latencyReduction: 0,   availabilityBoost: 0.3,  throughputMultiplier: 1.0 },
 };
 
 export function runSimulation(
@@ -278,6 +320,78 @@ export function runSimulation(
     for (const bonus of missionRequirements.bonusComponents) {
       if (hasComponent(bonus.component)) bonusXp += bonus.xp;
     }
+  }
+
+  // ── Technology-Specific Choice Bonuses ─────────────────────────────────────────
+  // Reward using the RIGHT technology for the problem instead of generic types
+  
+  // Search workloads: Elasticsearch > generic database
+  if (hasComponent('search-engine')) {
+    bonusXp += 15;
+    feedback.push({ type: 'success', message: '🎯 Elasticsearch is the right choice for full-text search (+15 XP)' });
+  }
+  
+  // Event-driven systems: Kafka > generic queue
+  if (hasComponent('event-stream')) {
+    bonusXp += 12;
+    feedback.push({ type: 'success', message: '🎯 Kafka event streaming enables fan-out and replay (+12 XP)' });
+  }
+  
+  // Geospatial queries: Geospatial index > generic database
+  if (hasComponent('geospatial-index')) {
+    bonusXp += 15;
+    feedback.push({ type: 'success', message: '🎯 Geospatial index enables sub-50ms radius queries (+15 XP)' });
+  }
+  
+  // Real-time push: WebSocket > polling
+  if (hasComponent('websocket-server')) {
+    bonusXp += 10;
+    feedback.push({ type: 'success', message: '🎯 WebSocket enables bidirectional real-time communication (+10 XP)' });
+  }
+  
+  // High-write timelines: Cassandra > generic database
+  if (hasComponent('wide-column-store')) {
+    bonusXp += 12;
+    feedback.push({ type: 'success', message: '🎯 Cassandra wide-column store excels at high-write fan-out (+12 XP)' });
+  }
+  
+  // Media processing: Transcoder > generic worker
+  if (hasComponent('transcoder')) {
+    bonusXp += 10;
+    feedback.push({ type: 'success', message: '🎯 Dedicated transcoder for multi-format video encoding (+10 XP)' });
+  }
+  
+  // Fast lookups: Key-value store > generic cache
+  if (hasComponent('key-value-store')) {
+    bonusXp += 8;
+    feedback.push({ type: 'success', message: '🎯 Redis key-value store for sorted sets and fast lookups (+8 XP)' });
+  }
+  
+  // Real-time broadcast: Pub/Sub > generic queue
+  if (hasComponent('pub-sub')) {
+    bonusXp += 8;
+    feedback.push({ type: 'success', message: '🎯 Pub/Sub pattern for real-time message broadcasting (+8 XP)' });
+  }
+  
+  // ── Over-Engineering Penalties ─────────────────────────────────────────────────
+  // Penalize using expensive specialized tech when simpler options suffice
+  
+  // Using wide-column store when relational DB would work
+  if (hasComponent('wide-column-store') && !hasComponent('event-stream') && throughput < 50000) {
+    bonusXp -= 10;
+    feedback.push({ type: 'warning', message: '⚠ Cassandra is overkill for this workload — Relational DB would suffice (-10 XP)' });
+  }
+  
+  // Using event stream when simple queue would work
+  if (hasComponent('event-stream') && !hasComponent('pub-sub') && !hasComponent('worker') && throughput < 20000) {
+    bonusXp -= 8;
+    feedback.push({ type: 'warning', message: '⚠ Kafka is over-engineered for this use case — Message Queue would suffice (-8 XP)' });
+  }
+  
+  // Using ML inference without vector DB (missing the point)
+  if (hasComponent('ml-inference-engine') && !hasComponent('vector-db')) {
+    bonusXp -= 5;
+    feedback.push({ type: 'warning', message: '⚠ ML inference typically needs Vector DB for embeddings (-5 XP)' });
   }
 
   if (score >= 80) achievements.push('first-architecture');

@@ -12,7 +12,7 @@ import {
 import { ComponentPalette } from './ComponentPalette';
 import { ArchitectureCanvas } from './ArchitectureCanvas';
 import { useBuilderStore } from '../../stores/builderStore';
-import { Mission, ComponentType, COMPONENT_META, COMPONENT_COSTS, Architecture } from '../../data/types';
+import { Mission, ComponentType, getComponentMeta, getComponentCost, Architecture } from '../../data/types';
 import { missionsApi } from '../../data/api';
 
 export interface DragDropBuilderProps {
@@ -39,16 +39,21 @@ interface Hint {
 /** Extract a ComponentType from free-form hint text via keyword matching */
 function extractComponentType(text: string): ComponentType | undefined {
   const t = text.toLowerCase();
-  if (t.includes('load balanc')) return 'loadbalancer';
-  if (t.includes('api gateway')) return 'apigateway';
-  if (t.includes('monitoring') || t.includes('monitor'))  return 'monitoring';
-  if (t.includes('database') || t.includes(' db '))       return 'database';
-  if (t.includes('cache') || t.includes('cach'))          return 'cache';
+  if (t.includes('load balanc')) return 'load-balancer-l7';
+  if (t.includes('api gateway')) return 'api-gateway';
+  if (t.includes('monitoring') || t.includes('monitor')) return 'logging-service';
+  if (t.includes('database') || t.includes(' db ') || t.includes('postgres') || t.includes('relational')) return 'relational-db';
+  if (t.includes('cache') || t.includes('cach') || t.includes('redis')) return 'redis-cache';
   if (t.includes('cdn') || t.includes('content delivery')) return 'cdn';
-  if (t.includes('queue'))   return 'queue';
-  if (t.includes('storage')) return 'storage';
-  if (t.includes('server'))  return 'server';
-  if (t.includes('client'))  return 'client';
+  if (t.includes('queue') || t.includes('kafka') || t.includes('event stream')) return 'message-queue';
+  if (t.includes('storage') || t.includes('s3') || t.includes('object')) return 'object-storage';
+  if (t.includes('server') || t.includes('app server')) return 'app-server';
+  if (t.includes('client') || t.includes('web') || t.includes('mobile')) return 'web-client';
+  if (t.includes('search') || t.includes('elastic')) return 'search-engine';
+  if (t.includes('worker') || t.includes('crawler')) return 'worker';
+  if (t.includes('geospatial') || t.includes('location') || t.includes('nearby')) return 'geospatial-index';
+  if (t.includes('websocket') || t.includes('real-time')) return 'websocket-server';
+  if (t.includes('transcoder') || t.includes('transcod')) return 'transcoder';
   return undefined;
 }
 
@@ -66,7 +71,7 @@ function getContextHints(architecture: Architecture, mission: Mission): Hint[] {
   // 1. Gaps — missing required components (with componentType for palette highlight)
   for (const req of mission.requirements.required) {
     if (!placedTypes.has(req)) {
-      const meta = COMPONENT_META[req];
+      const meta = getComponentMeta(req);
       hints.push({
         type: 'gap',
         text: `Add ${meta.label} ${meta.icon} — ${meta.description}`,
@@ -211,7 +216,7 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
   // Live cost tracking
   const budget = mission.requirements.budget;
   const currentCost = useMemo(
-    () => placedTypes.reduce((sum, t) => sum + (COMPONENT_COSTS[t as ComponentType] ?? 0), 0),
+    () => placedTypes.reduce((sum, t) => sum + getComponentCost(t), 0),
     [placedTypes]
   );
   const costRatio = budget > 0 ? currentCost / budget : 0;
@@ -297,6 +302,7 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
               highlightedType={showHint ? (currentHint.componentType ?? null) : null}
               currentCost={currentCost}
               budget={budget}
+              missionContext={mission.components.missionContext}
             />
           </div>
           <div className="flex-1 overflow-hidden">
@@ -387,8 +393,8 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
       <DragOverlay dropAnimation={null}>
         {activeType ? (
           <div className="flex flex-col items-center justify-center w-24 h-20 rounded-xl border-2 border-brand-500 bg-brand-900/80 shadow-2xl shadow-brand-500/30 opacity-90 pointer-events-none">
-            <span className="text-2xl mb-1">{COMPONENT_META[activeType].icon}</span>
-            <span className="text-xs font-semibold text-white">{COMPONENT_META[activeType].label}</span>
+            <span className="text-2xl mb-1">{getComponentMeta(activeType).icon}</span>
+            <span className="text-xs font-semibold text-white">{getComponentMeta(activeType).label}</span>
           </div>
         ) : null}
       </DragOverlay>

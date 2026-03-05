@@ -1,7 +1,7 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArchitectureComponent, Connection, ComponentType, COMPONENT_META } from '../../data/types';
+import { ArchitectureComponent, Connection, ComponentType, getComponentMeta } from '../../data/types';
 import { useBuilderStore } from '../../stores/builderStore';
 
 const GRID_SIZE    = 40;
@@ -14,15 +14,27 @@ const snap = (v: number) => Math.round(v / GRID_SIZE) * GRID_SIZE;
 // ── Auto-label lookup ─────────────────────────────────────────────────────────
 
 const CONN_LABELS: Partial<Record<string, Partial<Record<string, string>>>> = {
-  client:      { loadbalancer: 'HTTP', server: 'HTTP', apigateway: 'HTTP', cdn: 'static' },
-  loadbalancer:{ server: 'route' },
-  apigateway:  { server: 'route', loadbalancer: 'route' },
-  server:      { database: 'queries', cache: 'cache', queue: 'enqueue',
-                 storage: 'files',   monitoring: 'metrics', apigateway: 'API' },
-  cache:       { database: 'miss→DB' },
-  queue:       { server: 'consume' },
-  monitoring:  { server: 'alerts' },
-  cdn:         { server: 'origin', storage: 'files' },
+  'web-client': { 'load-balancer-l7': 'HTTP', 'app-server': 'HTTP', 'api-gateway': 'HTTP', cdn: 'static' },
+  'mobile-client': { 'load-balancer-l7': 'HTTP', 'app-server': 'HTTP', 'api-gateway': 'HTTP', cdn: 'static' },
+  'load-balancer-l7': { 'app-server': 'route' },
+  'load-balancer-l4': { 'app-server': 'route' },
+  'api-gateway': { 'app-server': 'route', 'load-balancer-l7': 'route' },
+  'app-server': {
+    'relational-db': 'queries', 'document-db': 'queries', 'wide-column-store': 'queries',
+    'key-value-store': 'lookup', 'search-engine': 'query', 'redis-cache': 'cache',
+    'message-queue': 'enqueue', 'event-stream': 'publish', 'pub-sub': 'publish',
+    'object-storage': 'files', 'logging-service': 'metrics', 'api-gateway': 'API',
+    'geospatial-index': 'nearby query', 'worker': 'trigger',
+  },
+  'redis-cache': { 'relational-db': 'miss→DB', 'document-db': 'miss→DB' },
+  'message-queue': { 'app-server': 'consume', worker: 'consume' },
+  'event-stream': { 'app-server': 'consume', worker: 'consume' },
+  'pub-sub': { 'app-server': 'subscribe', 'websocket-server': 'subscribe' },
+  'logging-service': { 'app-server': 'alerts' },
+  cdn: { 'app-server': 'origin', 'object-storage': 'files' },
+  'search-engine': { 'app-server': 'results' },
+  worker: { 'object-storage': 'read/write', 'search-engine': 'index', 'relational-db': 'queries' },
+  'websocket-server': { 'app-server': 'events', 'pub-sub': 'subscribe' },
 };
 
 function autoLabel(fromType: string, toType: string): string {
@@ -90,7 +102,7 @@ const CanvasComponent: React.FC<CanvasComponentProps> = ({
   component, isSelected, isHovered, isConnTarget, isConnSource,
   onMouseEnter, onMouseLeave, onSelect, onDeleteComp, onEdgeHandleDragStart,
 }) => {
-  const meta = COMPONENT_META[component.type];
+  const meta = getComponentMeta(component.type);
 
   let borderClass = 'border-gray-600 bg-gray-800/80';
   if (isSelected)   borderClass = 'border-brand-500 bg-brand-900/20 shadow-brand-500/20';
@@ -421,7 +433,7 @@ export const ArchitectureCanvas: React.FC<ArchitectureCanvasProps> = ({ required
       <div className="px-4 py-2 border-b border-gray-800 flex items-center gap-2 flex-wrap min-h-[42px]">
         {requiredComponents.map((type) => {
           const placed = placedTypes.includes(type as ComponentType);
-          const meta   = COMPONENT_META[type as ComponentType];
+          const meta   = getComponentMeta(type);
           return meta ? (
             <span key={type} className={`badge text-xs ${
               placed

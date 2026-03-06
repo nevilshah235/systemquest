@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mission, COMPONENT_META } from '../../data/types';
+import { Mission, getComponentMeta } from '../../data/types';
 
 interface RequirementsPhaseProps {
   mission: Mission;
@@ -50,7 +50,7 @@ export const RequirementsPhase: React.FC<RequirementsPhaseProps> = ({ mission, o
         <h2 className="text-xs font-semibold text-brand-400 uppercase tracking-widest mb-4">Required Components</h2>
         <div className="space-y-2">
           {req.required.map((type) => {
-            const meta = COMPONENT_META[type];
+            const meta = getComponentMeta(type);
             return (
               <div key={type} className="flex items-center gap-3 p-3 bg-gray-800/50 rounded-lg border border-gray-700">
                 <div className="w-5 h-5 rounded border-2 border-brand-500 flex items-center justify-center flex-shrink-0">
@@ -92,11 +92,11 @@ export const RequirementsPhase: React.FC<RequirementsPhaseProps> = ({ mission, o
               >
                 <div className="mt-2 space-y-2">
                   {req.bonus.map((bonus) => {
-                    const meta = COMPONENT_META[bonus.component];
+                    const meta = getComponentMeta(bonus.component);
                     return (
                       <div key={bonus.component} className="flex items-center justify-between p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
                         <div className="flex items-center gap-2">
-                          <span>{meta?.icon}</span>
+                          <span>{meta.icon}</span>
                           <span className="text-sm text-gray-300">{bonus.label}</span>
                         </div>
                         <span className="badge bg-amber-900/50 text-amber-400 border border-amber-700/50">+{bonus.xp} XP</span>

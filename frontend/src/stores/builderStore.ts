@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Architecture, ArchitectureComponent, Connection, ComponentType, COMPONENT_META } from '../data/types';
+import { Architecture, ArchitectureComponent, Connection, ComponentType, getComponentMeta, normalizeComponentType } from '../data/types';
 
 const MAX_HISTORY = 50;
 
@@ -65,13 +65,14 @@ export const useBuilderStore = create<BuilderState>()((set, get) => ({
 
   addComponent: (type, x, y) =>
     set((s) => {
-      const id = `${type}-${Date.now()}`;
-      const newComp: ArchitectureComponent = { id, type, x, y };
+      const normType = normalizeComponentType(type);
+      const id = `${normType}-${Date.now()}`;
+      const newComp: ArchitectureComponent = { id, type: normType, x, y };
       const nextArch: Architecture = {
         ...s.architecture,
         components: [...s.architecture.components, newComp],
       };
-      const label = `Added ${COMPONENT_META[type].label}`;
+      const label = `Added ${getComponentMeta(normType).label}`;
       return withHistory(s.past, s.architecture, label, nextArch);
     }),
 
@@ -89,7 +90,7 @@ export const useBuilderStore = create<BuilderState>()((set, get) => ({
   removeComponent: (id) =>
     set((s) => {
       const comp = s.architecture.components.find((c) => c.id === id);
-      const label = comp ? `Removed ${COMPONENT_META[comp.type].label}` : 'Removed component';
+      const label = comp ? `Removed ${getComponentMeta(comp.type).label}` : 'Removed component';
       const nextArch: Architecture = {
         components: s.architecture.components.filter((c) => c.id !== id),
         connections: s.architecture.connections.filter((cn) => cn.from !== id && cn.to !== id),
@@ -141,7 +142,7 @@ export const useBuilderStore = create<BuilderState>()((set, get) => ({
     set((s) => {
       if (!s.moveSnapshot) return { moveSnapshot: null };
       const comp = s.architecture.components.find((c) => c.id === id);
-      const label = comp ? `Moved ${COMPONENT_META[comp.type].label}` : 'Moved component';
+      const label = comp ? `Moved ${getComponentMeta(comp.type).label}` : 'Moved component';
       const newPast = [...s.past, s.moveSnapshot].slice(-MAX_HISTORY);
       return { past: newPast, future: [], lastActionLabel: label, moveSnapshot: null, isDirty: true };
     }),
@@ -182,8 +183,13 @@ export const useBuilderStore = create<BuilderState>()((set, get) => ({
 
   setSelectedComponent: (id) => set({ selectedComponentId: id }),
 
-  loadArchitecture: (arch) =>
-    set({ architecture: arch, isDirty: false, past: [], future: [], lastActionLabel: '' }),
+  loadArchitecture: (arch) => {
+    const normalized: Architecture = {
+      components: arch.components.map((c) => ({ ...c, type: normalizeComponentType(c.type as ComponentType) })),
+      connections: arch.connections,
+    };
+    set({ architecture: normalized, isDirty: false, past: [], future: [], lastActionLabel: '' });
+  },
 
   resetArchitecture: () =>
     set((s) => ({

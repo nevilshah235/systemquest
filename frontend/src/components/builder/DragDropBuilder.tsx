@@ -12,7 +12,14 @@ import {
 import { ComponentPalette } from './ComponentPalette';
 import { ArchitectureCanvas } from './ArchitectureCanvas';
 import { useBuilderStore } from '../../stores/builderStore';
-import { Mission, ComponentType, COMPONENT_META, COMPONENT_COSTS, Architecture } from '../../data/types';
+import {
+  Mission,
+  ComponentType,
+  getComponentCost,
+  getComponentMeta,
+  normalizeComponentType,
+  Architecture,
+} from '../../data/types';
 import { missionsApi } from '../../data/api';
 
 export interface DragDropBuilderProps {
@@ -60,13 +67,13 @@ const HINT_META: Record<HintType, { icon: string; label: string; classes: string
 
 /** Generates context-aware hints based on current canvas state */
 function getContextHints(architecture: Architecture, mission: Mission): Hint[] {
-  const placedTypes = new Set(architecture.components.map((c) => c.type));
+  const placedTypes = new Set(architecture.components.map((c) => normalizeComponentType(c.type)));
   const hints: Hint[] = [];
 
   // 1. Gaps — missing required components (with componentType for palette highlight)
   for (const req of mission.requirements.required) {
-    if (!placedTypes.has(req)) {
-      const meta = COMPONENT_META[req];
+    if (!placedTypes.has(normalizeComponentType(req))) {
+      const meta = getComponentMeta(req);
       hints.push({
         type: 'gap',
         text: `Add ${meta.label} ${meta.icon} — ${meta.description}`,
@@ -205,13 +212,13 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
     addComponent(data.type as ComponentType, x, y);
   };
 
-  const placedTypes = architecture.components.map((c) => c.type);
-  const requiredMet = mission.requirements.required.every((r) => placedTypes.includes(r));
+  const placedTypes = architecture.components.map((c) => normalizeComponentType(c.type));
+  const requiredMet = mission.requirements.required.every((r) => placedTypes.includes(normalizeComponentType(r)));
 
   // Live cost tracking
   const budget = mission.requirements.budget;
   const currentCost = useMemo(
-    () => placedTypes.reduce((sum, t) => sum + (COMPONENT_COSTS[t as ComponentType] ?? 0), 0),
+    () => placedTypes.reduce((sum, t) => sum + getComponentCost(t as ComponentType), 0),
     [placedTypes]
   );
   const costRatio = budget > 0 ? currentCost / budget : 0;
@@ -279,7 +286,9 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
               className="btn-primary text-sm"
               title={
                 !requiredMet
-                  ? `Add required: ${mission.requirements.required.filter(r => !placedTypes.includes(r)).join(', ')}`
+                  ? `Add required: ${mission.requirements.required
+                      .filter((r) => !placedTypes.includes(normalizeComponentType(r)))
+                      .join(', ')}`
                   : 'Run simulation'
               }
             >
@@ -297,6 +306,7 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
               highlightedType={showHint ? (currentHint.componentType ?? null) : null}
               currentCost={currentCost}
               budget={budget}
+              missionContext={mission.components.missionContext}
             />
           </div>
           <div className="flex-1 overflow-hidden">
@@ -387,8 +397,8 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
       <DragOverlay dropAnimation={null}>
         {activeType ? (
           <div className="flex flex-col items-center justify-center w-24 h-20 rounded-xl border-2 border-brand-500 bg-brand-900/80 shadow-2xl shadow-brand-500/30 opacity-90 pointer-events-none">
-            <span className="text-2xl mb-1">{COMPONENT_META[activeType].icon}</span>
-            <span className="text-xs font-semibold text-white">{COMPONENT_META[activeType].label}</span>
+            <span className="text-2xl mb-1">{getComponentMeta(activeType).icon}</span>
+            <span className="text-xs font-semibold text-white">{getComponentMeta(activeType).label}</span>
           </div>
         ) : null}
       </DragOverlay>

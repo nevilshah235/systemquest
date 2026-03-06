@@ -36,17 +36,80 @@ interface FeedbackItem {
 }
 
 // Component cost per month (USD) and performance characteristics
+const TYPE_ALIASES: Record<string, string> = {
+  // Clients
+  'web-client': 'client',
+  'mobile-client': 'client',
+
+  // Networking
+  'load-balancer-l7': 'loadbalancer',
+  'load-balancer-l4': 'loadbalancer',
+  'api-gateway': 'apigateway',
+  'reverse-proxy': 'apigateway',
+
+  // Compute
+  'app-server': 'server',
+
+  // Data stores
+  'relational-db': 'database',
+  'document-db': 'database',
+  'wide-column-store': 'database',
+  'key-value-store': 'database',
+  'graph-db': 'database',
+  'time-series-db': 'database',
+
+  // Caching
+  'redis-cache': 'cache',
+
+  // Messaging
+  'message-queue': 'queue',
+  'event-stream': 'queue',
+  'pub-sub': 'queue',
+
+  // Storage
+  'object-storage': 'storage',
+  'block-storage': 'storage',
+
+  // Observability
+  'logging-service': 'monitoring',
+  'metrics-collector': 'monitoring',
+  'distributed-tracing': 'monitoring',
+};
+
+function normalizeType(type: string): string {
+  return TYPE_ALIASES[type] ?? type;
+}
+
 const COMPONENT_SPECS: Record<string, { cost: number; latencyReduction: number; availabilityBoost: number; throughputMultiplier: number }> = {
-  client:      { cost: 0,    latencyReduction: 0,   availabilityBoost: 0,    throughputMultiplier: 1.0 },
-  loadbalancer:{ cost: 20,   latencyReduction: 10,  availabilityBoost: 1.5,  throughputMultiplier: 2.5 },
-  server:      { cost: 50,   latencyReduction: 0,   availabilityBoost: 0.5,  throughputMultiplier: 1.0 },
-  database:    { cost: 40,   latencyReduction: 0,   availabilityBoost: 0,    throughputMultiplier: 1.0 },
-  cache:       { cost: 15,   latencyReduction: 60,  availabilityBoost: 0.3,  throughputMultiplier: 1.8 },
-  cdn:         { cost: 30,   latencyReduction: 40,  availabilityBoost: 0.4,  throughputMultiplier: 1.5 },
-  queue:       { cost: 25,   latencyReduction: 20,  availabilityBoost: 0.3,  throughputMultiplier: 1.3 },
-  storage:     { cost: 20,   latencyReduction: 5,   availabilityBoost: 0.1,  throughputMultiplier: 1.1 },
-  monitoring:  { cost: 10,   latencyReduction: 0,   availabilityBoost: 0.8,  throughputMultiplier: 1.0 },
-  apigateway:  { cost: 35,   latencyReduction: 15,  availabilityBoost: 0.4,  throughputMultiplier: 1.4 },
+  // Legacy canonical types (also used after normalization)
+  client:       { cost: 0,   latencyReduction: 0,  availabilityBoost: 0.0, throughputMultiplier: 1.0 },
+  loadbalancer: { cost: 120, latencyReduction: 10, availabilityBoost: 1.5, throughputMultiplier: 2.5 },
+  server:       { cost: 220, latencyReduction: 0,  availabilityBoost: 0.5, throughputMultiplier: 1.0 },
+  database:     { cost: 340, latencyReduction: 0,  availabilityBoost: 0.0, throughputMultiplier: 1.0 },
+  cache:        { cost: 160, latencyReduction: 60, availabilityBoost: 0.3, throughputMultiplier: 1.8 },
+  cdn:          { cost: 100, latencyReduction: 40, availabilityBoost: 0.4, throughputMultiplier: 1.5 },
+  queue:        { cost: 90,  latencyReduction: 20, availabilityBoost: 0.3, throughputMultiplier: 1.3 },
+  storage:      { cost: 70,  latencyReduction: 5,  availabilityBoost: 0.1, throughputMultiplier: 1.1 },
+  monitoring:   { cost: 90,  latencyReduction: 0,  availabilityBoost: 0.8, throughputMultiplier: 1.0 },
+  apigateway:   { cost: 140, latencyReduction: 15, availabilityBoost: 0.4, throughputMultiplier: 1.4 },
+
+  // Extra building blocks (not normalized to legacy)
+  dns:                 { cost: 20,  latencyReduction: 0,  availabilityBoost: 0.2, throughputMultiplier: 1.0 },
+  worker:              { cost: 140, latencyReduction: 5,  availabilityBoost: 0.1, throughputMultiplier: 1.05 },
+  'serverless-function': { cost: 80, latencyReduction: 5, availabilityBoost: 0.1, throughputMultiplier: 1.03 },
+  scheduler:           { cost: 30,  latencyReduction: 0,  availabilityBoost: 0.0, throughputMultiplier: 1.0 },
+  'search-engine':     { cost: 380, latencyReduction: 5,  availabilityBoost: 0.1, throughputMultiplier: 1.1 },
+  'vector-db':         { cost: 420, latencyReduction: 5,  availabilityBoost: 0.1, throughputMultiplier: 1.1 },
+  'auth-service':      { cost: 120, latencyReduction: 0,  availabilityBoost: 0.3, throughputMultiplier: 1.0 },
+  'rate-limiter':      { cost: 70,  latencyReduction: 0,  availabilityBoost: 0.2, throughputMultiplier: 1.0 },
+  'notification-hub':  { cost: 140, latencyReduction: 0,  availabilityBoost: 0.1, throughputMultiplier: 1.0 },
+  'consensus-service': { cost: 220, latencyReduction: 0,  availabilityBoost: 0.3, throughputMultiplier: 1.0 },
+  'service-mesh':      { cost: 180, latencyReduction: 0,  availabilityBoost: 0.2, throughputMultiplier: 1.0 },
+  'circuit-breaker':   { cost: 40,  latencyReduction: 0,  availabilityBoost: 0.2, throughputMultiplier: 1.0 },
+  'config-service':    { cost: 60,  latencyReduction: 0,  availabilityBoost: 0.1, throughputMultiplier: 1.0 },
+  'geospatial-index':  { cost: 260, latencyReduction: 5,  availabilityBoost: 0.1, throughputMultiplier: 1.1 },
+  transcoder:          { cost: 240, latencyReduction: 0,  availabilityBoost: 0.05, throughputMultiplier: 1.0 },
+  'ml-inference-engine': { cost: 600, latencyReduction: 0, availabilityBoost: 0.05, throughputMultiplier: 1.05 },
 };
 
 export function runSimulation(
@@ -60,7 +123,8 @@ export function runSimulation(
     bonusComponents?: Array<{ component: string; xp: number; label: string }>;
   }
 ): SimulationMetrics {
-  const types = architecture.components.map((c) => c.type);
+  const components = architecture.components.map((c) => ({ ...c, type: normalizeType(c.type) }));
+  const types = components.map((c) => c.type);
   const hasComponent = (type: string) => types.includes(type);
   const countComponent = (type: string) => types.filter((t) => t === type).length;
 
@@ -69,21 +133,21 @@ export function runSimulation(
   const incomingTypes = (id: string): string[] =>
     architecture.connections
       .filter((c) => c.to === id)
-      .map((c) => architecture.components.find((comp) => comp.id === c.from)?.type ?? '')
+      .map((c) => components.find((comp) => comp.id === c.from)?.type ?? '')
       .filter(Boolean);
 
   /** Types of components that a given component id connects TO */
   const outgoingTypes = (id: string): string[] =>
     architecture.connections
       .filter((c) => c.from === id)
-      .map((c) => architecture.components.find((comp) => comp.id === c.to)?.type ?? '')
+      .map((c) => components.find((comp) => comp.id === c.to)?.type ?? '')
       .filter(Boolean);
 
   /**
    * Cache topology: Server → Cache (→ DB optional but sensible).
    * Returns false when a Cache block has no server feeding into it.
    */
-  const cacheComponents = architecture.components.filter((c) => c.type === 'cache');
+  const cacheComponents = components.filter((c) => c.type === 'cache');
   const cacheCorrectlyPlaced = cacheComponents.every((cache) => {
     const incoming = incomingTypes(cache.id);
     return incoming.some((t) => ['server', 'loadbalancer', 'apigateway'].includes(t));
@@ -98,7 +162,7 @@ export function runSimulation(
   });
 
   // ── Load Balancer topology: is LB actually connected to servers? ─────────────────
-  const lbComponents = architecture.components.filter((c) => c.type === 'loadbalancer');
+  const lbComponents = components.filter((c) => c.type === 'loadbalancer');
   const serversConnectedToLb = lbComponents.reduce((count, lb) => {
     return count + outgoingTypes(lb.id).filter((t) => t === 'server').length;
   }, 0);
@@ -109,13 +173,13 @@ export function runSimulation(
   // ── CDN topology: connected (any wire) vs floating (zero connections) ──────────
   // CDN as a side-path (client→cdn only, no downstream) is VALID for static-asset
   // delivery and earns full benefits. Only a completely unwired CDN provides no value.
-  const cdnComponents = architecture.components.filter((c) => c.type === 'cdn');
+  const cdnComponents = components.filter((c) => c.type === 'cdn');
   const cdnFloating = cdnComponents.length > 0 && cdnComponents.every((cdn) =>
     incomingTypes(cdn.id).length === 0 && outgoingTypes(cdn.id).length === 0,
   );
 
   // ── API Gateway topology: must have ≥1 incoming AND ≥1 outgoing ──────────────
-  const apiGwComponents = architecture.components.filter((c) => c.type === 'apigateway');
+  const apiGwComponents = components.filter((c) => c.type === 'apigateway');
   const apiGwEffective = apiGwComponents.some((gw) => {
     return incomingTypes(gw.id).length > 0 && outgoingTypes(gw.id).length > 0;
   });

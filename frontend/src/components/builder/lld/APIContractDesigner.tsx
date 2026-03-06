@@ -58,10 +58,10 @@ const RestEndpointForm: React.FC<RestEndpointFormProps> = ({ initial, authDecisi
 
   const handleSave = () => {
     if (!path.trim()) return;
-    let responseShape: Record<string, unknown> = {};
-    let requestBody: Record<string, unknown> | undefined;
-    try { responseShape = JSON.parse(responseText); } catch { /* keep empty */ }
-    try { if (requestText.trim()) requestBody = JSON.parse(requestText); } catch { /* keep empty */ }
+    let responseShape: RestEndpoint['responseShape'] = {};
+    let requestBody: RestEndpoint['requestBody'];
+    try { responseShape = JSON.parse(responseText) as RestEndpoint['responseShape']; } catch { /* keep empty */ }
+    try { if (requestText.trim()) requestBody = JSON.parse(requestText) as RestEndpoint['requestBody']; } catch { /* keep empty */ }
 
     onSave({
       id: initial?.id ?? uid(),

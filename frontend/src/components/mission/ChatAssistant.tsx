@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useChatStore, ChatMessage } from '../../stores/chatStore';
-import { COMPONENT_META, ComponentType } from '../../data/types';
+import { ComponentType, getComponentMeta } from '../../data/types';
 
 // Lightweight markdown renderer — handles **bold** and \n newlines
 function renderMarkdown(text: string): React.ReactNode {
@@ -23,8 +23,7 @@ function renderMarkdown(text: string): React.ReactNode {
 // Action badge shown under an assistant message
 function ActionBadge({ action }: { action: { type: string; componentType?: string; fromType?: string; toType?: string } }) {
   if (action.type === 'add_component' && action.componentType) {
-    const meta = COMPONENT_META[action.componentType as ComponentType];
-    if (!meta) return null;
+    const meta = getComponentMeta(action.componentType as ComponentType);
     return (
       <span className="inline-flex items-center gap-1 text-xs bg-brand-900/60 text-brand-300 border border-brand-700/50 rounded-full px-2 py-0.5">
         {meta.icon} Added {meta.label}

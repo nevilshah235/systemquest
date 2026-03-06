@@ -1,7 +1,13 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArchitectureComponent, Connection, ComponentType, COMPONENT_META } from '../../data/types';
+import {
+  ArchitectureComponent,
+  Connection,
+  ComponentType,
+  getComponentMeta,
+  normalizeComponentType,
+} from '../../data/types';
 import { useBuilderStore } from '../../stores/builderStore';
 
 const GRID_SIZE    = 40;
@@ -90,7 +96,7 @@ const CanvasComponent: React.FC<CanvasComponentProps> = ({
   component, isSelected, isHovered, isConnTarget, isConnSource,
   onMouseEnter, onMouseLeave, onSelect, onDeleteComp, onEdgeHandleDragStart,
 }) => {
-  const meta = COMPONENT_META[component.type];
+  const meta = getComponentMeta(component.type);
 
   let borderClass = 'border-gray-600 bg-gray-800/80';
   if (isSelected)   borderClass = 'border-brand-500 bg-brand-900/20 shadow-brand-500/20';
@@ -412,7 +418,7 @@ export const ArchitectureCanvas: React.FC<ArchitectureCanvasProps> = ({ required
     setMousePos(null);
   };
 
-  const placedTypes = architecture.components.map((c) => c.type);
+  const placedTypes = architecture.components.map((c) => normalizeComponentType(c.type));
   const canvasW = 900;
   const canvasH = 580;
 
@@ -420,8 +426,8 @@ export const ArchitectureCanvas: React.FC<ArchitectureCanvasProps> = ({ required
     <div className="h-full flex flex-col overflow-hidden">
       <div className="px-4 py-2 border-b border-gray-800 flex items-center gap-2 flex-wrap min-h-[42px]">
         {requiredComponents.map((type) => {
-          const placed = placedTypes.includes(type as ComponentType);
-          const meta   = COMPONENT_META[type as ComponentType];
+          const placed = placedTypes.includes(normalizeComponentType(type as ComponentType));
+          const meta   = getComponentMeta(type as ComponentType);
           return meta ? (
             <span key={type} className={`badge text-xs ${
               placed

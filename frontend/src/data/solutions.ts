@@ -4,7 +4,7 @@
  * Sprint 3 missions (26-40) and concept-depth missions (41-48) are merged at module load.
  */
 
-import { Architecture, COMPONENT_META, ComponentType } from './types';
+import { Architecture, ComponentType, getComponentMeta, normalizeComponentType } from './types';
 import { SPRINT3_SOLUTIONS } from './solutions-sprint3';
 import { SPRINT3_CONCEPT_SOLUTIONS } from './solutions-sprint3-concepts';
 
@@ -606,12 +606,14 @@ export function computeGap(current: Architecture, missionSlug: string): GapItem[
 
   const optimalCounts: Record<string, number> = {};
   for (const c of solution.architecture.components) {
-    optimalCounts[c.type] = (optimalCounts[c.type] ?? 0) + 1;
+    const t = normalizeComponentType(c.type as ComponentType);
+    optimalCounts[t] = (optimalCounts[t] ?? 0) + 1;
   }
 
   const currentCounts: Record<string, number> = {};
   for (const c of current.components) {
-    currentCounts[c.type] = (currentCounts[c.type] ?? 0) + 1;
+    const t = normalizeComponentType(c.type as ComponentType);
+    currentCounts[t] = (currentCounts[t] ?? 0) + 1;
   }
 
   return Object.entries(optimalCounts)
@@ -651,8 +653,10 @@ export function computeConnectionGap(
   const solution = MISSION_SOLUTIONS[missionSlug];
   if (!solution) return [];
 
-  const typeOf = (arch: Architecture, id: string): string | undefined =>
-    arch.components.find((c) => c.id === id)?.type;
+  const typeOf = (arch: Architecture, id: string): string | undefined => {
+    const t = arch.components.find((c) => c.id === id)?.type;
+    return t ? normalizeComponentType(t as ComponentType) : undefined;
+  };
 
   const optimalEdges: Record<string, number> = {};
   for (const conn of solution.architecture.connections) {
@@ -677,8 +681,8 @@ export function computeConnectionGap(
       const [from, to] = key.split(':');
       const have    = currentEdges[key] ?? 0;
       const missing = Math.max(0, needed - have);
-      const fromMeta = COMPONENT_META[from as ComponentType];
-      const toMeta   = COMPONENT_META[to as ComponentType];
+      const fromMeta = getComponentMeta(from as ComponentType);
+      const toMeta   = getComponentMeta(to as ComponentType);
       return {
         from,
         to,

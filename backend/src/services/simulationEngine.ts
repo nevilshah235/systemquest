@@ -74,6 +74,9 @@ const TYPE_ALIASES: Record<string, string> = {
   'logging-service': 'monitoring',
   'metrics-collector': 'monitoring',
   'distributed-tracing': 'monitoring',
+
+  // Real-time
+  'websocket-server': 'server',
 };
 
 function normalizeType(type: string): string {

@@ -1208,6 +1208,9 @@ export function normalizeComponentType(type: ComponentType): BuildingBlockType {
   return isLegacyComponentType(type) ? LEGACY_TYPE_MAP[type] : type;
 }
 
+/** Alias for normalizeComponentType — migrates legacy types to new BuildingBlockType. */
+export const migrateComponentType = normalizeComponentType;
+
 export function getComponentMeta(type: ComponentType): ComponentMeta {
   return COMPONENT_META[normalizeComponentType(type)];
 }

@@ -35,10 +35,24 @@ cd backend
 For Cloud Run, `DATABASE_URL` must use the socket format:
 `postgresql://USER:PASS@/DBNAME?host=/cloudsql/system-quest:us-central1:systemquest-db`
 
+## Vercel frontend setup
+
+**Deployed frontend URL:** `https://frontend-o5n6nwlnr-nevil-shahs-projects-23a2ffe5.vercel.app`
+
+In Vercel → Project Settings → Environment Variables, add:
+
+| Key | Value | Targets |
+|---|---|---|
+| `VITE_API_URL` | `https://systemquest-api-600847459204.us-central1.run.app/api` | Production, Preview, Development |
+
+After adding the env var, trigger a redeploy (Deployments → Redeploy).
+
+> The root `vercel.json` (repo root) is the active Vercel config. It sets `buildCommand`, `outputDirectory`, and SPA rewrites. Do not add a second `vercel.json` inside `frontend/`.
+
 ## Before going to production
 
-1. **CORS:** In Cloud Run → systemquest-api → Edit → Variables & secrets, set `CORS_ORIGIN` to your Vercel URL (e.g. `https://your-app.vercel.app`). You can add multiple origins comma-separated.
-2. **JWT secrets:** Replace `JWT_SECRET` and `JWT_REFRESH_SECRET` with strong random values (e.g. `openssl rand -base64 32`) in the same env vars.
+1. **CORS:** Set `CORS_ORIGIN=https://frontend-o5n6nwlnr-nevil-shahs-projects-23a2ffe5.vercel.app` in `backend/.env.local`, then redeploy via `./scripts/deploy-cloudrun.sh`. Multiple origins can be comma-separated.
+2. **JWT secrets:** Replace `JWT_SECRET` and `JWT_REFRESH_SECRET` with strong random values (`openssl rand -base64 32`) in `backend/.env.local` before redeploying.
 
 ## Start/stop (cost control)
 

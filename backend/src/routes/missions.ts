@@ -30,10 +30,10 @@ missionRouter.get('/stats', async (_req, res: Response): Promise<void> => {
  *  3. Within an unlocked non-foundations path: sequential unlock
  */
 function computeLockedStatus(
-  missions: Array<{ id: number; order: number; learningPath: string }>,
-  completedIds: Set<number>,
-): Map<number, { isLocked: boolean; lockReason: string | null }> {
-  const result = new Map<number, { isLocked: boolean; lockReason: string | null }>();
+  missions: Array<{ id: string; order: number; learningPath: string }>,
+  completedIds: Set<string>,
+): Map<string, { isLocked: boolean; lockReason: string | null }> {
+  const result = new Map<string, { isLocked: boolean; lockReason: string | null }>();
 
   // Group by path, sorted by global `order` (preserves within-path sequence)
   const byPath = new Map<string, typeof missions>();
@@ -106,7 +106,7 @@ missionRouter.get('/', authenticate, async (req: AuthRequest, res: Response): Pr
       orderBy: { updatedAt: 'desc' },
     });
 
-    const completedIds = new Set<number>(
+    const completedIds = new Set<string>(
       attempts.filter((a) => a.completed).map((a) => a.missionId),
     );
     const lockStatus = computeLockedStatus(
@@ -154,7 +154,7 @@ missionRouter.get('/:slug', authenticate, async (req: AuthRequest, res: Response
     // Re-derive lock status across all missions to enforce the gate server-side
     const allMissions = await prisma.mission.findMany({ orderBy: { order: 'asc' } });
     const attempts = await prisma.missionAttempt.findMany({ where: { userId: req.userId! } });
-    const completedIds = new Set<number>(
+    const completedIds = new Set<string>(
       attempts.filter((a) => a.completed).map((a) => a.missionId),
     );
     const lockStatus = computeLockedStatus(

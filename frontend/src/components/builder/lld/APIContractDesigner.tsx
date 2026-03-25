@@ -10,7 +10,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLLDBuilderStore } from '../../../stores/lldBuilderStore';
-import type { RestEndpoint, GraphQLOperation, ApiStyle } from '../../../data/lldTypes';
+import type { RestEndpoint, GraphQLOperation, ApiStyle, SchemaShape } from '../../../data/lldTypes';
 
 // ── REST endpoint form ─────────────────────────────────────────────────────────
 
@@ -67,8 +67,8 @@ const RestEndpointForm: React.FC<RestEndpointFormProps> = ({ initial, authDecisi
       id: initial?.id ?? uid(),
       method,
       path: path.trim(),
-      responseShape,
-      requestBody,
+      responseShape: responseShape as SchemaShape,
+      requestBody: requestBody as SchemaShape | undefined,
       statusCodes,
       paginationType: pagination,
       headers: authHeader,

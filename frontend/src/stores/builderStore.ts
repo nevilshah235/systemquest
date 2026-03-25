@@ -35,6 +35,7 @@ interface BuilderState {
   // Selection / lifecycle
   setSelectedComponent: (id: string | null) => void;
   loadArchitecture: (arch: Architecture) => void;
+  setArchitecture: (arch: Architecture) => void; // For migrations without history reset
   resetArchitecture: () => void;
   markClean: () => void;
 }
@@ -190,6 +191,9 @@ export const useBuilderStore = create<BuilderState>()((set, get) => ({
     };
     set({ architecture: normalized, isDirty: false, past: [], future: [], lastActionLabel: '' });
   },
+
+  setArchitecture: (arch) =>
+    set({ architecture: arch, isDirty: true }),
 
   resetArchitecture: () =>
     set((s) => ({

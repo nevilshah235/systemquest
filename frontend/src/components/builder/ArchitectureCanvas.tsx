@@ -18,6 +18,7 @@ const HANDLE_R     = 6;   // edge handle radius px
 const snap = (v: number) => Math.round(v / GRID_SIZE) * GRID_SIZE;
 
 // ── Auto-label lookup ─────────────────────────────────────────────────────────
+// Expanded for ~40 building blocks
 
 const CONN_LABELS: Partial<Record<string, Partial<Record<string, string>>>> = {
   // Legacy types (for backward compatibility)
@@ -197,7 +198,15 @@ const CONN_LABELS: Partial<Record<string, Partial<Record<string, string>>>> = {
 };
 
 function autoLabel(fromType: string, toType: string): string {
-  return CONN_LABELS[fromType]?.[toType] ?? 'data flow';
+  // Try direct lookup
+  const direct = CONN_LABELS[fromType]?.[toType];
+  if (direct) return direct;
+
+  // Try reverse lookup (some connections are symmetric)
+  const reverse = CONN_LABELS[toType]?.[fromType];
+  if (reverse) return `${reverse} ←`;
+
+  return 'data flow';
 }
 
 // ── Geometry helpers ──────────────────────────────────────────────────────────

@@ -12,11 +12,84 @@ import {
   normalizeComponentType,
 } from '../../data/types';
 
+// =============================================================================
+// Category Tile - Main grid item that opens the popover
+// =============================================================================
+
+interface CategoryTileProps {
+  category: ComponentCategory;
+  availableTypes: ComponentType[];
+  isHighlighted: boolean;
+  isOpen: boolean;
+  onClick: () => void;
+}
+
+const CategoryTile: React.FC<CategoryTileProps> = ({
+  category,
+  availableTypes,
+  isHighlighted,
+  isOpen,
+  onClick,
+}) => {
+  const meta = COMPONENT_CATEGORIES[category];
+  const typesInCategory = meta.types;
+
+  // Check if this category has mission-specific blocks
+  const missionSpecificInCategory = typesInCategory.filter(
+    t => isComponentAvailable(t, availableTypes) && !isCoreComponent(t)
+  );
+  const hasMissionSpecific = missionSpecificInCategory.length > 0;
+  const missionCount = missionSpecificInCategory.length;
+
+  return (
+    <div className="relative">
+      <button
+        onClick={onClick}
+        className={`w-full aspect-square flex flex-col items-center justify-center gap-2 p-3 rounded-xl border transition-all duration-150
+          ${isOpen
+            ? 'border-brand-400 bg-brand-900/30 ring-2 ring-brand-400/40'
+            : isHighlighted
+              ? 'border-brand-400 bg-brand-900/20 ring-2 ring-brand-400/40 shadow-lg shadow-brand-500/20 animate-pulse'
+              : 'border-gray-700 bg-gray-800/40 hover:border-brand-500/50 hover:bg-gray-800'
+          }`}
+      >
+        {/* Icon */}
+        <span className={`text-2xl ${isHighlighted ? 'animate-bounce' : ''}`}>
+          {meta.icon}
+        </span>
+
+        {/* Label */}
+        <span className="text-[11px] font-medium text-gray-200 text-center leading-tight">
+          {meta.label}
+        </span>
+
+        {/* Mission badge - shows when this category has mission-specific blocks */}
+        {hasMissionSpecific && (
+          <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center shadow-lg">
+            {missionCount}
+          </span>
+        )}
+
+        {/* Highlight indicator */}
+        {isHighlighted && (
+          <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-[9px] font-bold uppercase tracking-wide text-brand-400 bg-brand-900/80 px-2 py-0.5 rounded-full">
+            Check this!
+          </span>
+        )}
+      </button>
+    </div>
+  );
+};
+
+// =============================================================================
+// Main Component Palette
+// =============================================================================
+
 interface ComponentPaletteProps {
   availableTypes: ComponentType[];
-  /** When set, the matching palette item will be highlighted with a ring + bounce */
+  /** When set, categories containing this type will be highlighted */
   highlightedType?: ComponentType | null;
-  /** Current total cost on canvas — used to show per-item cost delta */
+  /** Current total cost on canvas */
   currentCost: number;
   budget: number;
   /** Optional per-block "why" override text, keyed by ComponentType (legacy or new) */

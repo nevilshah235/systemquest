@@ -152,11 +152,12 @@ const UndoToast: React.FC<{ message: string; visible: boolean }> = ({ message, v
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSimulate, isSimulating }) => {
-  const { addComponent, architecture, isDirty, markClean, past, future, undo, redo, lastActionLabel } = useBuilderStore();
+  const { addComponent, architecture, isDirty, markClean, past, future, undo, redo, lastActionLabel, setArchitecture } = useBuilderStore();
   const autoSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [activeType, setActiveType] = useState<ComponentType | null>(null);
   const [showHint, setShowHint] = useState(false);
   const [hintIdx, setHintIdx] = useState(0);
+  const [isMigrating, setIsMigrating] = useState(false);
 
   // Toast state
   const [toast, setToast] = useState('');
@@ -170,6 +171,22 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     toastTimerRef.current = setTimeout(() => setToastVisible(false), 2000);
   }, []);
+
+  // Legacy type migration on mount - checks if architecture contains old types
+  useEffect(() => {
+    const hasLegacyTypes = architecture.components.some(c => {
+      const type = c.type as string;
+      return Object.keys(LEGACY_TYPE_MAP).includes(type);
+    });
+
+    if (hasLegacyTypes) {
+      setIsMigrating(true);
+      const migrated = migrateLegacyArchitecture(architecture);
+      setArchitecture(migrated);
+      showToast('Architecture migrated to new component types');
+      setIsMigrating(false);
+    }
+  }, []); // Run once on mount
 
   // Show toast whenever lastActionLabel changes (undo/redo)
   const prevLabelRef = useRef('');
@@ -214,7 +231,7 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
 
   // Auto-save every 30 seconds when dirty
   useEffect(() => {
-    if (!isDirty) return;
+    if (!isDirty || isMigrating) return;
     if (autoSaveRef.current) clearTimeout(autoSaveRef.current);
     autoSaveRef.current = setTimeout(async () => {
       try {
@@ -225,7 +242,7 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
       }
     }, 30000);
     return () => { if (autoSaveRef.current) clearTimeout(autoSaveRef.current); };
-  }, [isDirty, architecture, mission.slug, markClean]);
+  }, [isDirty, architecture, mission.slug, markClean, isMigrating]);
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveType((event.active.data.current?.type as ComponentType) ?? null);
@@ -278,7 +295,8 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
             <span className="text-sm text-gray-400">
               {architecture.components.length} components · {architecture.connections.length} connections
             </span>
-            {isDirty && <span className="text-xs text-amber-400">● Unsaved</span>}
+            {isDirty && !isMigrating && <span className="text-xs text-amber-400">● Unsaved</span>}
+            {isMigrating && <span className="text-xs text-blue-400">↻ Migrating...</span>}
             {/* Live cost tracker */}
             <div
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${costColor}`}
@@ -298,7 +316,7 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
             <button
               className="btn-ghost text-sm px-2 disabled:opacity-30"
               onClick={() => useBuilderStore.getState().undo()}
-              disabled={past.length === 0}
+              disabled={past.length === 0 || isMigrating}
               title="Undo (Ctrl+Z)"
             >
               ↩
@@ -306,17 +324,21 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
             <button
               className="btn-ghost text-sm px-2 disabled:opacity-30"
               onClick={() => useBuilderStore.getState().redo()}
-              disabled={future.length === 0}
+              disabled={future.length === 0 || isMigrating}
               title="Redo (Ctrl+Y)"
             >
               ↪
             </button>
             <div className="w-px h-4 bg-gray-700" />
-            <button className="btn-ghost text-sm" onClick={() => useBuilderStore.getState().resetArchitecture()}>
+            <button
+              className="btn-ghost text-sm"
+              onClick={() => useBuilderStore.getState().resetArchitecture()}
+              disabled={isMigrating}
+            >
               Reset
             </button>
             <button
-              disabled={!requiredMet || isSimulating}
+              disabled={!requiredMet || isSimulating || isMigrating}
               onClick={onSimulate}
               className="btn-primary text-sm"
               title={

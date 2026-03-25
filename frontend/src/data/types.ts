@@ -75,7 +75,6 @@ export type LegacyComponentType =
   | 'server'
   | 'database'
   | 'cache'
-  | 'cdn'
   | 'queue'
   | 'storage'
   | 'monitoring'

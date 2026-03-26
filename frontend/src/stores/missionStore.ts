@@ -1,6 +1,33 @@
 import { create } from 'zustand';
-import { Mission, SimulationMetrics } from '../data/types';
+import { Mission, SimulationMetrics, migrateComponentType } from '../data/types';
 import { missionsApi, simulationApi } from '../data/api';
+
+function migrateMission(m: Mission): Mission {
+  return {
+    ...m,
+    requirements: {
+      ...m.requirements,
+      required: m.requirements.required.map(migrateComponentType),
+    },
+    components: {
+      ...m.components,
+      available: m.components.available.map(migrateComponentType),
+      required: m.components.required.map(migrateComponentType),
+    },
+    referenceSolution: m.referenceSolution
+      ? {
+          components: m.referenceSolution.components.map((c) => ({ ...c, type: migrateComponentType(c.type) })),
+          connections: m.referenceSolution.connections,
+        }
+      : null,
+    savedArchitecture: m.savedArchitecture
+      ? {
+          components: m.savedArchitecture.components.map((c) => ({ ...c, type: migrateComponentType(c.type) })),
+          connections: m.savedArchitecture.connections,
+        }
+      : null,
+  };
+}
 import { useBuilderStore } from './builderStore';
 import { useAuthStore } from './authStore';
 
@@ -43,7 +70,8 @@ export const useMissionStore = create<MissionState>()((set, get) => ({
   fetchMissions: async () => {
     set({ isLoading: true, error: null });
     try {
-      const missions = await missionsApi.list();
+      const raw = await missionsApi.list();
+      const missions = raw.map(migrateMission);
       set({ missions, isLoading: false });
     } catch {
       set({ error: 'Failed to load missions', isLoading: false });
@@ -53,7 +81,8 @@ export const useMissionStore = create<MissionState>()((set, get) => ({
   startMission: async (slug, requestedPhase) => {
     set({ isLoading: true, error: null });
     try {
-      const mission = await missionsApi.get(slug);
+      const raw = await missionsApi.get(slug);
+      const mission = migrateMission(raw);
       const builder = useBuilderStore.getState();
       builder.resetArchitecture();
       // Restore saved architecture if exists

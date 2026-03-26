@@ -24,9 +24,14 @@ export interface MetricDiagnosis {
   solutions: FixSuggestion[];
 }
 
-function hasComponent(arch: Architecture, type: string): boolean {
-  return arch.components.some((c) => c.type === type);
+function hasComponent(arch: Architecture, typeOrAliases: string | string[]): boolean {
+  const types = Array.isArray(typeOrAliases) ? typeOrAliases : [typeOrAliases];
+  return arch.components.some((c) => types.includes(c.type));
 }
+
+const APP_SERVER_TYPES = ['server', 'app-server'];
+const LB_TYPES = ['loadbalancer', 'load-balancer-l7', 'load-balancer-l4'];
+const CACHE_TYPES = ['cache', 'redis-cache'];
 
 // ── Latency ───────────────────────────────────────────────────────────────────
 
@@ -40,7 +45,7 @@ export function diagnoseLatency(
   const causes: string[] = [];
   const solutions: FixSuggestion[] = [];
 
-  if (!hasComponent(arch, 'cache')) {
+  if (!hasComponent(arch, CACHE_TYPES)) {
     causes.push('every request hits the database directly');
     solutions.push({
       component: 'cache',
@@ -58,7 +63,7 @@ export function diagnoseLatency(
       impact: '−40ms for static content',
     });
   }
-  if (!hasComponent(arch, 'loadbalancer')) {
+  if (!hasComponent(arch, LB_TYPES)) {
     causes.push('a single server handles all requests without load distribution');
     solutions.push({
       component: 'loadbalancer',
@@ -96,7 +101,7 @@ export function diagnoseAvailability(
   const causes: string[] = [];
   const solutions: FixSuggestion[] = [];
 
-  if (!hasComponent(arch, 'loadbalancer')) {
+  if (!hasComponent(arch, LB_TYPES)) {
     causes.push('a single server is a single point of failure');
     solutions.push({
       component: 'loadbalancer',
@@ -105,7 +110,7 @@ export function diagnoseAvailability(
       impact: '+0.5% availability, eliminates SPOF',
     });
   }
-  if (!hasComponent(arch, 'monitoring')) {
+  if (!hasComponent(arch, ['monitoring', 'logging-service'])) {
     causes.push('there is no visibility into when failures occur');
     solutions.push({
       component: 'monitoring',
@@ -114,7 +119,7 @@ export function diagnoseAvailability(
       impact: '+0.3% uptime via fast incident response',
     });
   }
-  const serverCount = arch.components.filter((c) => c.type === 'server').length;
+  const serverCount = arch.components.filter((c) => APP_SERVER_TYPES.includes(c.type)).length;
   if (serverCount < 2) {
     causes.push('only one application server means zero redundancy');
     solutions.push({
@@ -149,7 +154,7 @@ export function diagnoseThroughput(
   const gap = req.traffic.concurrent - metrics.throughput;
   const causes: string[] = [];
   const solutions: FixSuggestion[] = [];
-  const hasLB = hasComponent(arch, 'loadbalancer');
+  const hasLB = hasComponent(arch, LB_TYPES);
   const serverCount = arch.components.filter((c) => c.type === 'server').length;
 
   if (!hasLB) {
@@ -161,7 +166,7 @@ export function diagnoseThroughput(
       impact: `+${Math.round(metrics.throughput * 1.5).toLocaleString()} users (2.5× capacity)`,
     });
   }
-  if (!hasComponent(arch, 'cache')) {
+  if (!hasComponent(arch, CACHE_TYPES)) {
     causes.push('the database becomes the bottleneck under repeated identical queries');
     solutions.push({
       component: 'cache',
@@ -226,7 +231,7 @@ export function diagnoseCost(
 
   const over = metrics.monthlyCost - req.budget;
   const expensive = arch.components
-    .filter((c) => ['server', 'database', 'loadbalancer', 'apigateway'].includes(c.type))
+    .filter((c) => ['server', 'app-server', 'database', 'relational-db', 'loadbalancer', 'load-balancer-l7', 'apigateway', 'api-gateway'].includes(c.type))
     .map((c) => c.type);
 
   const solutions: FixSuggestion[] = [];
@@ -240,7 +245,7 @@ export function diagnoseCost(
       impact: `−$${(serverCount - 1) * 50}/month`,
     });
   }
-  if (hasComponent(arch, 'cdn') && hasComponent(arch, 'cache')) {
+  if (hasComponent(arch, 'cdn') && hasComponent(arch, CACHE_TYPES)) {
     solutions.push({
       component: 'cdn',
       icon: '🌐',

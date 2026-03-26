@@ -12,6 +12,10 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
 COPY package*.json ./
+COPY scripts/docker-entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 ENV NODE_ENV=production
-EXPOSE 4000
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
+EXPOSE 8080
+# Entrypoint writes DEMO_SEED_* + DATABASE_URL etc. to .env for scripts
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["node", "dist/index.js"]

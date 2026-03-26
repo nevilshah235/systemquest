@@ -6,7 +6,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Architecture, COMPONENT_META } from '../../data/types';
+import { Architecture, ComponentType, getComponentMeta, normalizeComponentType } from '../../data/types';
 import { MISSION_SOLUTIONS, computeGap, computeOptimality, computeConnectionGap } from '../../data/solutions';
 import { useBuilderStore } from '../../stores/builderStore';
 
@@ -51,7 +51,8 @@ export const SolutionViewer: React.FC<SolutionViewerProps> = ({
   // Count optimal component types for the "Optimal design" column
   const optimalCounts: Record<string, number> = {};
   for (const c of solution.architecture.components) {
-    optimalCounts[c.type] = (optimalCounts[c.type] ?? 0) + 1;
+    const t = normalizeComponentType(c.type as ComponentType);
+    optimalCounts[t] = (optimalCounts[t] ?? 0) + 1;
   }
 
   // Optimality colour
@@ -130,18 +131,18 @@ export const SolutionViewer: React.FC<SolutionViewerProps> = ({
             </div>
             <div className="space-y-1">
               {Object.entries(optimalCounts).map(([type, needed]) => {
-                const have = currentArchitecture.components.filter((c) => c.type === type).length;
+                const have = currentArchitecture.components.filter((c) => normalizeComponentType(c.type as ComponentType) === type).length;
                 const met = have >= needed;
-                const meta = COMPONENT_META[type as keyof typeof COMPONENT_META];
+                const meta = getComponentMeta(type as ComponentType);
                 return (
                   <div
                     key={type}
                     className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs
                       ${met ? 'bg-green-900/10 border border-green-700/20' : 'bg-red-900/10 border border-red-700/20'}`}
                   >
-                    <span className="text-sm flex-shrink-0">{meta?.icon}</span>
+                    <span className="text-sm flex-shrink-0">{meta.icon}</span>
                     <span className={met ? 'text-green-300' : 'text-red-300'}>
-                      {meta?.label}{needed > 1 ? ` ×${have}/${needed}` : ''}
+                      {meta.label}{needed > 1 ? ` ×${have}/${needed}` : ''}
                     </span>
                     <span className="ml-auto">{met ? '✓' : '✗'}</span>
                   </div>
@@ -157,15 +158,15 @@ export const SolutionViewer: React.FC<SolutionViewerProps> = ({
             </div>
             <div className="space-y-1">
               {Object.entries(optimalCounts).map(([type, count]) => {
-                const meta = COMPONENT_META[type as keyof typeof COMPONENT_META];
+                const meta = getComponentMeta(type as ComponentType);
                 return (
                   <div
                     key={type}
                     className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs bg-blue-900/10 border border-blue-700/20"
                   >
-                    <span className="text-sm flex-shrink-0">{meta?.icon}</span>
+                    <span className="text-sm flex-shrink-0">{meta.icon}</span>
                     <span className="text-blue-300">
-                      {meta?.label}{count > 1 ? ` ×${count}` : ''}
+                      {meta.label}{count > 1 ? ` ×${count}` : ''}
                     </span>
                     <span className="ml-auto text-blue-400">✓</span>
                   </div>
@@ -185,15 +186,15 @@ export const SolutionViewer: React.FC<SolutionViewerProps> = ({
 
               {/* Component gaps */}
               {gaps.map((gap) => {
-                const meta = COMPONENT_META[gap.type as keyof typeof COMPONENT_META];
+                const meta = getComponentMeta(gap.type as ComponentType);
                 return (
                   <div
                     key={`comp-${gap.type}`}
                     className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-red-900/10 border border-red-700/25 text-xs"
                   >
-                    <span className="text-base flex-shrink-0">{meta?.icon}</span>
+                    <span className="text-base flex-shrink-0">{meta.icon}</span>
                     <div>
-                      <span className="text-red-200 font-medium">{meta?.label}</span>
+                      <span className="text-red-200 font-medium">{meta.label}</span>
                       {gap.missing > 1 && (
                         <span className="text-red-400 ml-1">(add {gap.missing} more)</span>
                       )}
@@ -207,8 +208,8 @@ export const SolutionViewer: React.FC<SolutionViewerProps> = ({
 
               {/* Connection / topology gaps */}
               {connectionGaps.map((gap) => {
-                const fromMeta = COMPONENT_META[gap.from as keyof typeof COMPONENT_META];
-                const toMeta   = COMPONENT_META[gap.to   as keyof typeof COMPONENT_META];
+                const fromMeta = getComponentMeta(gap.from as ComponentType);
+                const toMeta   = getComponentMeta(gap.to as ComponentType);
                 return (
                   <div
                     key={`conn-${gap.from}-${gap.to}`}
@@ -217,9 +218,9 @@ export const SolutionViewer: React.FC<SolutionViewerProps> = ({
                     <span className="text-base flex-shrink-0">🔗</span>
                     <div className="flex-1 min-w-0">
                       <span className="text-orange-200 font-medium">
-                        {fromMeta?.icon} {fromMeta?.label ?? gap.from}
+                        {fromMeta.icon} {fromMeta.label}
                         <span className="text-orange-500 mx-1">→</span>
-                        {toMeta?.icon} {toMeta?.label ?? gap.to}
+                        {toMeta.icon} {toMeta.label}
                       </span>
                       {gap.missing > 1 && (
                         <span className="text-orange-400 ml-1">(×{gap.missing} wires needed)</span>

@@ -12,7 +12,14 @@ import {
 import { ComponentPalette } from './ComponentPalette';
 import { ArchitectureCanvas } from './ArchitectureCanvas';
 import { useBuilderStore } from '../../stores/builderStore';
-import { Mission, ComponentType, COMPONENT_META, COMPONENT_COSTS, Architecture } from '../../data/types';
+import {
+  Mission,
+  ComponentType,
+  getComponentCost,
+  getComponentMeta,
+  normalizeComponentType,
+  Architecture,
+} from '../../data/types';
 import { missionsApi } from '../../data/api';
 
 export interface DragDropBuilderProps {
@@ -39,16 +46,51 @@ interface Hint {
 /** Extract a ComponentType from free-form hint text via keyword matching */
 function extractComponentType(text: string): ComponentType | undefined {
   const t = text.toLowerCase();
-  if (t.includes('load balanc')) return 'loadbalancer';
-  if (t.includes('api gateway')) return 'apigateway';
-  if (t.includes('monitoring') || t.includes('monitor'))  return 'monitoring';
-  if (t.includes('database') || t.includes(' db '))       return 'database';
-  if (t.includes('cache') || t.includes('cach'))          return 'cache';
+  
+  // Specific types first (most specific to least specific)
+  if (t.includes('websocket')) return 'websocket-server';
+  if (t.includes('geospatial') || t.includes('geo-spatial') || t.includes('location')) return 'geospatial-index';
+  if (t.includes('elasticsearch') || t.includes('search engine')) return 'search-engine';
+  if (t.includes('cassandra') || t.includes('wide-column')) return 'wide-column-store';
+  if (t.includes('mongodb') || t.includes('document db')) return 'document-db';
+  if (t.includes('redis') && (t.includes('cache') || t.includes('caching'))) return 'redis-cache';
+  if (t.includes('redis') && (t.includes('kv') || t.includes('key-value'))) return 'key-value-store';
+  if (t.includes('kafka') || t.includes('event stream')) return 'event-stream';
+  if (t.includes('rabbitmq') || t.includes('message queue')) return 'message-queue';
+  if (t.includes('pub/sub') || t.includes('pubsub')) return 'pub-sub';
+  if (t.includes('s3') || t.includes('object storage')) return 'object-storage';
+  if (t.includes('transcoder') || t.includes('transcode')) return 'transcoder';
+  if (t.includes('worker') || t.includes('background job')) return 'worker';
+  if (t.includes('lambda') || t.includes('serverless')) return 'serverless-function';
+  if (t.includes('rate limit')) return 'rate-limiter';
+  if (t.includes('auth service') || t.includes('authentication')) return 'auth-service';
+  if (t.includes('notification')) return 'notification-hub';
+  if (t.includes('ml') || t.includes('inference') || t.includes('model')) return 'ml-inference-engine';
+  if (t.includes('vector db') || t.includes('embeddings')) return 'vector-db';
+  if (t.includes('time-series') || t.includes('influx')) return 'time-series-db';
+  if (t.includes('graph db') || t.includes('neo4j')) return 'graph-db';
+  if (t.includes('consensus') || t.includes('zookeeper')) return 'consensus-service';
+  if (t.includes('service mesh') || t.includes('istio')) return 'service-mesh';
+  if (t.includes('circuit breaker')) return 'circuit-breaker';
+  if (t.includes('distributed tracing') || t.includes('jaeger')) return 'distributed-tracing';
+  if (t.includes('prometheus') || t.includes('metrics')) return 'metrics-collector';
+  
+  // Generic types (backward compatibility + fallback)
+  if (t.includes('load balanc') && t.includes('l4')) return 'load-balancer-l4';
+  if (t.includes('load balanc')) return 'load-balancer-l7';
+  if (t.includes('api gateway')) return 'api-gateway';
+  if (t.includes('reverse proxy')) return 'reverse-proxy';
+  if (t.includes('logging') || t.includes('logs')) return 'logging-service';
+  if (t.includes('database') || t.includes(' db ')) return 'relational-db';
+  if (t.includes('cache') || t.includes('cach')) return 'redis-cache';
   if (t.includes('cdn') || t.includes('content delivery')) return 'cdn';
-  if (t.includes('queue'))   return 'queue';
-  if (t.includes('storage')) return 'storage';
-  if (t.includes('server'))  return 'server';
-  if (t.includes('client'))  return 'client';
+  if (t.includes('queue')) return 'message-queue';
+  if (t.includes('storage')) return 'object-storage';
+  if (t.includes('server')) return 'app-server';
+  if (t.includes('mobile')) return 'mobile-client';
+  if (t.includes('client')) return 'web-client';
+  if (t.includes('dns')) return 'dns';
+  
   return undefined;
 }
 
@@ -60,13 +102,13 @@ const HINT_META: Record<HintType, { icon: string; label: string; classes: string
 
 /** Generates context-aware hints based on current canvas state */
 function getContextHints(architecture: Architecture, mission: Mission): Hint[] {
-  const placedTypes = new Set(architecture.components.map((c) => c.type));
+  const placedTypes = new Set(architecture.components.map((c) => normalizeComponentType(c.type)));
   const hints: Hint[] = [];
 
   // 1. Gaps — missing required components (with componentType for palette highlight)
   for (const req of mission.requirements.required) {
-    if (!placedTypes.has(req)) {
-      const meta = COMPONENT_META[req];
+    if (!placedTypes.has(normalizeComponentType(req))) {
+      const meta = getComponentMeta(req);
       hints.push({
         type: 'gap',
         text: `Add ${meta.label} ${meta.icon} — ${meta.description}`,
@@ -110,11 +152,12 @@ const UndoToast: React.FC<{ message: string; visible: boolean }> = ({ message, v
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSimulate, isSimulating }) => {
-  const { addComponent, architecture, isDirty, markClean, past, future, undo, redo, lastActionLabel } = useBuilderStore();
+  const { addComponent, architecture, isDirty, markClean, past, future, undo, redo, lastActionLabel, setArchitecture } = useBuilderStore();
   const autoSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [activeType, setActiveType] = useState<ComponentType | null>(null);
   const [showHint, setShowHint] = useState(false);
   const [hintIdx, setHintIdx] = useState(0);
+  const [isMigrating, setIsMigrating] = useState(false);
 
   // Toast state
   const [toast, setToast] = useState('');
@@ -128,6 +171,22 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     toastTimerRef.current = setTimeout(() => setToastVisible(false), 2000);
   }, []);
+
+  // Legacy type migration on mount - checks if architecture contains old types
+  useEffect(() => {
+    const hasLegacyTypes = architecture.components.some(c => {
+      const type = c.type as string;
+      return Object.keys(LEGACY_TYPE_MAP).includes(type);
+    });
+
+    if (hasLegacyTypes) {
+      setIsMigrating(true);
+      const migrated = migrateLegacyArchitecture(architecture);
+      setArchitecture(migrated);
+      showToast('Architecture migrated to new component types');
+      setIsMigrating(false);
+    }
+  }, []); // Run once on mount
 
   // Show toast whenever lastActionLabel changes (undo/redo)
   const prevLabelRef = useRef('');
@@ -172,7 +231,7 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
 
   // Auto-save every 30 seconds when dirty
   useEffect(() => {
-    if (!isDirty) return;
+    if (!isDirty || isMigrating) return;
     if (autoSaveRef.current) clearTimeout(autoSaveRef.current);
     autoSaveRef.current = setTimeout(async () => {
       try {
@@ -183,7 +242,7 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
       }
     }, 30000);
     return () => { if (autoSaveRef.current) clearTimeout(autoSaveRef.current); };
-  }, [isDirty, architecture, mission.slug, markClean]);
+  }, [isDirty, architecture, mission.slug, markClean, isMigrating]);
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveType((event.active.data.current?.type as ComponentType) ?? null);
@@ -205,13 +264,13 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
     addComponent(data.type as ComponentType, x, y);
   };
 
-  const placedTypes = architecture.components.map((c) => c.type);
-  const requiredMet = mission.requirements.required.every((r) => placedTypes.includes(r));
+  const placedTypes = architecture.components.map((c) => normalizeComponentType(c.type));
+  const requiredMet = mission.requirements.required.every((r) => placedTypes.includes(normalizeComponentType(r)));
 
   // Live cost tracking
   const budget = mission.requirements.budget;
   const currentCost = useMemo(
-    () => placedTypes.reduce((sum, t) => sum + (COMPONENT_COSTS[t as ComponentType] ?? 0), 0),
+    () => placedTypes.reduce((sum, t) => sum + getComponentCost(t as ComponentType), 0),
     [placedTypes]
   );
   const costRatio = budget > 0 ? currentCost / budget : 0;
@@ -236,7 +295,8 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
             <span className="text-sm text-gray-400">
               {architecture.components.length} components · {architecture.connections.length} connections
             </span>
-            {isDirty && <span className="text-xs text-amber-400">● Unsaved</span>}
+            {isDirty && !isMigrating && <span className="text-xs text-amber-400">● Unsaved</span>}
+            {isMigrating && <span className="text-xs text-blue-400">↻ Migrating...</span>}
             {/* Live cost tracker */}
             <div
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${costColor}`}
@@ -256,7 +316,7 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
             <button
               className="btn-ghost text-sm px-2 disabled:opacity-30"
               onClick={() => useBuilderStore.getState().undo()}
-              disabled={past.length === 0}
+              disabled={past.length === 0 || isMigrating}
               title="Undo (Ctrl+Z)"
             >
               ↩
@@ -264,22 +324,28 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
             <button
               className="btn-ghost text-sm px-2 disabled:opacity-30"
               onClick={() => useBuilderStore.getState().redo()}
-              disabled={future.length === 0}
+              disabled={future.length === 0 || isMigrating}
               title="Redo (Ctrl+Y)"
             >
               ↪
             </button>
             <div className="w-px h-4 bg-gray-700" />
-            <button className="btn-ghost text-sm" onClick={() => useBuilderStore.getState().resetArchitecture()}>
+            <button
+              className="btn-ghost text-sm"
+              onClick={() => useBuilderStore.getState().resetArchitecture()}
+              disabled={isMigrating}
+            >
               Reset
             </button>
             <button
-              disabled={!requiredMet || isSimulating}
+              disabled={!requiredMet || isSimulating || isMigrating}
               onClick={onSimulate}
               className="btn-primary text-sm"
               title={
                 !requiredMet
-                  ? `Add required: ${mission.requirements.required.filter(r => !placedTypes.includes(r)).join(', ')}`
+                  ? `Add required: ${mission.requirements.required
+                      .filter((r) => !placedTypes.includes(normalizeComponentType(r)))
+                      .join(', ')}`
                   : 'Run simulation'
               }
             >
@@ -297,6 +363,7 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
               highlightedType={showHint ? (currentHint.componentType ?? null) : null}
               currentCost={currentCost}
               budget={budget}
+              missionContext={mission.components.missionContext}
             />
           </div>
           <div className="flex-1 overflow-hidden">
@@ -387,8 +454,8 @@ export const DragDropBuilder: React.FC<DragDropBuilderProps> = ({ mission, onSim
       <DragOverlay dropAnimation={null}>
         {activeType ? (
           <div className="flex flex-col items-center justify-center w-24 h-20 rounded-xl border-2 border-brand-500 bg-brand-900/80 shadow-2xl shadow-brand-500/30 opacity-90 pointer-events-none">
-            <span className="text-2xl mb-1">{COMPONENT_META[activeType].icon}</span>
-            <span className="text-xs font-semibold text-white">{COMPONENT_META[activeType].label}</span>
+            <span className="text-2xl mb-1">{getComponentMeta(activeType).icon}</span>
+            <span className="text-xs font-semibold text-white">{getComponentMeta(activeType).label}</span>
           </div>
         ) : null}
       </DragOverlay>

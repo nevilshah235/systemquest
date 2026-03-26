@@ -13,6 +13,7 @@ import {
   ReactFlow, Background, MiniMap, Panel, useReactFlow,
   useNodesState, useEdgesState, addEdge,
   type Node, type Edge, type Connection,
+  type NodeProps,
   Handle, Position, type NodeTypes,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -33,7 +34,7 @@ const TYPE_COLORS: Record<string, string> = {
   fk:'bg-red-900/40 text-red-300',
 };
 
-interface EntityNodeData {
+interface EntityNodeData extends Record<string, unknown> {
   entity: EntityCard;
   onFieldAdd: (id: string, f: EntityField) => void;
   onFieldToggleIndex: (id: string, name: string) => void;
@@ -43,7 +44,9 @@ interface EntityNodeData {
   validationErrors: string[];
 }
 
-const EntityNode: React.FC<{ data: EntityNodeData }> = ({ data }) => {
+type EntityCardNode = Node<EntityNodeData, 'entityCard'>;
+
+const EntityNode: React.FC<NodeProps<EntityCardNode>> = ({ data }) => {
   const { entity, onFieldAdd, onFieldToggleIndex, onFieldRemove, onEntityRemove, entities, validationErrors } = data;
   const [fieldName, setFieldName] = useState('');
   const [fieldType, setFieldType] = useState<FieldType>('string');
@@ -167,7 +170,7 @@ const EntityNode: React.FC<{ data: EntityNodeData }> = ({ data }) => {
   );
 };
 
-const nodeTypes: NodeTypes = { entityCard: EntityNode as React.ComponentType<Node> };
+const nodeTypes: NodeTypes = { entityCard: EntityNode };
 
 // ── Custom canvas controls (replaces default ReactFlow Controls) ──────────────
 const CanvasControls: React.FC = () => {

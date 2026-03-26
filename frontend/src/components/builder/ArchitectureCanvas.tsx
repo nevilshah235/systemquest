@@ -1,7 +1,13 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArchitectureComponent, Connection, ComponentType, COMPONENT_META } from '../../data/types';
+import {
+  ArchitectureComponent,
+  Connection,
+  ComponentType,
+  getComponentMeta,
+  normalizeComponentType,
+} from '../../data/types';
 import { useBuilderStore } from '../../stores/builderStore';
 
 const GRID_SIZE    = 40;
@@ -12,8 +18,10 @@ const HANDLE_R     = 6;   // edge handle radius px
 const snap = (v: number) => Math.round(v / GRID_SIZE) * GRID_SIZE;
 
 // ── Auto-label lookup ─────────────────────────────────────────────────────────
+// Expanded for ~40 building blocks
 
 const CONN_LABELS: Partial<Record<string, Partial<Record<string, string>>>> = {
+  // Legacy types (for backward compatibility)
   client:      { loadbalancer: 'HTTP', server: 'HTTP', apigateway: 'HTTP', cdn: 'static' },
   loadbalancer:{ server: 'route' },
   apigateway:  { server: 'route', loadbalancer: 'route' },
@@ -23,10 +31,182 @@ const CONN_LABELS: Partial<Record<string, Partial<Record<string, string>>>> = {
   queue:       { server: 'consume' },
   monitoring:  { server: 'alerts' },
   cdn:         { server: 'origin', storage: 'files' },
+
+  // New types
+  'web-client': {
+    'dns': 'resolve',
+    'load-balancer-l7': 'HTTP',
+    'load-balancer-l4': 'TCP',
+    'api-gateway': 'HTTP',
+    'app-server': 'HTTP',
+    'cdn': 'static',
+    'websocket-server': 'WS',
+    'reverse-proxy': 'HTTP',
+  },
+  'mobile-client': {
+    'dns': 'resolve',
+    'load-balancer-l7': 'HTTP',
+    'api-gateway': 'HTTP',
+    'app-server': 'HTTP',
+    'cdn': 'static',
+    'websocket-server': 'WS',
+  },
+  'dns': {
+    'load-balancer-l7': 'route',
+    'load-balancer-l4': 'route',
+    'cdn': 'route',
+  },
+  'load-balancer-l7': {
+    'app-server': 'route',
+    'api-gateway': 'route',
+  },
+  'load-balancer-l4': {
+    'app-server': 'route',
+    'websocket-server': 'route',
+  },
+  'api-gateway': {
+    'app-server': 'route',
+    'load-balancer-l7': 'route',
+    'auth-service': 'auth',
+    'rate-limiter': 'throttle',
+  },
+  'reverse-proxy': {
+    'app-server': 'proxy',
+    'load-balancer-l7': 'proxy',
+  },
+  'app-server': {
+    'relational-db': 'queries',
+    'document-db': 'queries',
+    'wide-column-store': 'queries',
+    'key-value-store': 'get/set',
+    'graph-db': 'queries',
+    'time-series-db': 'write',
+    'search-engine': 'search',
+    'vector-db': 'query',
+    'redis-cache': 'cache',
+    'message-queue': 'enqueue',
+    'event-stream': 'publish',
+    'pub-sub': 'publish',
+    'object-storage': 'files',
+    'block-storage': 'files',
+    'logging-service': 'logs',
+    'metrics-collector': 'metrics',
+    'auth-service': 'verify',
+    'rate-limiter': 'check',
+    'geospatial-index': 'nearby',
+    'notification-hub': 'notify',
+    'consensus-service': 'lock',
+    'config-service': 'config',
+    'ml-inference-engine': 'predict',
+  },
+  'worker': {
+    'message-queue': 'consume',
+    'event-stream': 'consume',
+    'relational-db': 'queries',
+    'document-db': 'queries',
+    'object-storage': 'files',
+    'transcoder': 'transcode',
+    'search-engine': 'index',
+    'logging-service': 'logs',
+  },
+  'serverless-function': {
+    'relational-db': 'queries',
+    'document-db': 'queries',
+    'key-value-store': 'get/set',
+    'object-storage': 'files',
+    'event-stream': 'trigger',
+    'pub-sub': 'trigger',
+  },
+  'scheduler': {
+    'worker': 'schedule',
+    'serverless-function': 'trigger',
+    'message-queue': 'enqueue',
+  },
+  'redis-cache': {
+    'relational-db': 'miss→DB',
+    'document-db': 'miss→DB',
+    'key-value-store': 'fallback',
+  },
+  'cdn': {
+    'app-server': 'origin',
+    'object-storage': 'files',
+    'reverse-proxy': 'origin',
+  },
+  'message-queue': {
+    'worker': 'consume',
+  },
+  'event-stream': {
+    'worker': 'consume',
+    'app-server': 'consume',
+    'serverless-function': 'trigger',
+  },
+  'pub-sub': {
+    'websocket-server': 'broadcast',
+    'app-server': 'notify',
+    'notification-hub': 'notify',
+  },
+  'websocket-server': {
+    'app-server': 'RPC',
+    'pub-sub': 'subscribe',
+    'redis-cache': 'presence',
+  },
+  'search-engine': {
+    'app-server': 'results',
+  },
+  'geospatial-index': {
+    'app-server': 'results',
+  },
+  'transcoder': {
+    'object-storage': 'output',
+    'event-stream': 'complete',
+  },
+  'notification-hub': {
+    'pub-sub': 'subscribe',
+    'message-queue': 'consume',
+  },
+  'auth-service': {
+    'relational-db': 'users',
+    'redis-cache': 'sessions',
+  },
+  'rate-limiter': {
+    'redis-cache': 'counters',
+  },
+  'metrics-collector': {
+    'time-series-db': 'store',
+    'app-server': 'scrape',
+  },
+  'distributed-tracing': {
+    'app-server': 'trace',
+    'time-series-db': 'store',
+  },
+  'logging-service': {
+    'object-storage': 'archive',
+    'search-engine': 'index',
+  },
+  'circuit-breaker': {
+    'app-server': 'protect',
+  },
+  'service-mesh': {
+    'app-server': 'proxy',
+  },
+  'consensus-service': {
+    'app-server': 'coordinate',
+  },
+  'config-service': {
+    'app-server': 'config',
+  },
 };
 
 function autoLabel(fromType: string, toType: string): string {
-  return CONN_LABELS[fromType]?.[toType] ?? 'data flow';
+  // Try direct lookup
+  const direct = CONN_LABELS[fromType]?.[toType];
+  if (direct) return direct;
+
+  // Try reverse lookup (some connections are symmetric)
+  const reverse = CONN_LABELS[toType]?.[fromType];
+  if (reverse) return `${reverse} ←`;
+
+  return 'data flow';
 }
 
 // ── Geometry helpers ──────────────────────────────────────────────────────────
@@ -90,7 +270,7 @@ const CanvasComponent: React.FC<CanvasComponentProps> = ({
   component, isSelected, isHovered, isConnTarget, isConnSource,
   onMouseEnter, onMouseLeave, onSelect, onDeleteComp, onEdgeHandleDragStart,
 }) => {
-  const meta = COMPONENT_META[component.type];
+  const meta = getComponentMeta(component.type);
 
   let borderClass = 'border-gray-600 bg-gray-800/80';
   if (isSelected)   borderClass = 'border-brand-500 bg-brand-900/20 shadow-brand-500/20';
@@ -412,7 +592,7 @@ export const ArchitectureCanvas: React.FC<ArchitectureCanvasProps> = ({ required
     setMousePos(null);
   };
 
-  const placedTypes = architecture.components.map((c) => c.type);
+  const placedTypes = architecture.components.map((c) => normalizeComponentType(c.type));
   const canvasW = 900;
   const canvasH = 580;
 
@@ -420,8 +600,8 @@ export const ArchitectureCanvas: React.FC<ArchitectureCanvasProps> = ({ required
     <div className="h-full flex flex-col overflow-hidden">
       <div className="px-4 py-2 border-b border-gray-800 flex items-center gap-2 flex-wrap min-h-[42px]">
         {requiredComponents.map((type) => {
-          const placed = placedTypes.includes(type as ComponentType);
-          const meta   = COMPONENT_META[type as ComponentType];
+          const placed = placedTypes.includes(normalizeComponentType(type as ComponentType));
+          const meta   = getComponentMeta(type as ComponentType);
           return meta ? (
             <span key={type} className={`badge text-xs ${
               placed
